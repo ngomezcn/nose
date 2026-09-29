@@ -1,0 +1,1122 @@
+<Window x:Class="AICopilotCore.Ui.ShellWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="AI Copilot" Width="1600" Height="950"
+        MinWidth="980" MinHeight="620"
+        WindowStyle="None" ResizeMode="CanResize"
+        WindowStartupLocation="CenterScreen" WindowState="Maximized"
+        Background="{StaticResource ShellBg}"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <!-- Chrome propio en vez de AllowsTransparency: con transparencia WPF
+         pierde la aceleracion por hardware y la ventana deja de comportarse
+         como una ventana normal (snap, maximizar, redimensionar por el
+         borde). WindowChrome quita la barra de titulo nativa conservando
+         todo eso; CaptionHeight=0 porque la barra de titulo se arrastra a
+         mano (ver OnTitleBarDrag) y asi los botones de dentro siguen
+         recibiendo clics. -->
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="0" ResizeBorderThickness="6"
+                            GlassFrameThickness="0" CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="24"/>
+        </Grid.RowDefinitions>
+
+        <!-- ================= Barra de titulo ================= -->
+        <Border Grid.Row="0" Background="{StaticResource ChromeBg}"
+                BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,0,0,1"
+                MouseLeftButtonDown="OnTitleBarDrag">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="12,0,0,0"
+                            VerticalAlignment="Center">
+                    <Ellipse Width="8" Height="8" Fill="{StaticResource CyanText}" Margin="0,0,8,0"/>
+                    <TextBlock Text="AI Copilot" FontFamily="{StaticResource AICopilotFont}"
+                               FontSize="13" Foreground="{StaticResource TextPrimary}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="X-Plane 12" FontFamily="{StaticResource AICopilotFont}"
+                               FontSize="12" Foreground="{StaticResource TextFaint}"
+                               Margin="10,0,0,0" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <TextBlock Grid.Column="2" Text="{Binding BuildText}" Margin="0,0,12,0"
+                           FontFamily="{StaticResource MonoFont}" FontSize="11"
+                           Foreground="{StaticResource TextFaint}" VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal">
+                    <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;"
+                            Click="OnMinimizeClick" ToolTip="Minimizar (X-Plane le sigue)"/>
+                    <!-- El glifo lo elige un DataTrigger sobre el WindowState en
+                         vez de una propiedad en C#: asi los codepoints de
+                         Segoe MDL2 viven todos aqui, escritos como entidades
+                         XML, y el .cs se queda en ASCII puro. -->
+                    <Button Click="OnMaximizeClick" ToolTip="Maximizar / restaurar">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource TitleBarButton}">
+                                <Setter Property="Content" Value="&#xE922;"/>
+                                <Style.Triggers>
+                                    <DataTrigger Value="Maximized"
+                                                 Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}">
+                                        <Setter Property="Content" Value="&#xE923;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                    <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;"
+                            Click="OnCloseClick" ToolTip="Cerrar el core (X-Plane sigue abierto)"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ================= Cuerpo ================= -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="48"/>
+                <ColumnDefinition x:Name="LeftCol" Width="280" MinWidth="200"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*" MinWidth="320"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition x:Name="RightCol" Width="320" MinWidth="240"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Barra de actividad: cambia solo el contenido del panel izquierdo. -->
+            <Border Grid.Column="0" Background="{StaticResource ActivityBarBg}"
+                    BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,0,1,0">
+                <StackPanel>
+                    <ToggleButton x:Name="TakeoffTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE709;" IsChecked="True"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="Despegue"/>
+                    <ToggleButton x:Name="ActionsTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE8FD;"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="Acciones"/>
+                    <ToggleButton x:Name="AircraftTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE8F1;"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="Aviones de la partida"/>
+                    <ToggleButton x:Name="InterceptTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE945;"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="Interceptar: ir a por otro avion y mantenerse en formacion con el"/>
+                    <ToggleButton x:Name="GraphicsTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE891;"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="Graficos: etiquetas, lineas y marcadores sobre aviones"/>
+                    <ToggleButton x:Name="DataLogTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE9D2;"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="Caja negra: log de datos CSV + acceso a graficos"/>
+                    <ToggleButton x:Name="ConfigTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE713;"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="Config: limites de control (rampas, agresividad, G, envolventes)"/>
+                    <ToggleButton x:Name="XPlaneTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE7F4;"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="X-Plane: anclar ventana, marco y recuadro yoke"/>
+                </StackPanel>
+            </Border>
+
+            <!-- === Panel izquierdo: una vista a la vez (despegue / acciones / aviones) === -->
+            <Border Grid.Column="1" Background="{StaticResource SideBarBg}"
+                    BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,0,1,0">
+                <DockPanel>
+                    <!-- Abajo del todo: estado de conexion con el plugin. -->
+                    <Border DockPanel.Dock="Bottom" Background="{StaticResource ChromeBg}"
+                            BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,1,0,0"
+                            Padding="14,8">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Ellipse Width="9" Height="9" Margin="0,0,8,0"
+                                     Fill="{Binding ConnectionDotColor}"
+                                     ToolTip="{Binding ConnectionStatus}"/>
+                            <TextBlock Text="{Binding ConnectionStatus}"
+                                       FontFamily="{StaticResource AICopilotFont}"
+                                       FontSize="12" Foreground="{StaticResource TextDim}"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </StackPanel>
+                    </Border>
+
+                    <TextBlock x:Name="LeftPanelTitle" DockPanel.Dock="Top" Text="DESPEGUE"
+                               Margin="14,10,14,4"
+                               FontFamily="{StaticResource AICopilotFont}" FontSize="11"
+                               Foreground="{StaticResource TextFaint}"/>
+
+                    <!-- Las tres vistas ocupan el mismo hueco; solo una Visible a la vez. -->
+                    <Grid>
+                    <!-- Vista: estilo de despegue, secuencia y botones. -->
+                    <ScrollViewer x:Name="TakeoffView" VerticalScrollBarVisibility="Auto"
+                                  Padding="14,4,14,14">
+                        <StackPanel>
+                            <TextBlock Text="ESTILO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+
+                            <ToggleButton x:Name="StyleRelaxed" Style="{StaticResource ToolToggle}"
+                                          Content="Relajado" IsChecked="True" HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Center" Margin="0,2"
+                                          Checked="OnStyleChanged" Click="OnStyleClick"
+                                          ToolTip="Salida de entrenamiento: 250 kt y viraje suave."/>
+                            <ToggleButton x:Name="StyleCombat" Style="{StaticResource ToolToggle}"
+                                          Content="Combate" HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Center" Margin="0,2"
+                                          Checked="OnStyleChanged" Click="OnStyleClick"
+                                          ToolTip="Salida tactica: 350 kt, morro arriba, viraje pronto."/>
+                            <ToggleButton x:Name="StyleEmergency" Style="{StaticResource ToolToggle}"
+                                          Content="Emergencia" HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Center" Margin="0,2"
+                                          Checked="OnStyleChanged" Click="OnStyleClick"
+                                          ToolTip="Obstaculo o pista corta: rotar pronto y ganar angulo."/>
+
+                            <TextBlock Text="{Binding StyleSummary}" Margin="0,8,0,0" TextWrapping="Wrap"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
+                                       Foreground="{StaticResource TextDim}"/>
+                            <TextBlock Text="{Binding StyleSpec}" Margin="0,8,0,0" TextWrapping="Wrap"
+                                       Style="{StaticResource TelemetryText}"/>
+
+                            <TextBlock Text="SECUENCIA" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="{Binding SequenceText}" Style="{StaticResource TelemetryText}"
+                                       Foreground="{StaticResource CyanText}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding ChecklistText}" Style="{StaticResource TelemetryText}"
+                                       Margin="0,6,0,0"/>
+
+                            <TextBlock Text="CONTROL" Style="{StaticResource SectionHeader}"/>
+                            <Button Style="{StaticResource AccentButton}" Content="Iniciar despegue"
+                                    Click="OnStartClick" HorizontalAlignment="Stretch" Margin="0,2"/>
+                            <Button Style="{StaticResource DangerButton}" Content="Abortar / manual"
+                                    Click="OnAbortClick" HorizontalAlignment="Stretch" Margin="0,4,0,2"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Volar en crucero (estabilizar)"
+                                    Click="OnCruiseClick" HorizontalAlignment="Stretch" Margin="0,2"
+                                    ToolTip="Corta lo que este en marcha y deja el avion recto y nivelado persiguiendo 300 kt. El motor sigue esa velocidad."/>
+                            <Button Style="{StaticResource AccentButton}" Content="Reset simulacion (LEBL)"
+                                    Click="OnResetSimClick" HorizontalAlignment="Stretch" Margin="0,10,0,2"
+                                    ToolTip="Te pone en umbral LEBL 24L mirando 246° y una Citation X a ~15 km en el aire, alejandose por el rumbo de pista. La IA la vuela X-Plane."/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Vista: catalogo de maniobras.
+                         Cada boton lleva en Tag el nombre del ManeuverKind (Domain/Maneuvers.cs)
+                         y comparte OnManeuverClick. Abortar vive en la vista de despegue
+                         y corta tambien cualquier accion en marcha. -->
+                    <ScrollViewer x:Name="ActionsView" VerticalScrollBarVisibility="Auto"
+                                  Padding="14,4,14,14" Visibility="Collapsed">
+                        <StackPanel x:Name="ActionsStack">
+                            <TextBlock Text="ALTITUD" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Bajar altitud (leve)" Tag="DescendGentle"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Bajar altitud (agresivo)" Tag="DescendAggressive"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Caer en picado" Tag="Dive"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Subir morro (leve)" Tag="ClimbGentle"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Subir morro (agresivo)" Tag="ClimbAggressive"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Nivelar (alas y morro)" Tag="LevelWings"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+
+                            <TextBlock Text="VIRAJES" Style="{StaticResource SectionHeader}"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Virar suave, izquierda" Tag="TurnGentleLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Virar suave, derecha" Tag="TurnGentleRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Virar cerrado, izquierda" Tag="TurnTightLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Virar cerrado, derecha" Tag="TurnTightRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+
+                            <TextBlock Text="COMBINADAS" Style="{StaticResource SectionHeader}"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Subir agresivo + virar izq." Tag="ClimbAggressiveTurnLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Subir agresivo + virar der." Tag="ClimbAggressiveTurnRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Bajar agresivo + virar izq." Tag="DescendAggressiveTurnLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Bajar agresivo + virar der." Tag="DescendAggressiveTurnRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Break defensivo, izquierda" Tag="CombatBreakLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Break defensivo, derecha" Tag="CombatBreakRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+
+                            <TextBlock Text="ACROBACIAS" Style="{StaticResource SectionHeader}"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Rollo (aleron), izquierda" Tag="RollLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Rollo (aleron), derecha" Tag="RollRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Barrel roll, izquierda" Tag="BarrelRollLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Barrel roll, derecha" Tag="BarrelRollRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Looping (backflip)" Tag="LoopBackflip"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Immelmann, sale izquierda" Tag="ImmelmannLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Immelmann, sale derecha" Tag="ImmelmannRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Split-S, entra izquierda" Tag="SplitSLeft"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Split-S, entra derecha" Tag="SplitSRight"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+
+                            <TextBlock Text="VELOCIDAD" Style="{StaticResource SectionHeader}"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Acelerar" Tag="Accelerate"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,1"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Frenar" Tag="Decelerate"
+                                    Click="OnManeuverClick" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                    FontSize="11.5" Margin="0,4,0,2"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Vista: aviones de la partida (este + otras IAs). -->
+                    <DockPanel x:Name="AircraftView" Visibility="Collapsed" Margin="0,0,0,0">
+                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding AircraftEmptyHint}"
+                                   Margin="14,0,14,14" TextWrapping="Wrap"
+                                   FontFamily="{StaticResource AICopilotFont}" FontSize="12"
+                                   Foreground="{StaticResource TextFaint}"
+                                   Visibility="{Binding AircraftEmptyVisibility}"/>
+                        <ListBox ItemsSource="{Binding AircraftEntries}"
+                                 Background="Transparent" BorderThickness="0" Padding="8,4"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Padding="8,8" Margin="2,2"
+                                            Background="{StaticResource InputBg}"
+                                            BorderBrush="{StaticResource ShellBorder}" BorderThickness="1">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <Ellipse Width="8" Height="8" Margin="0,0,8,0"
+                                                         VerticalAlignment="Center"
+                                                         Fill="{Binding StatusBrush}"/>
+                                                <TextBlock Text="{Binding RoleLabel}"
+                                                           FontFamily="{StaticResource AICopilotFont}"
+                                                           FontSize="10"
+                                                           Foreground="{StaticResource TextFaint}"
+                                                           VerticalAlignment="Center"
+                                                           DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontFamily="{StaticResource AICopilotFont}"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource TextPrimary}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Detail}" Margin="16,4,0,0"
+                                                       FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                                       Foreground="{StaticResource TextDim}"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Focusable" Value="False"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </DockPanel>
+
+                    <!-- Vista: interceptar a otro avion de la partida.
+                         El orden de arriba abajo es el de la decision: a quien,
+                         donde me pongo, a que distancia, y solo entonces el
+                         boton. El estado va el ultimo porque es lo que se mira
+                         DESPUES de haber pulsado. -->
+                    <ScrollViewer x:Name="InterceptView" VerticalScrollBarVisibility="Auto"
+                                  Padding="14,4,14,14" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="BLANCO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <TextBlock Text="{Binding InterceptEmptyHint}" TextWrapping="Wrap"
+                                       Margin="0,0,0,6"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12"
+                                       Foreground="{StaticResource TextFaint}"
+                                       Visibility="{Binding InterceptEmptyVisibility}"/>
+
+                            <ListBox x:Name="InterceptTargetList" MaxHeight="230"
+                                     ItemsSource="{Binding InterceptTargets}"
+                                     SelectedItem="{Binding SelectedInterceptTarget, Mode=TwoWay}"
+                                     Background="Transparent" BorderThickness="0" Padding="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <Ellipse Width="8" Height="8" Margin="0,0,8,0"
+                                                         VerticalAlignment="Center"
+                                                         Fill="{Binding StatusBrush}"/>
+                                                <TextBlock Text="{Binding StateLabel}"
+                                                           FontFamily="{StaticResource AICopilotFont}"
+                                                           FontSize="10"
+                                                           Foreground="{StaticResource TextFaint}"
+                                                           VerticalAlignment="Center"
+                                                           DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontFamily="{StaticResource AICopilotFont}"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource TextPrimary}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Detail}" Margin="16,3,0,0"
+                                                       FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                                       Foreground="{StaticResource TextDim}"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Margin" Value="0,1"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border x:Name="Chrome"
+                                                            Background="{StaticResource InputBg}"
+                                                            BorderBrush="{StaticResource ShellBorder}"
+                                                            BorderThickness="1" Padding="8,6">
+                                                        <ContentPresenter/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Chrome" Property="Background"
+                                                                    Value="{StaticResource HoverBg}"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="Chrome" Property="Background"
+                                                                    Value="{StaticResource HoverBg}"/>
+                                                            <Setter TargetName="Chrome" Property="BorderBrush"
+                                                                    Value="{StaticResource CyanText}"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
+
+                            <TextBlock Text="POSICION" Style="{StaticResource SectionHeader}"/>
+                            <ToggleButton x:Name="StationTailHigh" Style="{StaticResource ToolToggle}"
+                                          Content="Cola alta (por defecto)" Tag="TailHigh" IsChecked="True"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2" Checked="OnInterceptStationChanged"
+                                          Click="OnInterceptStationClick"
+                                          ToolTip="Detras y un poco por encima: la posicion de interceptacion clasica."/>
+                            <ToggleButton x:Name="StationParallelLeft" Style="{StaticResource ToolToggle}"
+                                          Content="Paralelo izquierda" Tag="ParallelLeft"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2" Checked="OnInterceptStationChanged"
+                                          Click="OnInterceptStationClick"
+                                          ToolTip="A su costado izquierdo, ligeramente atrasado."/>
+                            <ToggleButton x:Name="StationParallelRight" Style="{StaticResource ToolToggle}"
+                                          Content="Paralelo derecha" Tag="ParallelRight"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2" Checked="OnInterceptStationChanged"
+                                          Click="OnInterceptStationClick"
+                                          ToolTip="A su costado derecho, ligeramente atrasado."/>
+                            <ToggleButton x:Name="StationAbove" Style="{StaticResource ToolToggle}"
+                                          Content="Arriba" Tag="Above"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2" Checked="OnInterceptStationChanged"
+                                          Click="OnInterceptStationClick"
+                                          ToolTip="Por encima y algo atras: domina la geometria."/>
+                            <ToggleButton x:Name="StationBelow" Style="{StaticResource ToolToggle}"
+                                          Content="Abajo" Tag="Below"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2" Checked="OnInterceptStationChanged"
+                                          Click="OnInterceptStationClick"
+                                          ToolTip="Por debajo y algo atras: para inspeccionar su vientre."/>
+
+                            <TextBlock Text="{Binding InterceptStationSummary}" Margin="0,8,0,0"
+                                       TextWrapping="Wrap"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
+                                       Foreground="{StaticResource TextDim}"/>
+                            <TextBlock Text="{Binding InterceptStationSpec}" Margin="0,6,0,0"
+                                       TextWrapping="Wrap" Style="{StaticResource TelemetryText}"
+                                       Foreground="{StaticResource CyanText}"/>
+
+                            <TextBlock Text="SEPARACION (m)" Style="{StaticResource SectionHeader}"/>
+                            <Grid Margin="0,3" ToolTip="Distancia por detras del blanco a la que se coloca el avion. Es la escala de la formacion: el resto de posiciones la usan en proporcion.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Distancia (atras)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding InterceptDistanceText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Separacion lateral de las posiciones paralelo izquierda/derecha.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Lateral (paralelo)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding InterceptLateralText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Separacion vertical de la posicion de cola alta. Arriba y abajo usan el doble.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Vertical" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding InterceptVerticalText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+
+                            <TextBlock Text="CONTROL" Style="{StaticResource SectionHeader}"/>
+                            <Button Style="{StaticResource AccentButton}" Content="Interceptar"
+                                    Click="OnInterceptStartClick" HorizontalAlignment="Stretch" Margin="0,2"
+                                    ToolTip="Va a por el avion seleccionado y se queda en la posicion elegida. Si sigue en tierra, espera a que despegue."/>
+                            <Button Style="{StaticResource DangerButton}" Content="Cancelar interceptacion"
+                                    Click="OnInterceptAbortClick" HorizontalAlignment="Stretch" Margin="0,4,0,2"/>
+
+                            <TextBlock Text="ESTADO" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="{Binding InterceptStatusText}" TextWrapping="Wrap"
+                                       Style="{StaticResource TelemetryText}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Vista: caja negra / log de datos crudo. Se alimenta a
+                         ~10Hz desde el mismo timer que repinta la telemetria
+                         (ShellWindow.Refresh, via DataLogger.cs). "Ver graficos"
+                         abre la pestana del viewport; "Borrar todo" vacia buffer
+                         UI + fichero en disco. -->
+                    <DockPanel x:Name="DataLogView" Visibility="Collapsed">
+                        <StackPanel DockPanel.Dock="Top" Margin="14,0,14,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="{Binding DataLogStatusText}"
+                                           FontFamily="{StaticResource AICopilotFont}" FontSize="12"
+                                           Foreground="{StaticResource TextDim}" VerticalAlignment="Center"
+                                           TextWrapping="Wrap"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                    <Button Style="{StaticResource ToolButton}" Content="Ver graficos"
+                                            FontSize="12" Padding="8,2" Margin="0,0,6,0"
+                                            Click="OnShowBlackBoxChartsClick"
+                                            ToolTip="Abre la pestana Caja negra en el viewport central"/>
+                                    <Button Style="{StaticResource ToolButton}" Content="Borrar todo"
+                                            FontSize="12" Padding="8,2" Click="OnClearDataLogClick"/>
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Text="{Binding DataLogFilePathText}" Margin="0,4,0,0"
+                                       FontFamily="{StaticResource MonoFont}" FontSize="10"
+                                       Foreground="{StaticResource TextFaint}" TextWrapping="Wrap"
+                                       ToolTip="Fichero en disco con el log completo (se recrea al pulsar Borrar todo)"/>
+                        </StackPanel>
+                        <ListBox x:Name="DataLogList" ItemsSource="{Binding DataLogSamples}"
+                                 Background="Transparent" BorderThickness="0" Padding="10,0,10,10"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Auto">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Style="{StaticResource TelemetryText}"
+                                               FontSize="10.5"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="Margin" Value="0"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </DockPanel>
+
+                    <!-- Vista: Config, "limites humanos" del control (rampas de
+                         mando, agresividad de maniobras, backstop de G, tiempos
+                         de reaccion/captura del despegue, envolvente de
+                         velocidad de Acelerar/Frenar). Ver Domain/ControlTuning.cs
+                         para el porque de que estos y no otros: p. ej. las
+                         ganancias de los PID y los parametros muy atados a una
+                         fase concreta del despegue se quedan fuera a proposito. -->
+                    <ScrollViewer x:Name="ConfigView" VerticalScrollBarVisibility="Auto"
+                                  Padding="14,4,14,14" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="MANDOS / RAMPAS" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+
+                            <Grid Margin="0,3" ToolTip="Cuanto puede cambiar el throttle como maximo por segundo (0=ralenti .. 1=maxima potencia).">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Rampa motor (1/s)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding ThrottleSlewRateText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Cuanto puede cambiar el mando de cabeceo como maximo por segundo (escala -1..1).">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Rampa cabeceo (1/s)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding PitchSlewRateText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Cuanto puede cambiar el mando de alabeo como maximo por segundo (escala -1..1).">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Rampa alabeo (1/s)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding RollSlewRateText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Cuanto puede cambiar el mando de guinada/rueda de morro como maximo por segundo (escala -1..1).">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Rampa guinada (1/s)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding YawSlewRateText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+
+                            <TextBlock Text="AGRESIVIDAD DE ACCIONES" Style="{StaticResource SectionHeader}"/>
+
+                            <Grid Margin="0,3" ToolTip="Ritmo (deg/s) al que se mueve el objetivo de pitch que persiguen las maniobras de Acciones (subir/bajar/virar). Mas alto = reacciona mas rapido a la orden.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Rampa pitch obj. (deg/s)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding ManeuverPitchRampText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Ritmo (deg/s) al que se mueve el objetivo de bank que persiguen los virajes de Acciones.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Rampa bank obj. (deg/s)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding ManeuverBankRampText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Ritmo (1/s) al que se mete el gesto de palanca fijo en rollos/loopings/Immelmann/Split-S (maniobras de tipo RateCommand).">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Rampa gesto palanca (1/s)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding ManeuverStickRampText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+
+                            <TextBlock Text="LIMITES DE ACTITUD Y G" Style="{StaticResource SectionHeader}"/>
+
+                            <Grid Margin="0,3" ToolTip="G de trabajo: la proteccion continua empieza a quitar mando antes de llegar aqui, sin cortar la maniobra.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="G max. (limitador)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding GSoftHighText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="G negativa de trabajo (mas negativo = mas margen). Por encima de este valor el mando se suaviza, no se corta.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="G min. (limitador)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding GSoftLowText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Backstop estructural: la maniobra solo se corta si la G pasa de aqui y se mantiene. No deberia saltar nunca en vuelo normal.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="G max. (abort duro)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding GHardHighText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Backstop estructural en negativo. Igual que el anterior: solo corta si se mantiene.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="G min. (abort duro)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding GHardLowText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Altura sobre el terreno por debajo de la cual ninguna maniobra sigue bajando. Cada maniobra puede pedir mas, nunca menos.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Suelo AGL (ft)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding TerrainFloorAglText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <ToggleButton x:Name="AutoSpeedbrakeToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Aerofrenos automaticos" IsChecked="True"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                          FontSize="11.5" Margin="0,6,0,1"
+                                          Checked="OnAutoSpeedbrakeToggled" Unchecked="OnAutoSpeedbrakeToggled"
+                                          ToolTip="El planificador saca los aerofrenos cuando hay que perder velocidad y el ralenti no basta. Apagalo para medir la resistencia del avion limpio (calibracion)."/>
+                            <Grid Margin="0,3" ToolTip="Cuanto puede ajustar el pitch el autopiloto de nivelado (V/S=0) alrededor del pitch de crucero.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Ajuste max. nivelado (deg)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding LevelFlightMaxPitchAdjustText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <TextBlock Text="El alabeo, la reaccion y la rampa de pitch del despegue los fija el estilo (Despegue), no estos limites."
+                                       Margin="0,8,0,0" TextWrapping="Wrap"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12"
+                                       Foreground="{StaticResource TextFaint}"/>
+
+                            <TextBlock Text="RECUPERACION DE NIVELADO" Style="{StaticResource SectionHeader}"/>
+
+                            <Grid Margin="0,3" ToolTip="Tolerancia de bank (deg) para considerar 'nivelado recuperado' tras acabar una accion/maniobra.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Captura bank (deg)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding RecoverBankCaptureText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Tolerancia de pitch (deg) para considerar 'nivelado recuperado' tras acabar una accion/maniobra.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Captura pitch (deg)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding RecoverPitchCaptureText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Segundos que hay que mantenerse dentro de las tolerancias de arriba antes de dar el nivelado por recuperado.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Tiempo minimo (s)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding RecoverMinSecondsText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+
+                            <TextBlock Text="ENVOLVENTE DE VELOCIDAD" Style="{StaticResource SectionHeader}"/>
+
+                            <Grid Margin="0,3" ToolTip="Cuantos nudos sube/baja el IAS objetivo cada vez que se pulsa Acelerar/Frenar en Acciones.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Escalon Acelerar/Frenar (kt)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding SpeedStepText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="IAS objetivo minimo al que puede llegar Frenar (kt).">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="IAS obj. minimo (kt)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding MinTargetIasText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="IAS objetivo maximo al que puede llegar Acelerar (kt).">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="IAS obj. maximo (kt)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="{Binding MaxTargetIasText, UpdateSourceTrigger=PropertyChanged}"/>
+                            </Grid>
+
+                            <Button Style="{StaticResource ToolButton}" Content="Restablecer valores por defecto"
+                                    Click="OnResetTuningClick" HorizontalAlignment="Stretch" Margin="0,14,0,2"
+                                    ToolTip="Vuelve a poner todos los campos de esta pestana en los valores de fabrica."/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Vista: overlays 2D en X-Plane (etiquetas / lineas / marcadores). -->
+                    <ScrollViewer x:Name="GraphicsView" VerticalScrollBarVisibility="Auto"
+                                  Padding="14,4,14,14" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="ETIQUETAS" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <ToggleButton x:Name="GfxOwnLabelToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Etiqueta en mi avion" IsChecked="True"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                          ToolTip="Texto flotante encima del avion del usuario"/>
+                            <ToggleButton x:Name="GfxOtherLabelsToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Etiquetas en las demas" IsChecked="False"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                          ToolTip="Mismo texto encima de cada IA activa"/>
+                            <Grid Margin="0,6,0,3" ToolTip="Texto que se dibuja encima del avion (max. 32 caracteres).">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="110"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Texto" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="GfxLabelTextBox" Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="Jev" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Fuente del SDK: Basica es mas pequena; Proporcional es la del label original.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="110"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Estilo" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox x:Name="GfxFontCombo" Grid.Column="1"
+                                          SelectedIndex="1" SelectionChanged="OnGraphicsFontChanged">
+                                    <ComboBoxItem Content="Basica"/>
+                                    <ComboBoxItem Content="Proporcional"/>
+                                </ComboBox>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Color RGB 0..255 del texto, lineas y marcadores.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="36"/>
+                                    <ColumnDefinition Width="36"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Color R G B" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="GfxColorR" Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="255" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                                <TextBox x:Name="GfxColorG" Grid.Column="2" Style="{StaticResource ShellTextBox}"
+                                         Text="217" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                                <TextBox x:Name="GfxColorB" Grid.Column="3" Style="{StaticResource ShellTextBox}"
+                                         Text="26" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                            </Grid>
+                            <Grid Margin="0,3" ToolTip="Escala del marcador y grosor de linea (0.5 .. 4). Valores altos tambien engrosan el texto.">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="76"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Tamano" Style="{StaticResource FieldLabel}"/>
+                                <TextBox x:Name="GfxScaleText" Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                         Text="1" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                            </Grid>
+
+                            <TextBlock Text="DIBUJO" Style="{StaticResource SectionHeader}"/>
+                            <ToggleButton x:Name="GfxLinesToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Lineas a las demas naves" IsChecked="False"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                          ToolTip="Linea hasta cada IA (tambien fuera de vista) con la distancia en metros en el centro"/>
+                            <ToggleButton x:Name="GfxMarkersToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Marcador (rombo)" IsChecked="False"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                          ToolTip="Rombo identificador en el centro de cada avion visible"/>
+                            <ToggleButton x:Name="GfxPathToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Vector de trayectoria" IsChecked="False"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                          ToolTip="Predice donde estara el avion en ~1.5 s (integra velocidad+aceleracion). Sale 2.5 m por delante del CG; el horizonte se alarga/acorta con la acel. longitudinal"/>
+
+                            <Button Style="{StaticResource ToolButton}" Content="Restablecer graficos"
+                                    Click="OnResetGraphicsClick" HorizontalAlignment="Stretch" Margin="0,14,0,2"
+                                    ToolTip="Vuelve a etiqueta Jev amarilla solo en tu avion, sin lineas ni marcadores."/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Vista: anclar ventana de X-Plane, marco y recuadro yoke. -->
+                    <ScrollViewer x:Name="XPlaneView" VerticalScrollBarVisibility="Auto"
+                                  Padding="14,4,14,14" Visibility="Collapsed">
+                        <StackPanel>
+                            <TextBlock Text="VENTANA" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <ToggleButton x:Name="AttachToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Anclar X-Plane" IsChecked="True"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnAttachToggled" Unchecked="OnAttachToggled"
+                                          ToolTip="Mueve y redimensiona la ventana de X-Plane para que llene el hueco central"/>
+                            <ToggleButton x:Name="FrameToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Ocultar marco" IsChecked="True"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnFrameToggled" Unchecked="OnFrameToggled"
+                                          ToolTip="Le quita a X-Plane la barra de titulo y el borde para que no se vea la costura"/>
+                            <Button Style="{StaticResource ToolButton}" Content="Recolocar"
+                                    Click="OnRedockClick"
+                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                    Margin="0,2"
+                                    ToolTip="Vuelve a encajar X-Plane ahora mismo"/>
+
+                            <TextBlock Text="CONTROL" Style="{StaticResource SectionHeader}"/>
+                            <ToggleButton x:Name="MouseYokeBoxToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Ocultar recuadro yoke" IsChecked="True"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnMouseYokeBoxToggled" Unchecked="OnMouseYokeBoxToggled"
+                                          ToolTip="Quita el recuadro del mouse yoke de X-Plane y de paso desactiva el control por raton, para que la IA no lo mueva sin querer"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                    </Grid>
+                </DockPanel>
+            </Border>
+
+            <GridSplitter Grid.Column="2" Width="5" HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch" Style="{StaticResource ShellSplitter}"/>
+
+            <!-- === Centro: hueco para X-Plane + log === -->
+            <Grid Grid.Column="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" MinHeight="160"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition x:Name="BottomRow" Height="170" MinHeight="80"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="30"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Pestanas del viewport: X-Plane (sim anclado) o Caja negra
+                         (graficos de telemetria). Al cambiar a graficos el docker
+                         libera el hueco para que no lo tape el simulador. -->
+                    <Border Grid.Row="0" Background="{StaticResource ChromeBg}">
+                        <StackPanel Orientation="Horizontal">
+                            <ToggleButton x:Name="ViewportXPlaneTab" IsChecked="True"
+                                          Checked="OnViewportTabChanged" Click="OnViewportTabClick"
+                                          ToolTip="Vista del simulador anclado en este hueco">
+                                <ToggleButton.Style>
+                                    <Style TargetType="ToggleButton">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Padding" Value="14,0"/>
+                                        <Setter Property="Height" Value="30"/>
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <Border x:Name="Bg" Background="{TemplateBinding Background}"
+                                                            BorderBrush="Transparent" BorderThickness="0,2,0,0"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                            <Ellipse x:Name="Dot" Width="7" Height="7" Margin="0,0,7,0"
+                                                                     Fill="{Binding DockDotColor}"/>
+                                                            <ContentPresenter VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsChecked" Value="True">
+                                                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource ViewportBg}"/>
+                                                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource CyanText}"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBg}"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Setter Property="FontFamily" Value="{StaticResource AICopilotFont}"/>
+                                        <Setter Property="FontSize" Value="12.5"/>
+                                    </Style>
+                                </ToggleButton.Style>
+                                <TextBlock Text="{Binding ViewportTabText}" VerticalAlignment="Center"/>
+                            </ToggleButton>
+                            <ToggleButton x:Name="ViewportBlackBoxTab"
+                                          Checked="OnViewportTabChanged" Click="OnViewportTabClick"
+                                          ToolTip="Caja negra: graficos de telemetria para calibrar la computadora de vuelo">
+                                <ToggleButton.Style>
+                                    <Style TargetType="ToggleButton">
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                        <Setter Property="Padding" Value="14,0"/>
+                                        <Setter Property="Height" Value="30"/>
+                                        <Setter Property="Cursor" Value="Hand"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ToggleButton">
+                                                    <Border x:Name="Bg" Background="{TemplateBinding Background}"
+                                                            BorderBrush="Transparent" BorderThickness="0,2,0,0"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter VerticalAlignment="Center"/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsChecked" Value="True">
+                                                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource ViewportBg}"/>
+                                                            <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource CyanText}"/>
+                                                            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBg}"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                        <Setter Property="FontFamily" Value="{StaticResource AICopilotFont}"/>
+                                        <Setter Property="FontSize" Value="12.5"/>
+                                    </Style>
+                                </ToggleButton.Style>
+                                <TextBlock Text="Caja negra" VerticalAlignment="Center"/>
+                            </ToggleButton>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ESTE es el hueco. XPlaneDocker traduce su rectangulo en
+                         pantalla a un SetWindowPos sobre la ventana del sim, asi
+                         que todo lo que se pinte aqui queda tapado en cuanto
+                         X-Plane encaja. La vista de caja negra se muestra
+                         encima y el docker deja de cubrir el hueco. -->
+                    <Grid Grid.Row="1">
+                        <Border x:Name="Viewport" Background="{StaticResource ViewportBg}">
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                        Visibility="{Binding ViewportHintVisibility}">
+                                <TextBlock Text="{Binding ViewportHintTitle}" HorizontalAlignment="Center"
+                                           FontFamily="{StaticResource AICopilotFont}" FontSize="18"
+                                           Foreground="{StaticResource TextDim}"/>
+                                <TextBlock Text="{Binding ViewportHintDetail}" HorizontalAlignment="Center"
+                                           TextAlignment="Center" MaxWidth="440" TextWrapping="Wrap"
+                                           FontFamily="{StaticResource AICopilotFont}" FontSize="13"
+                                           Foreground="{StaticResource TextFaint}" Margin="0,8,0,0"/>
+                            </StackPanel>
+                        </Border>
+                        <Border x:Name="BlackBoxHost" Background="{StaticResource ViewportBg}"
+                                Visibility="Collapsed"/>
+                    </Grid>
+                </Grid>
+
+                <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch"
+                              VerticalAlignment="Stretch" Style="{StaticResource ShellSplitter}"/>
+
+                <!-- === Panel inferior: log === -->
+                <Border Grid.Row="2" Background="{StaticResource SideBarBg}"
+                        BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,1,0,0">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Background="{StaticResource ChromeBg}" Padding="14,0">
+                            <Grid Height="28">
+                                <TextBlock Text="LOG DE ACCIONES" VerticalAlignment="Center"
+                                           FontFamily="{StaticResource AICopilotFont}" FontSize="11"
+                                           Foreground="{StaticResource TextPrimary}"/>
+                                <Button Style="{StaticResource ToolButton}" Content="Limpiar"
+                                        HorizontalAlignment="Right" FontSize="12" Padding="8,2"
+                                        Click="OnClearLogClick"/>
+                            </Grid>
+                        </Border>
+                        <ListBox x:Name="LogList" ItemsSource="{Binding Logs}"
+                                 Background="Transparent" BorderThickness="0" Padding="10,6"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding}" Style="{StaticResource TelemetryText}"
+                                               TextWrapping="Wrap"/>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="Padding" Value="0,1"/>
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                        </ListBox>
+                    </DockPanel>
+                </Border>
+            </Grid>
+
+            <GridSplitter Grid.Column="4" Width="5" HorizontalAlignment="Stretch"
+                          VerticalAlignment="Stretch" Style="{StaticResource ShellSplitter}"/>
+
+            <!-- === Panel derecho: telemetria === -->
+            <Border Grid.Column="5" Background="{StaticResource SideBarBg}"
+                    BorderBrush="{StaticResource ShellBorder}" BorderThickness="1,0,0,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="TELEMETRIA" Margin="14,10,14,4"
+                               FontFamily="{StaticResource AICopilotFont}" FontSize="11"
+                               Foreground="{StaticResource TextFaint}"/>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,4,14,14">
+                        <StackPanel>
+                            <TextBlock Text="MODO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <TextBlock Text="{Binding ModeText}" Style="{StaticResource TelemetryText}"
+                                       Foreground="{StaticResource CyanText}" TextWrapping="Wrap"/>
+
+                            <TextBlock Text="VUELO" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="{Binding FlightText}" Style="{StaticResource TelemetryText}"/>
+
+                            <TextBlock Text="ACTITUD" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="{Binding AttitudeText}" Style="{StaticResource TelemetryText}"/>
+
+                            <TextBlock Text="MANDOS" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="{Binding ControlsText}" Style="{StaticResource TelemetryText}"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- ================= Barra de estado ================= -->
+        <Border Grid.Row="2" Background="{StaticResource StatusBg}">
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding ConnectionStatus}" Style="{StaticResource StatusText}"/>
+                    <TextBlock Text="{Binding ModeText}" Style="{StaticResource StatusText}"/>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <TextBlock Text="{Binding DockStatusText}" Style="{StaticResource StatusText}"/>
+                    <TextBlock Text="{Binding BuildText}" Style="{StaticResource StatusText}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

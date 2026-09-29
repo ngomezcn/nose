@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>AICopilotCore</AssemblyName>
+    <RootNamespace>AICopilotCore</RootNamespace>
+
+    <!-- Un unico .exe autocontenido: no depende de que el usuario tenga el
+         runtime de .NET instalado, se copia y ejecuta tal cual junto al
+         plugin, igual que el .xpl. -->
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+
+    <!-- InvariantGlobalization NO se puede activar aqui, aunque tiente por
+         tamano: WPF construye CultureInfo("en") al medir texto con fuentes
+         que traen tablas tipograficas (MS.Internal.FontCache.MajorLanguages),
+         y en modo invariante eso lanza CultureNotFoundException y se lleva la
+         ventana por delante nada mas hacer Show(). El parseo de los campos
+         numericos ya fuerza CultureInfo.InvariantCulture a mano, que es donde
+         de verdad importaba no depender de la cultura del usuario. -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Fonts\Rajdhani-SemiBold.ttf" />
+  </ItemGroup>
+
+  <!-- App.xaml vive en Ui\, no en la raiz del proyecto, asi que el SDK de
+       WPF no lo detecta solo como punto de entrada de la aplicacion: hay
+       que sacarlo de la deteccion automatica (que lo trataria como una
+       Page normal) y declararlo explicitamente como ApplicationDefinition.
+       Sin esto el build falla con "no se encontro un punto de entrada". -->
+  <ItemGroup>
+    <ApplicationDefinition Include="Ui\App.xaml" SubType="Designer" Generator="MSBuild:Compile" />
+    <Page Remove="Ui\App.xaml" />
+  </ItemGroup>
+
+</Project>

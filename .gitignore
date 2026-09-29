@@ -1,0 +1,43 @@
+# Build outputs
+build/
+bin/
+obj/
+dist/
+publish/
+
+# .NET / MSBuild
+*.dll
+*.exe
+*.pdb
+*.ilk
+*.exp
+*.lib
+*.obj
+*.pch
+*.idb
+*.iobj
+*.ipdb
+*.tlog
+*.recipe
+*.lastbuildstate
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+cmake_install.cmake
+*.cmake
+!toolchain-mingw-w64.cmake
+
+# Visual Studio
+.vs/
+*.sln.docstates
+*.user
+
+# Logs / runtime artifacts
+*.log
+DataLog.csv
+
+# Editor/OS cruft
+.DS_Store
+Thumbs.db

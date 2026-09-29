@@ -1,0 +1,264 @@
+<Application x:Class="AICopilotCore.Ui.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Sin StartupUri: App.xaml.cs crea a mano el ShellWindow, que necesita
+         el ConnectorClient y la TakeoffSequence ya montados. -->
+    <Application.Resources>
+        <FontFamily x:Key="AICopilotFont">./Fonts/#Rajdhani SemiBold</FontFamily>
+        <!-- Los numeros de telemetria y el log van en monoespaciada: con
+             proporcional, cada decima que cambia mueve la linea entera de
+             sitio y el ojo no puede seguir un valor fijo. -->
+        <FontFamily x:Key="MonoFont">Cascadia Mono, Consolas, Courier New</FontFamily>
+
+        <!-- Superficies, de mas hundida a mas elevada. El viewport es el mas
+             oscuro porque casi siempre esta tapado por X-Plane: cuanto menos
+             se note el borde entre el hueco y el simulador, mejor. -->
+        <SolidColorBrush x:Key="ViewportBg" Color="#FF070A0F"/>
+        <SolidColorBrush x:Key="ShellBg" Color="#FF0B0E13"/>
+        <SolidColorBrush x:Key="SideBarBg" Color="#FF0F131A"/>
+        <SolidColorBrush x:Key="ChromeBg" Color="#FF11151C"/>
+        <SolidColorBrush x:Key="ActivityBarBg" Color="#FF0D1117"/>
+        <SolidColorBrush x:Key="InputBg" Color="#FF161B24"/>
+        <SolidColorBrush x:Key="ShellBorder" Color="#FF1E2633"/>
+        <SolidColorBrush x:Key="HoverBg" Color="#FF1C2430"/>
+
+        <SolidColorBrush x:Key="CyanBorder" Color="#5900DCFF"/>
+        <SolidColorBrush x:Key="CyanText" Color="#FF00E1FF"/>
+        <SolidColorBrush x:Key="CyanAccent" Color="#FF00A8CD"/>
+        <SolidColorBrush x:Key="CyanAccentHover" Color="#FF00C7EE"/>
+        <SolidColorBrush x:Key="MagentaAccent" Color="#FFFF2D82"/>
+        <SolidColorBrush x:Key="MagentaAccentHover" Color="#FFFF5AA0"/>
+        <SolidColorBrush x:Key="StatusBg" Color="#FF00637A"/>
+
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFE1F0F5"/>
+        <SolidColorBrush x:Key="TextDim" Color="#FF8CA5AF"/>
+        <SolidColorBrush x:Key="TextFaint" Color="#FF5B6C76"/>
+
+        <!-- Botones de ventana (minimizar / maximizar / cerrar). -->
+        <Style x:Key="TitleBarButton" TargetType="Button">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBg}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CloseButton" TargetType="Button" BasedOn="{StaticResource TitleBarButton}">
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource MagentaAccent}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Boton plano de la barra de herramientas. -->
+        <Style x:Key="ToolButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontFamily" Value="{StaticResource AICopilotFont}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}" CornerRadius="4"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBg}"/>
+                            </Trigger>
+                            <!-- Los botones de accion se deshabilitan cuando la maniobra no
+                                 tiene sentido con la IAS/AGL actuales (ShellWindow.RefreshManeuverButtons);
+                                 sin este trigger se quedaban con el mismo texto brillante de
+                                 siempre y solo se notaba en que no hacian nada al pulsarlos. -->
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bg" Property="Background" Value="Transparent"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+                                <Setter Property="Cursor" Value="Arrow"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource ToolButton}">
+            <Setter Property="Background" Value="{StaticResource CyanAccent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource CyanAccentHover}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource AccentButton}">
+            <Setter Property="Background" Value="{StaticResource MagentaAccent}"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource MagentaAccentHover}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Interruptor de la barra de herramientas (anclar X-Plane, ocultar
+             marco): el estado activo se ve por el fondo, no por un check. -->
+        <Style x:Key="ToolToggle" TargetType="ToggleButton">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="FontFamily" Value="{StaticResource AICopilotFont}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="10,4"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bg" Background="Transparent" CornerRadius="4"
+                                BorderBrush="Transparent" BorderThickness="1"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource HoverBg}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="#2600DCFF"/>
+                                <Setter TargetName="Bg" Property="BorderBrush" Value="{StaticResource CyanBorder}"/>
+                                <Setter Property="Foreground" Value="{StaticResource CyanText}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Iconos de la barra de actividad: seleccion exclusiva de la vista
+             del panel izquierdo (no muestran/ocultan paneles laterales). -->
+        <Style x:Key="ActivityToggle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="48"/>
+            <Setter Property="Height" Value="48"/>
+            <Setter Property="FontSize" Value="19"/>
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid Background="Transparent">
+                            <!-- Barra cyan = vista activa del panel izquierdo. -->
+                            <Rectangle x:Name="Marker" Width="2" HorizontalAlignment="Left"
+                                       Fill="{StaticResource CyanText}" Visibility="Collapsed"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Marker" Property="Visibility" Value="Visible"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ShellTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="{StaticResource InputBg}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="CaretBrush" Value="{StaticResource CyanText}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource ShellBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3" Padding="{TemplateBinding Padding}">
+                            <ScrollViewer x:Name="PART_ContentHost"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{StaticResource CyanText}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TelemetryText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Margin" Value="0,2"/>
+        </Style>
+
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextDim}"/>
+            <Setter Property="FontFamily" Value="{StaticResource AICopilotFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <!-- Cabecera de seccion dentro de un panel ("PARAMETROS", "MOTOR"...). -->
+        <Style x:Key="SectionHeader" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextFaint}"/>
+            <Setter Property="FontFamily" Value="{StaticResource AICopilotFont}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Margin" Value="0,14,0,6"/>
+        </Style>
+
+        <Style x:Key="StatusText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="{StaticResource AICopilotFont}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="10,0"/>
+        </Style>
+
+        <!-- Separadores arrastrables. Son de 5 px y transparentes: el usuario ve
+             la linea de 1 px del borde del panel, pero puede agarrar 5. -->
+        <Style x:Key="ShellSplitter" TargetType="GridSplitter">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="ShowsPreview" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="GridSplitter">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}"/>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{StaticResource CyanAccent}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,263 @@
+# XPWidgets
+
+Source: https://developer.x-plane.com/  (mirrored locally)
+
+# [XPWidgets](/sdk/XPWidgets/) API
+## THEORY OF OPERATION AND NOTES
+Widgets are persistent view 'objects' for X-Plane. A widget is an object referenced by its opaque handle (widget ID) and the APIs in this file. You cannot access the widget's guts directly. Every Widget has the following intrinsic data:
+  * A bounding box defined in global screen coordinates with 0,0 in the bottom left and +y = up, +x = right.
+  * A visible box, which is the intersection of the bounding box with the widget's parents visible box.
+  * Zero or one parent widgets. (Always zero if the widget is a root widget.
+  * Zero or more child widgets.
+  * Whether the widget is a root. Root widgets are the top level plugin windows.
+  * Whether the widget is visible.
+  * A text string descriptor, whose meaning varies from widget to widget.
+  * An arbitrary set of 32 bit integral properties defined by 32-bit integral keys. This is how specific widgets store specific data.
+  * A list of widget callback procedures that implements the widgets behaviors.
+
+The Widgets library sends messages to widgets to request specific behaviors or notify the widget of things.
+Widgets may have more than one callback function, in which case messages are sent to the most recently added callback function until the message is handled. Messages may also be sent to parents or children; see the [XPWidgetDefs](/sdk/XPWidgetDefs/).h header file for the different widget message dispatching functions. By adding a callback function to a window you can 'subclass' its behavior.
+A set of standard widgets are provided that serve common UI purposes. You can also customize or implement entirely custom widgets.
+Widgets are different than other view hierarchies (most notably Win32, which they bear a striking resemblance to) in the following ways:
+  * Not all behavior can be patched. State that is managed by the [XPWidgets](/sdk/XPWidgets/) DLL and not by individual widgets cannot be customized.
+  * All coordinates are in global screen coordinates. Coordinates are not relative to an enclosing widget, nor are they relative to a display window.
+  * Widget messages are always dispatched synchronously, and there is no concept of scheduling an update or a dirty region. Messages originate from X-Plane as the sim cycle goes by. Since X-Plane is constantly redrawing, so are widgets; there is no need to mark a part of a widget as 'needing redrawing' because redrawing happens frequently whether the widget needs it or not.
+  * Any widget may be a 'root' widget, causing it to be drawn; there is no relationship between widget class and rootness. Root widgets are implemented as [XPLMDisplay](/sdk/XPLMDisplay/) windows.
+
+## WIDGET CREATION AND MANAGEMENT
+### [XPCreateWidget](/sdk/XPCreateWidget/)
+    
+    WIDGET_API [XPWidgetID](/sdk/XPWidgetID/) [XPCreateWidget](/sdk/XPCreateWidget/)(
+                             int                  inLeft,
+                             int                  inTop,
+                             int                  inRight,
+                             int                  inBottom,
+                             int                  inVisible,
+                             const char *         inDescriptor,
+                             int                  inIsRoot,
+                             [XPWidgetID](/sdk/XPWidgetID/)           inContainer,
+                             [XPWidgetClass](/sdk/XPWidgetClass/)        inClass);
+    
+This function creates a new widget and returns the new widget's ID to you. If the widget creation fails for some reason, it returns NULL. Widget creation will fail either if you pass a bad class ID or if there is not adequate memory.
+Input Parameters:
+  * Top, left, bottom, and right in global screen coordinates defining the widget's location on the screen.
+  * inVisible is 1 if the widget should be drawn, 0 to start the widget as hidden.
+  * inDescriptor is a null terminated string that will become the widget's descriptor.
+  * inIsRoot is 1 if this is going to be a root widget, 0 if it will not be.
+  * inContainer is the ID of this widget's container. It must be 0 for a root widget. For a non-root widget, pass the widget ID of the widget to place this widget within. If this widget is not going to start inside another widget, pass 0; this new widget will be created but will not be drawn until it is placed inside another widget.
+  * inClass is the class of the widget to draw. Use one of the predefined class-IDs to create a standard widget.
+
+A note on widget embedding: a widget is only called (and will be drawn, etc.) if it is placed within a widget that will be called. Root widgets are always called. So it is possible to have whole chains of widgets that are simply not called. You can preconstruct widget trees and then place them into root widgets later to activate them if you wish.
+### [XPCreateCustomWidget](/sdk/XPCreateCustomWidget/)
+    
+    WIDGET_API [XPWidgetID](/sdk/XPWidgetID/) [XPCreateCustomWidget](/sdk/XPCreateCustomWidget/)(
+                             int                  inLeft,
+                             int                  inTop,
+                             int                  inRight,
+                             int                  inBottom,
+                             int                  inVisible,
+                             const char *         inDescriptor,
+                             int                  inIsRoot,
+                             [XPWidgetID](/sdk/XPWidgetID/)           inContainer,
+                             [XPWidgetFunc_t](/sdk/XPWidgetFunc_t/)       inCallback);
+    
+This function is the same as [XPCreateWidget](/sdk/XPCreateWidget/) except that instead of passing a class ID, you pass your widget callback function pointer defining the widget. Use this function to define a custom widget. All parameters are the same as [XPCreateWidget](/sdk/XPCreateWidget/), except that the widget class has been replaced with the widget function.
+### [XPDestroyWidget](/sdk/XPDestroyWidget/)
+    
+    WIDGET_API void       [XPDestroyWidget](/sdk/XPDestroyWidget/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             int                  inDestroyChildren);
+    
+This class destroys a widget. Pass in the ID of the widget to kill. If you pass 1 for inDestroyChilren, the widget's children will be destroyed first, then this widget will be destroyed. (Furthermore, the widget's children will be destroyed with the inDestroyChildren flag set to 1, so the destruction will recurse down the widget tree.) If you pass 0 for this flag, direct child widgets will simply end up with their parent set to 0.
+### [XPSendMessageToWidget](/sdk/XPSendMessageToWidget/)
+    
+    WIDGET_API int        [XPSendMessageToWidget](/sdk/XPSendMessageToWidget/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             [XPWidgetMessage](/sdk/XPWidgetMessage/)      inMessage,
+                             [XPDispatchMode](/sdk/XPDispatchMode/)       inMode,
+                             intptr_t             inParam1,
+                             intptr_t             inParam2);
+    
+This sends any message to a widget. You should probably not go around simulating the predefined messages that the widgets library defines for you. You may however define custom messages for your widgets and send them with this method.
+This method supports several dispatching patterns; see [XPDispatchMode](/sdk/XPDispatchMode/) for more info. The function returns 1 if the message was handled, 0 if it was not.
+For each widget that receives the message (see the dispatching modes), each widget function from the most recently installed to the oldest one receives the message in order until it is handled.
+## WIDGET POSITIONING AND VISIBILITY
+### [XPPlaceWidgetWithin](/sdk/XPPlaceWidgetWithin/)
+    
+    WIDGET_API void       [XPPlaceWidgetWithin](/sdk/XPPlaceWidgetWithin/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inSubWidget,
+                             [XPWidgetID](/sdk/XPWidgetID/)           inContainer);
+    
+This function changes which container a widget resides in. You may NOT use this function on a root widget! inSubWidget is the widget that will be moved. Pass a widget ID in inContainer to make inSubWidget be a child of inContainer. It will become the last/closest widget in the container. Pass 0 to remove the widget from any container. Any call to this other than passing the widget ID of the old parent of the affected widget will cause the widget to be removed from its old parent. Placing a widget within its own parent simply makes it the last widget.
+NOTE: this routine does not reposition the sub widget in global coordinates. If the container has layout management code, it will reposition the subwidget for you, otherwise you must do it with SetWidgetGeometry.
+### [XPCountChildWidgets](/sdk/XPCountChildWidgets/)
+    
+    WIDGET_API int        [XPCountChildWidgets](/sdk/XPCountChildWidgets/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+This routine returns the number of widgets another widget contains.
+### [XPGetNthChildWidget](/sdk/XPGetNthChildWidget/)
+    
+    WIDGET_API [XPWidgetID](/sdk/XPWidgetID/) [XPGetNthChildWidget](/sdk/XPGetNthChildWidget/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             int                  inIndex);
+    
+This routine returns the widget ID of a child widget by index. Indexes are 0 based, from 0 to the number of widgets in the parentone minus one, inclusive. If the index is invalid, 0 is returned.
+### [XPGetParentWidget](/sdk/XPGetParentWidget/)
+    
+    WIDGET_API [XPWidgetID](/sdk/XPWidgetID/) [XPGetParentWidget](/sdk/XPGetParentWidget/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+Returns the parent of a widget, or 0 if the widget has no parent. Root widgets never have parents and therefore always return 0.
+### [XPShowWidget](/sdk/XPShowWidget/)
+    
+    WIDGET_API void       [XPShowWidget](/sdk/XPShowWidget/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+This routine makes a widget visible if it is not already. Note that if a widget is not in a rooted widget hierarchy or one of its parents is not visible, it will still not be visible to the user.
+### [XPHideWidget](/sdk/XPHideWidget/)
+    
+    WIDGET_API void       [XPHideWidget](/sdk/XPHideWidget/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+Makes a widget invisible. See [XPShowWidget](/sdk/XPShowWidget/) for considerations of when a widget might not be visible despite its own visibility state.
+### [XPIsWidgetVisible](/sdk/XPIsWidgetVisible/)
+    
+    WIDGET_API int        [XPIsWidgetVisible](/sdk/XPIsWidgetVisible/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+This returns 1 if a widget is visible, 0 if it is not. Note that this routine takes into consideration whether a parent is invisible. Use this routine to tell if the user can see the widget.
+### [XPFindRootWidget](/sdk/XPFindRootWidget/)
+    
+    WIDGET_API [XPWidgetID](/sdk/XPWidgetID/) [XPFindRootWidget](/sdk/XPFindRootWidget/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+Returns the Widget ID of the root widget that contains the passed in widget or NULL if the passed in widget is not in a rooted hierarchy.
+### [XPBringRootWidgetToFront](/sdk/XPBringRootWidgetToFront/)
+    
+    WIDGET_API void       [XPBringRootWidgetToFront](/sdk/XPBringRootWidgetToFront/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+This routine makes the specified widget be in the frontmost widget hierarchy. If this widget is a root widget, its widget hierarchy comes to front, otherwise the widget's root is brought to the front. If this widget is not in an active widget hiearchy (e.g. there is no root widget at the top of the tree), this routine does nothing.
+### [XPIsWidgetInFront](/sdk/XPIsWidgetInFront/)
+    
+    WIDGET_API int        [XPIsWidgetInFront](/sdk/XPIsWidgetInFront/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+This routine returns true if this widget's hierarchy is the frontmost hierarchy. It returns false if the widget's hierarchy is not in front, or if the widget is not in a rooted hierarchy.
+### [XPGetWidgetGeometry](/sdk/XPGetWidgetGeometry/)
+    
+    WIDGET_API void       [XPGetWidgetGeometry](/sdk/XPGetWidgetGeometry/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             int *                outLeft,    /* Can be NULL */
+                             int *                outTop,    /* Can be NULL */
+                             int *                outRight,    /* Can be NULL */
+                             int *                outBottom);    /* Can be NULL */
+    
+This routine returns the bounding box of a widget in global coordinates. Pass NULL for any parameter you are not interested in.
+### [XPSetWidgetGeometry](/sdk/XPSetWidgetGeometry/)
+    
+    WIDGET_API void       [XPSetWidgetGeometry](/sdk/XPSetWidgetGeometry/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             int                  inLeft,
+                             int                  inTop,
+                             int                  inRight,
+                             int                  inBottom);
+    
+This function changes the bounding box of a widget.
+### [XPGetWidgetForLocation](/sdk/XPGetWidgetForLocation/)
+    
+    WIDGET_API [XPWidgetID](/sdk/XPWidgetID/) [XPGetWidgetForLocation](/sdk/XPGetWidgetForLocation/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inContainer,
+                             int                  inXOffset,
+                             int                  inYOffset,
+                             int                  inRecursive,
+                             int                  inVisibleOnly);
+    
+Given a widget and a location, this routine returns the widget ID of the child of that widget that owns that location. If inRecursive is true then this will return a child of a child of a widget as it tries to find the deepest widget at that location. If inVisibleOnly is true, then only visible widgets are considered, otherwise all widgets are considered. The widget ID passed for inContainer will be returned if the location is in that widget but not in a child widget. 0 is returned if the location is not in the container.
+NOTE: if a widget's geometry extends outside its parents geometry, it will not be returned by this call for mouse locations outside the parent geometry. The parent geometry limits the child's eligibility for mouse location.
+### [XPGetWidgetExposedGeometry](/sdk/XPGetWidgetExposedGeometry/)
+    
+    WIDGET_API void       [XPGetWidgetExposedGeometry](/sdk/XPGetWidgetExposedGeometry/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidgetID,
+                             int *                outLeft,    /* Can be NULL */
+                             int *                outTop,    /* Can be NULL */
+                             int *                outRight,    /* Can be NULL */
+                             int *                outBottom);    /* Can be NULL */
+    
+This routine returns the bounds of the area of a widget that is completely within its parent widgets. Since a widget's bounding box can be outside its parent, part of its area will not be eligible for mouse clicks and should not draw. Use [XPGetWidgetGeometry](/sdk/XPGetWidgetGeometry/) to find out what area defines your widget's shape, but use this routine to find out what area to actually draw into. Note that the widget library does not use OpenGL clipping to keep frame rates up, although you could use it internally.
+## ACCESSING WIDGET DATA
+### [XPSetWidgetDescriptor](/sdk/XPSetWidgetDescriptor/)
+    
+    WIDGET_API void       [XPSetWidgetDescriptor](/sdk/XPSetWidgetDescriptor/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             const char *         inDescriptor);
+    
+Every widget has a descriptor, which is a text string. What the text string is used for varies from widget to widget; for example, a push button's text is its descriptor, a caption shows its descriptor, and a text field's descriptor is the text being edited. In other words, the usage for the text varies from widget to widget, but this API provides a universal and convenient way to get at it. While not all UI widgets need their descriptor, many do.
+### [XPGetWidgetDescriptor](/sdk/XPGetWidgetDescriptor/)
+    
+    WIDGET_API int        [XPGetWidgetDescriptor](/sdk/XPGetWidgetDescriptor/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             char *               outDescriptor,
+                             int                  inMaxDescLength);
+    
+This routine returns the widget's descriptor. Pass in the length of the buffer you are going to receive the descriptor in. The descriptor will be null terminated for you. This routine returns the length of the actual descriptor; if you pass NULL for outDescriptor, you can get the descriptor's length without getting its text. If the length of the descriptor exceeds your buffer length, the buffer will not be null terminated (this routine has 'strncpy' semantics).
+### [XPGetWidgetUnderlyingWindow](/sdk/XPGetWidgetUnderlyingWindow/)
+    
+    WIDGET_API [XPLMWindowID](/sdk/XPLMWindowID/) [XPGetWidgetUnderlyingWindow](/sdk/XPGetWidgetUnderlyingWindow/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+Returns the window (from the [XPLMDisplay](/sdk/XPLMDisplay/) API) that backs your widget window. If you have opted in to modern windows, via a call to [XPLMEnableFeature](/sdk/XPLMEnableFeature/)("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1), you can use the returned window ID for display APIs like [XPLMSetWindowPositioningMode](/sdk/XPLMSetWindowPositioningMode/)(), allowing you to pop the widget window out into a real OS window, or move it into VR.
+### [XPSetWidgetProperty](/sdk/XPSetWidgetProperty/)
+    
+    WIDGET_API void       [XPSetWidgetProperty](/sdk/XPSetWidgetProperty/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             [XPWidgetPropertyID](/sdk/XPWidgetPropertyID/)   inProperty,
+                             intptr_t             inValue);
+    
+This function sets a widget's property. Properties are arbitrary values associated by a widget by ID.
+### [XPGetWidgetProperty](/sdk/XPGetWidgetProperty/)
+    
+    WIDGET_API intptr_t   [XPGetWidgetProperty](/sdk/XPGetWidgetProperty/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             [XPWidgetPropertyID](/sdk/XPWidgetPropertyID/)   inProperty,
+                             int *                inExists);    /* Can be NULL */
+    
+This routine returns the value of a widget's property, or 0 if the property is not defined. If you need to know whether the property is defined, pass a pointer to an int for inExists; the existence of that property will be returned in the int. Pass NULL for inExists if you do not need this information.
+## KEYBOARD MANAGEMENT
+### [XPSetKeyboardFocus](/sdk/XPSetKeyboardFocus/)
+    
+    WIDGET_API [XPWidgetID](/sdk/XPWidgetID/) [XPSetKeyboardFocus](/sdk/XPSetKeyboardFocus/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+Controls which widget will receive keystrokes. Pass the widget ID of the widget to get the keys. Note that if the widget does not care about keystrokes, they will go to the parent widget, and if no widget cares about them, they go to X-Plane.
+If you set the keyboard focus to widget ID 0, X-Plane gets keyboard focus.
+This routine returns the widget ID that ended up with keyboard focus, or 0 for X-Plane.
+Keyboard focus is not changed if the new widget will not accept it. For setting to X-Plane, keyboard focus is always accepted.
+### [XPLoseKeyboardFocus](/sdk/XPLoseKeyboardFocus/)
+    
+    WIDGET_API void       [XPLoseKeyboardFocus](/sdk/XPLoseKeyboardFocus/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget);
+    
+This causes the specified widget to lose focus; focus is passed to its parent, or the next parent that will accept it. This routine does nothing if this widget does not have focus.
+### [XPGetWidgetWithFocus](/sdk/XPGetWidgetWithFocus/)
+    
+    WIDGET_API [XPWidgetID](/sdk/XPWidgetID/) [XPGetWidgetWithFocus](/sdk/XPGetWidgetWithFocus/)(void);
+    
+This routine returns the widget that has keyboard focus, or 0 if X-Plane has keyboard focus or some other plugin window that does not have widgets has focus.
+## CREATING CUSTOM WIDGETS
+### [XPAddWidgetCallback](/sdk/XPAddWidgetCallback/)
+    
+    WIDGET_API void       [XPAddWidgetCallback](/sdk/XPAddWidgetCallback/)(
+                             [XPWidgetID](/sdk/XPWidgetID/)           inWidget,
+                             [XPWidgetFunc_t](/sdk/XPWidgetFunc_t/)       inNewCallback);
+    
+This function adds a new widget callback to a widget. This widget callback supercedes any existing ones and will receive messages first; if it does not handle messages they will go on to be handled by pre-existing widgets.
+The widget function will remain on the widget for the life of the widget. The creation message will be sent to the new callback immediately with the widget ID, and the destruction message will be sent before the other widget function receives a destruction message.
+This provides a way to 'subclass' an existing widget. By providing a second hook that only handles certain widget messages, you can customize or extend widget behavior.
+### [XPGetWidgetClassFunc](/sdk/XPGetWidgetClassFunc/)
+    
+    WIDGET_API [XPWidgetFunc_t](/sdk/XPWidgetFunc_t/) [XPGetWidgetClassFunc](/sdk/XPGetWidgetClassFunc/)(
+                             [XPWidgetClass](/sdk/XPWidgetClass/)        inWidgetClass);
+    
+Given a widget class, this function returns the callbacks that power that widget class.
