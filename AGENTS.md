@@ -117,8 +117,9 @@ antes de diagnosticar. El CSV está junto al exe desplegado
 
 ## 5. Driver LLM ↔ UI (ControlApi)
 
-Para iniciar/parar interceptación desde un agente sin clics, usa la skill
+Para despegar / interceptar / abortar desde un agente sin clics, usa la
+skill
 [`.claude/skills/aicopilot-driver/SKILL.md`](.claude/skills/aicopilot-driver/SKILL.md)
-y el CLI `tools\aicopilot_driver.py`. El core expone **HTTP REST JSON**
-en `http://127.0.0.1:17890` (`/health`, `/status`, `/intercept`,
-`/intercept/abort`, `/abort`).
+y el CLI `tools\aicopilot_driver.py`. El core expone una API REST
+(ASP.NET Core minimal API) en `http://127.0.0.1:17890`: `GET /status`,
+`POST /takeoff`, `POST /intercept`, `POST /abort`.

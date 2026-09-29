@@ -1,68 +1,49 @@
 #!/usr/bin/env python3
-"""CLI minimo del driver AICopilot (HTTP REST localhost :17890)."""
-from __future__ import annotations
+"""CLI de la API REST de AICopilotCore (http://127.0.0.1:17890).
 
-import argparse
-import http.client
-import json
+    python tools/aicopilot_driver.py status
+    python tools/aicopilot_driver.py takeoff [Relaxed|Combat|Emergency]
+    python tools/aicopilot_driver.py intercept [INDEX] [TailHigh|ParallelRight|ParallelLeft|Above|Below]
+    python tools/aicopilot_driver.py abort
+"""
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 
-HOST = "127.0.0.1"
-PORT = 17890
-TIMEOUT = 5
+URL = "http://127.0.0.1:17890"
+# Sin proxies: en Windows urllib coge el del sistema y podria desviar 127.0.0.1.
+OPENER = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
 
-def request(method: str, path: str, body: dict | None = None) -> tuple[int, str]:
-    payload = None
-    headers = {"Accept": "application/json", "Connection": "close"}
-    if body is not None:
-        payload = json.dumps(body)
-        headers["Content-Type"] = "application/json"
+def call(method, path, **params):
+    query = urllib.parse.urlencode({k: v for k, v in params.items() if v is not None})
+    req = urllib.request.Request(f"{URL}{path}?{query}", method=method)
     try:
-        conn = http.client.HTTPConnection(HOST, PORT, timeout=TIMEOUT)
-        conn.request(method, path, body=payload, headers=headers)
-        resp = conn.getresponse()
-        text = resp.read().decode("utf-8", errors="replace")
-        conn.close()
-        return resp.status, text
-    except Exception as e:
-        print(f"error: {e}", file=sys.stderr)
+        with OPENER.open(req, timeout=10) as r:
+            print(r.read().decode())
+    except urllib.error.HTTPError as e:
+        print(e.read().decode() or f"HTTP {e.code}")
+        sys.exit(1)
+    except urllib.error.URLError as e:
+        print(f"no responde {URL} ({e.reason}): esta abierto AICopilotCore?")
         sys.exit(1)
 
 
-def main() -> None:
-    p = argparse.ArgumentParser(description="AICopilot driver CLI")
-    sub = p.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("health")
-    sub.add_parser("status")
-    sub.add_parser("intercept-abort")
-    sub.add_parser("abort")
-    ic = sub.add_parser("intercept")
-    ic.add_argument("--index", type=int, required=True)
-    ic.add_argument("--station", default="TailHigh")
-    ic.add_argument("--label", default="")
-    args = p.parse_args()
-
-    if args.cmd == "health":
-        code, text = request("GET", "/health")
-    elif args.cmd == "status":
-        code, text = request("GET", "/status")
-    elif args.cmd == "intercept":
-        body: dict = {"index": args.index, "station": args.station}
-        if args.label:
-            body["label"] = args.label
-        code, text = request("POST", "/intercept", body)
-    elif args.cmd == "intercept-abort":
-        code, text = request("POST", "/intercept/abort", {})
-    elif args.cmd == "abort":
-        code, text = request("POST", "/abort", {})
+def main():
+    args = sys.argv[1:] + [None, None, None]
+    cmd, a, b = args[0], args[1], args[2]
+    if cmd == "status":
+        call("GET", "/status")
+    elif cmd == "takeoff":
+        call("POST", "/takeoff", style=a)
+    elif cmd == "intercept":
+        call("POST", "/intercept", index=a, station=b)
+    elif cmd == "abort":
+        call("POST", "/abort")
     else:
-        p.error(f"comando desconocido: {args.cmd}")
-        return
-
-    print(text)
-    if code >= 400:
-        sys.exit(1)
+        print(__doc__)
+        sys.exit(2)
 
 
 if __name__ == "__main__":

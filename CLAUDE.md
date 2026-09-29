@@ -13,6 +13,6 @@ del registro, usa
 [`.claude/skills/caja-negra/SKILL.md`](.claude/skills/caja-negra/SKILL.md)
 (“inspecciona la caja negra”, DataLog, temblores, G, intercept…).
 
-Para controlar la UI desde el agente (driver HTTP, takeoff, maniobras,
-intercept, reset simulación LEBL, iterar pruebas), usa
+Para accionar la UI desde el agente (API REST local: status, despegar,
+interceptar, abortar), usa
 [`.claude/skills/aicopilot-driver/SKILL.md`](.claude/skills/aicopilot-driver/SKILL.md).

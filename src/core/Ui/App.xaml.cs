@@ -13,7 +13,7 @@ namespace AICopilotCore.Ui;
 //     -> AircraftControls como se toca el avion
 //     -> TakeoffSequence  la logica de despegue
 //     -> FlightDirector   exclusion mutua entre secuencias (UI + driver)
-//     -> ControlApi       HTTP REST localhost (HttpListener) para LLMs / scripts
+//     -> ControlApi       API REST localhost (ASP.NET Core) para LLMs / scripts
 //     -> ShellWindow      lo que ve el usuario
 //
 // El detalle de timing que importa: TakeoffSequence.Update() se llama desde
@@ -52,17 +52,6 @@ public partial class App : Application
             return;
         }
         base.OnStartup(e);
-
-        int driverPort = ControlApi.DefaultPort;
-        bool enableDriver = true;
-        foreach (string arg in e.Args)
-        {
-            if (arg.Equals("--no-driver", StringComparison.OrdinalIgnoreCase))
-                enableDriver = false;
-            else if (arg.StartsWith("--driver-port=", StringComparison.OrdinalIgnoreCase) &&
-                     int.TryParse(arg["--driver-port=".Length..], out int p) && p is > 0 and < 65536)
-                driverPort = p;
-        }
 
         _client = new ConnectorClient();
         // Define() y Subscribe() se pueden llamar sin conexion: el cliente
@@ -151,23 +140,12 @@ public partial class App : Application
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         _shell.Show();
 
-        // HTTP REST :17890 — intercept / abort para LLMs. Solo 127.0.0.1;
-        // --no-driver la apaga. Si el puerto esta ocupado, no tumba la UI.
-        if (enableDriver)
-        {
-            try
-            {
-                _controlApi = new ControlApi(_director, _client, driverPort);
-                _controlApi.Start();
-                _shell.Append($"Driver API en {_controlApi.BaseUrl}");
-            }
-            catch (Exception ex)
-            {
-                _shell.Append($"Driver API NO arranco: {ex.Message}");
-                _controlApi?.Dispose();
-                _controlApi = null;
-            }
-        }
+        // API REST :17890 (solo 127.0.0.1) para LLMs / scripts. Si el
+        // puerto esta ocupado, lo dice en el log y la UI sigue sin ella.
+        _controlApi = new ControlApi(_director, _client);
+        _controlApi.StartAsync().ContinueWith(t => _shell.Append(t.IsFaulted
+            ? $"API REST NO arranco: {t.Exception!.GetBaseException().Message}"
+            : $"API REST en {ControlApi.Url}"));
 
         _client.Start();
     }
@@ -179,7 +157,7 @@ public partial class App : Application
         // es instantaneo y no depende de que el otro lado reaccione.
         if (_sequence?.IsRunning == true || _maneuvers?.IsRunning == true ||
             _intercept?.IsRunning == true) _controls?.ReleaseAllOverrides();
-        _controlApi?.Dispose();
+        _controlApi?.Stop();
         _client?.Dispose();
         base.OnExit(e);
     }
