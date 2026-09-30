@@ -6,19 +6,37 @@ namespace AICopilotCore.Domain;
 // Cada DataLogger se crea bajo demanda; por defecto ninguno graba.
 // Empezar/Detener/Borrar de la UI actuan sobre el indice en foco; con
 // foco GLOBAL actuan sobre todo el roster (varios a la vez). Refresh
-// alimenta todos los que tengan IsRecording.
+// alimenta todos los que tengan IsRecording, y les pasa si el simulador
+// esta congelado para que dejen de muestrear hasta que vuelva a correr.
 public sealed class FlightDataLogs
 {
     // Ownship + slots de multiplayer.
     public const int MaxPlanes = 1 + Datarefs.OtherPlaneSlots;
 
     private readonly DataLogger?[] _logs = new DataLogger?[MaxPlanes];
+    private bool _simFrozen;
+
+    public bool SimFrozen => _simFrozen;
 
     public DataLogger For(int xplmIndex)
     {
         if (xplmIndex < 0) xplmIndex = 0;
         if (xplmIndex >= MaxPlanes) xplmIndex = MaxPlanes - 1;
-        return _logs[xplmIndex] ??= Create(xplmIndex);
+        if (_logs[xplmIndex] is not null) return _logs[xplmIndex]!;
+        DataLogger created = Create(xplmIndex);
+        if (_simFrozen) created.SetSimFrozen(true);
+        _logs[xplmIndex] = created;
+        return created;
+    }
+
+    // Transicion de pausa / sim_speed 0. Los loggers que aun no existen
+    // heredan el flag al crearse.
+    public void SetSimFrozen(bool frozen)
+    {
+        if (frozen == _simFrozen) return;
+        _simFrozen = frozen;
+        for (int i = 0; i < _logs.Length; i++)
+            _logs[i]?.SetSimFrozen(frozen);
     }
 
     // Loggers ya creados que estan grabando (varios a la vez permitidos).

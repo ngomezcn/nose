@@ -42,7 +42,9 @@ lista/gráficos muestran LOCAL; los CSV se escriben todos). Varias naves
 pueden grabar en paralelo; al cambiar el foco la UI cambia de CSV.
 
 Separador `;`, números en `InvariantCulture` (punto decimal). Ritmo
-~**10 Hz** solo con grabación activa en ese logger. Buffer tipado/UI
+~**10 Hz** solo con grabación activa en ese logger y con el simulador en
+marcha: en pausa (o `sim_speed` 0) no entran muestras hasta que vuelve a
+correr. Buffer tipado/UI
 ~5 min (`MaxSamples = 3000`); el fichero rota a ~8 MB.
 
 ### Telemetría IA vs ownship
@@ -93,6 +95,7 @@ Detalle de columnas y patrones → [reference.md](reference.md).
 | `Fase: … → …` | Cambio de fase (intercept / despegue) |
 | `Fin: …` | Completada, abortada, fin de grabación |
 | `AVISO: …` | Alivio de G, suelo AGL, etc. |
+| `Pausa: simulador` / `Reanudacion: simulador` | El simulador se congeló (pausa o `sim_speed` 0). Entre medias no hay muestras. `Hora` sigue en reloj de pared; el eje de los gráficos no cuenta ese tramo. |
 
 Ownship: marcas de takeoff/maneuver/intercept. IA: marcas de
 `AiStraightHold` (recto/nivelado) si ese logger está grabando.

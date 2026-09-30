@@ -287,6 +287,8 @@ public static class InterceptPlanner
     // dura de la secuencia. Fraccion de la distancia del puesto, con techo.
     private const double SafeFracOfSlot = 0.6;
     private const double RouteMaxM = 600.0;
+    private const double CrossLinearM = 60.0;
+    private const double CrossAccelMps2 = 2.0;
     private const double SafeMaxM = 90.0;
     private const double SafeMinM = 15.0;
     private const double SafePushGain = 0.6;
@@ -791,8 +793,14 @@ public static class InterceptPlanner
         double sAlong = -x.Aft, sCross = x.Right;
         if (dh < RouteMaxM && SegmentMissM(pAlong, pCross, sAlong, sCross) < safe0 * 1.0)
         {
-            double vAlong = Math.Min(sAlong, -2.5 * safe0);
-            double vCross = (pCross >= 0.0 ? 1.0 : -1.0) * Math.Max(Math.Abs(pCross), 1.3 * safe0);
+            // Punto de paso lo mas cerca posible: justo detras del blanco
+            // (1.5 radios seguros). Si ya se esta por detras de su travesano se
+            // corta directo hacia el eje; si se esta por delante, se sigue del
+            // lado actual hasta quedar detras.
+            double vAlong = Math.Min(sAlong, -1.5 * safe0);
+            double vCross = 0.0;
+            if (SegmentMissM(pAlong, pCross, vAlong, vCross) < safe0)
+                vCross = (pCross >= 0.0 ? 1.0 : -1.0) * Math.Max(Math.Abs(pCross), 1.3 * safe0);
             a = pAlong - vAlong;
             c = pCross - vCross;
             dh = Math.Sqrt(a * a + c * c);
@@ -871,7 +879,14 @@ public static class InterceptPlanner
             ? StationTrimMps
             : Math.Min(FormationCapMps, InterceptEngagement.MaxClosureMps(rangeT, InterceptSituation.SternNear));
         double wa = Math.Clamp(Math.Sign(dA) * Math.Min(Math.Abs(dA) * AlongGain, wBrake), -cap, cap);
-        double wc = Math.Clamp(-c * CrossGain, -cap * 0.7, cap * 0.7);
+        // Lateral: lineal cerca del puesto (estable), y fuera de CrossLinearM
+        // un perfil de aceleracion constante (v = sqrt(v0^2 + 2*A*d)) para
+        // que un cambio de puesto de cientos de metros sea rapido.
+        double cl = Math.Abs(c);
+        double wcMag = cl <= CrossLinearM
+            ? cl * CrossGain
+            : Math.Sqrt(Math.Pow(CrossLinearM * CrossGain, 2.0) + 2.0 * CrossAccelMps2 * (cl - CrossLinearM));
+        double wc = Math.Clamp(-Math.Sign(c) * wcMag, -Math.Max(cap * 0.7, 25.0), Math.Max(cap * 0.7, 25.0));
 
         double wE = wa * fE + wc * rE, wN = wa * fN + wc * rN;
 

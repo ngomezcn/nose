@@ -83,6 +83,13 @@ public sealed class Datarefs
         // la G normal es la del tren, no la del ala.
         OnGround = c.Define("sim/flightmodel/failures/onground_any");
 
+        // Pausa y velocidad de simulacion. La caja negra deja de muestrear
+        // mientras el mundo esta congelado (misma regla que SimDt en el
+        // connector: paused != 0, o sim_speed == 0). Cada frame, para no
+        // colar una muestra congelada entre el aviso y el refresco de 10 Hz.
+        Paused = c.Define("sim/time/paused");
+        SimSpeed = c.Define("sim/time/sim_speed");
+
         // --- mandos que escribimos --------------------------------------
         FlapHandle = c.Define("sim/cockpit2/controls/flap_handle_request_ratio");
         GearHandleDown = c.Define("sim/cockpit2/controls/gear_handle_down");
@@ -168,6 +175,8 @@ public sealed class Datarefs
         c.Subscribe(TotalWeightKg, 30);
         c.Subscribe(VneKias, 30);
         c.Subscribe(OnGround, 6);
+        c.Subscribe(Paused, 1);
+        c.Subscribe(SimSpeed, 1);
         c.Subscribe(SpeedbrakeHandle, 6);
 
         // El resto es para pintar en pantalla: a 10 Hz nadie nota la
@@ -306,6 +315,16 @@ public sealed class Datarefs
     public DataHandle TotalWeightKg { get; }
     public DataHandle VneKias { get; }
     public DataHandle OnGround { get; }
+
+    public DataHandle Paused { get; }
+    public DataHandle SimSpeed { get; }
+
+    // Mundo congelado: pausa, o tiempo de simulacion a 0. Sin lectura aun
+    // se considera en marcha: un dataref que no ha llegado no debe silenciar
+    // la caja negra.
+    public bool IsSimFrozen =>
+        (Paused.HasValue && Paused.Bool) ||
+        (SimSpeed.HasValue && SimSpeed.Float == 0f);
 
     public DataHandle LocalX { get; }
     public DataHandle LocalY { get; }

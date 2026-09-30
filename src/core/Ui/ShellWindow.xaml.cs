@@ -1303,16 +1303,19 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         : $"IA {xplmIndex}";
 
     private string FormatDataLogStatus(DataLogger log, bool connected) {
+        bool simPaused = connected && _dataLogs.SimFrozen;
         if (_director.IsGlobalFocus) {
             int n = Math.Max(1, _client.Planes.Length);
             int rec = _dataLogs.RecordingCount;
             string state = !connected ? "sin conexion"
+                         : rec > 0 && simPaused ? $"grabando {rec}/{n} · en pausa"
                          : rec > 0 ? $"grabando {rec}/{n}"
                          : "detenido";
             return $"GLOBAL · {n} nave(s) · {state}";
         }
         string role = DataLogRoleLabel(_director.FocusedXplmIndex);
         string planeState = !connected ? "sin conexion"
+                          : log.IsRecording && simPaused ? "grabando · en pausa"
                           : log.IsRecording ? "grabando"
                           : "detenido";
         return $"{role} · {log.Count} muestras · {planeState}";

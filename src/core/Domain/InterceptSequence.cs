@@ -386,7 +386,7 @@ public sealed class InterceptSequence
                 def.Summary(_tuning.InterceptDistanceM, _tuning.InterceptLateralM,
                             _tuning.InterceptVerticalM),
                 near
-                    ? $"transicion: {RepositionSlowKt:0} kt por debajo del blanco hasta el puesto"
+                    ? "transicion: cruce rapido por detras del blanco con zona segura"
                     : "en persecucion: el planificador apunta ya al puesto nuevo",
                 InterceptLiveExtras()));
             refusal = "";
@@ -855,8 +855,8 @@ public sealed class InterceptSequence
 
         // Cambio de estacion en formacion: se pierde un poco de velocidad
         // respecto al blanco, se desliza al puesto nuevo y luego se iguala.
-        if (_repositioning && !float.IsNaN(targetIasEquivalent))
-            iasCmd = MathF.Min(iasCmd, targetIasEquivalent - RepositionSlowKt);
+        // (Sin tope de IAS bajo el blanco: el planner ya cruza por detras del
+        // blanco con zona segura; ese tope dejaba al avion 500 m atras.)
 
         // Guardia de proximidad: por debajo de esto ya no es una formacion,
         // es un riesgo de colision. Se pide ir mas despacio que el blanco
@@ -1316,7 +1316,6 @@ public sealed class InterceptSequence
     // Transicion entre puestos de formacion: un poco mas lento que el blanco
     // (~20 kt) y rampa de IAS mas viva para que el desliz no se eternice
     // (~8-20 s tipicos entre puestos a 200-400 m).
-    private const float RepositionSlowKt = 20f;
     private const float RepositionIasRateKtPerSec = 40f;
     private const double RepositionDoneM = 80.0;
     private const double RepositionArmRangeM = 2500.0;

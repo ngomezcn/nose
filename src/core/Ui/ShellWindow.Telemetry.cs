@@ -67,8 +67,14 @@ public partial class ShellWindow {
         if (connected && _globalDataLogRecording)
             EnsureGlobalRosterRecording();
         if (connected) {
-            foreach ((int xplmIndex, DataLogger log) in _dataLogs.Recording)
-                RecordAgentSample(log, _director.World.Get(xplmIndex));
+            // Pausa o sim_speed 0: la grabacion sigue armada, pero no se
+            // muestrean filas congeladas. Al reanudar, SetSimFrozen deja
+            // la marca y el bucle vuelve a escribir.
+            _dataLogs.SetSimFrozen(_d.IsSimFrozen);
+            if (!_dataLogs.SimFrozen) {
+                foreach ((int xplmIndex, DataLogger log) in _dataLogs.Recording)
+                    RecordAgentSample(log, _director.World.Get(xplmIndex));
+            }
         }
 
         DataLogger focusedLog = FocusedDataLog;

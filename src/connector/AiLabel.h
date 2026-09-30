@@ -17,8 +17,10 @@
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
 #include "XPLMPlanes.h"
+#include "XPLMUtilities.h"
 
 #include "CameraFollow.h"
+#include "Logger.h"
 
 #include <algorithm>
 #include <cmath>
@@ -281,6 +283,11 @@ private:
             }
         }
 
+        if (mFlags & kFlagMarkers)
+            LogDiamond(ownX, ownY, ownZ, ownCgOk, ownCgSx, ownCgSy,
+                       ai[0].x, ai[0].y, ai[0].z, ai[0].cgOk, ai[0].cgSx, ai[0].cgSy,
+                       active > 1, world, proj, viewport);
+
         const bool wantGeom = (mFlags & (kFlagLines | kFlagMarkers | kFlagPath |
                                          kFlagTriangle)) != 0;
         if (wantGeom) {
@@ -320,14 +327,30 @@ private:
                     }
 
                     if ((mFlags & kFlagTriangle) && cornerOk) {
-                        DrawColoredSegment(ownCgSx, ownCgSy, cornerSx, cornerSy,
-                                           vpL, vpB, vpR, vpT, kColHoriz, distHoriz,
-                                           /*signedLabel=*/false,
-                                           kTriangleHorizMinMeters);
-                        DrawColoredSegment(cornerSx, cornerSy, p.cgSx, p.cgSy,
-                                           vpL, vpB, vpR, vpT, kColVert, distVert,
-                                           /*signedLabel=*/true,
-                                           kTriangleVertMinMeters);
+                        // Si la linea recta esta activa, un cateto casi
+                        // alineado con ella en pantalla es redundante: se
+                        // solapa. Sin linea recta se dibujan los dos.
+                        const bool hideNearStraight = (mFlags & kFlagLines) != 0;
+                        const float hx = p.cgSx - ownCgSx;
+                        const float hy = p.cgSy - ownCgSy;
+                        const bool drawHoriz = !hideNearStraight ||
+                            ScreenAngleDeg(hx, hy,
+                                           cornerSx - ownCgSx,
+                                           cornerSy - ownCgSy) >= kTriangleMinAngleDeg;
+                        const bool drawVert = !hideNearStraight ||
+                            ScreenAngleDeg(hx, hy,
+                                           p.cgSx - cornerSx,
+                                           p.cgSy - cornerSy) >= kTriangleMinAngleDeg;
+                        if (drawHoriz) {
+                            DrawColoredSegment(ownCgSx, ownCgSy, cornerSx, cornerSy,
+                                               vpL, vpB, vpR, vpT, kColHoriz, distHoriz,
+                                               /*signedLabel=*/false);
+                        }
+                        if (drawVert) {
+                            DrawColoredSegment(cornerSx, cornerSy, p.cgSx, p.cgSy,
+                                               vpL, vpB, vpR, vpT, kColVert, distVert,
+                                               /*signedLabel=*/true);
+                        }
                     }
                 }
             }
@@ -390,15 +413,102 @@ private:
         }
     }
 
-    // Por debajo de estos umbrales no se dibuja el cateto (linea + etiqueta).
-    static constexpr float kTriangleHorizMinMeters = 1500.0f;
-    static constexpr float kTriangleVertMinMeters = 150.0f;
+    // Proyeccion en doble precision (referencia para medir el error de float).
+    static bool ProjectDouble(double x, double y, double z,
+                              const float* world, const float* proj, const int* vp,
+                              double& sx, double& sy) {
+        auto mul = [](const float* m, double px, double py, double pz, double pw,
+                      double o[4]) {
+            o[0] = m[0] * px + m[4] * py + m[8] * pz + m[12] * pw;
+            o[1] = m[1] * px + m[5] * py + m[9] * pz + m[13] * pw;
+            o[2] = m[2] * px + m[6] * py + m[10] * pz + m[14] * pw;
+            o[3] = m[3] * px + m[7] * py + m[11] * pz + m[15] * pw;
+        };
+        double e[4], c[4];
+        mul(world, x, y, z, 1.0, e);
+        mul(proj, e[0], e[1], e[2], e[3], c);
+        if (c[3] <= 1e-4) return false;
+        sx = vp[0] + (c[0] / c[3] * 0.5 + 0.5) * vp[2];
+        sy = vp[1] + (c[1] / c[3] * 0.5 + 0.5) * vp[3];
+        return true;
+    }
+
+    // Diagnostico del rombo: 1 linea/s en Log.txt del plugin.
+    //  own/ai  = posicion local y pantalla donde se dibuja el rombo (float)
+    //  errPx   = diferencia float vs doble precision (error numerico puro)
+    //  |loc|   = distancia al origen local (el error de float crece con ella)
+    //  camD    = distancia camara-avion (ownship); vel = velocidad local ownship
+    //  dLoc    = cuanto se movio local_x/z desde la linea anterior, y lo que
+    //            predice v*dt de pared: si difieren mucho, local_x salta (origen).
+    void LogDiamond(double ox, double oy, double oz, bool oOk, float osx, float osy,
+                    double ax, double ay, double az, bool aOk, float asx, float asy,
+                    bool haveAi, const float* world, const float* proj,
+                    const int* vp) {
+        const double now = static_cast<double>(XPLMGetElapsedTime());
+        if (now - mDbgLast < 1.0) return;
+        const double wall = now - mDbgLast;
+        mDbgLast = now;
+
+        double dsx = 0, dsy = 0;
+        const bool dOk = ProjectDouble(ox, oy, oz, world, proj, vp, dsx, dsy);
+        const double errPx = (oOk && dOk) ? std::hypot(osx - dsx, osy - dsy) : -1.0;
+
+        double aErr = -1.0;
+        if (haveAi && aOk) {
+            double a1 = 0, a2 = 0;
+            if (ProjectDouble(ax, ay, az, world, proj, vp, a1, a2))
+                aErr = std::hypot(asx - a1, asy - a2);
+        }
+
+        // Camara: posicion del ojo = -R^T * t de la world matrix.
+        const double tx = world[12], ty = world[13], tz = world[14];
+        const double camX = -(world[0] * tx + world[1] * ty + world[2] * tz);
+        const double camY = -(world[4] * tx + world[5] * ty + world[6] * tz);
+        const double camZ = -(world[8] * tx + world[9] * ty + world[10] * tz);
+        const double camD = std::sqrt((ox - camX) * (ox - camX) + (oy - camY) * (oy - camY) +
+                                      (oz - camZ) * (oz - camZ));
+
+        const double vx = mVx ? XPLMGetDataf(mVx) : 0.0;
+        const double vz = mVz ? XPLMGetDataf(mVz) : 0.0;
+        double dLocX = 0, dLocZ = 0;
+        if (mDbgHave) { dLocX = ox - mDbgOx; dLocZ = oz - mDbgOz; }
+        mDbgOx = ox; mDbgOz = oz; mDbgHave = true;
+
+        const double cx = (vp[0] + vp[2] * 0.5), cy = (vp[1] + vp[3] * 0.5);
+        LogInfo("Rombo own loc=(%.1f %.1f %.1f) |loc|=%.0f scr=(%.1f %.1f)%s errPx=%.3f "
+                "camD=%.1f | dLoc=(%.1f %.1f) v*dt=(%.1f %.1f) dt=%.2f | vp=%dx%d c=(%.0f %.0f)",
+                ox, oy, oz, std::sqrt(ox * ox + oy * oy + oz * oz), osx, osy,
+                oOk ? "" : "(detras)", errPx, camD, dLocX, dLocZ, vx * wall, vz * wall,
+                wall, vp[2], vp[3], cx, cy);
+        if (haveAi && aOk) {
+            LogInfo("Rombo plane1 loc=(%.1f %.1f %.1f) scr=(%.1f %.1f) errPx=%.3f "
+                    "own-ai=(%.2f %.2f %.2f)m scrDelta=(%.1f %.1f)",
+                    ax, ay, az, asx, asy, aErr, ax - ox, ay - oy, az - oz,
+                    asx - osx, asy - osy);
+        }
+    }
+
+    double mDbgLast = 0, mDbgOx = 0, mDbgOz = 0;
+    bool mDbgHave = false;
+
+    // Angulo minimo en pantalla entre un cateto y la linea recta: por debajo
+    // el cateto se considera solapado/redundante y no se dibuja.
+    static constexpr float kTriangleMinAngleDeg = 12.0f;
+
+    // Angulo 0..90° entre dos vectores de pantalla. Degenerados → 90° (no ocultar).
+    static float ScreenAngleDeg(float ax, float ay, float bx, float by) {
+        const float la = std::hypot(ax, ay);
+        const float lb = std::hypot(bx, by);
+        if (la < 2.0f || lb < 2.0f) return 90.0f;
+        float c = (ax * bx + ay * by) / (la * lb);
+        c = std::clamp(c, -1.0f, 1.0f);
+        return std::acos(std::fabs(c)) * (180.0f / 3.14159265f);
+    }
 
     void DrawColoredSegment(float sx0, float sy0, float sx1, float sy1,
                             float vpL, float vpB, float vpR, float vpT,
                             const float color[3], float meters,
-                            bool signedLabel, float minSegmentMeters = 0.0f) {
-        if (std::fabs(meters) < minSegmentMeters) return;
+                            bool signedLabel) {
         float x0 = sx0, y0 = sy0, x1 = sx1, y1 = sy1;
         if (!ClipLine(x0, y0, x1, y1, vpL, vpB, vpR, vpT)) return;
         glColor4f(color[0], color[1], color[2], 0.95f);

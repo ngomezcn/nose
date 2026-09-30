@@ -7,10 +7,13 @@ namespace AICopilotCore.Domain;
 
 // Caja negra de vuelo: registro de muestras para diagnosticar temblores /
 // oscilaciones y para pintar graficos (ver BlackBoxView). Arranca parado;
-// Empezar/Detener (panel CAJA NEGRA) activan IsRecording. No es logica de
-// control -- no lee ni escribe datarefs por su cuenta, ni decide nada del
-// vuelo -- solo bufferiza lo que ShellWindow.Refresh() ya calcula a ~10Hz
-// y lo deja en tres sitios:
+// Empezar/Detener (panel CAJA NEGRA) activan IsRecording. Con el simulador
+// en pausa (o sim_speed 0) la grabacion sigue armada pero no escribe
+// muestras: una marca "Pausa:" al entrar y "Reanudacion:" al salir. El reloj
+// de los graficos (TSec) no cuenta ese tramo; la columna Hora si, en reloj
+// de pared. No es logica de control -- no lee ni escribe datarefs por su
+// cuenta, ni decide nada del vuelo -- solo bufferiza lo que
+// ShellWindow.Refresh() ya calcula a ~10Hz y lo deja en tres sitios:
 //
 //   1. Buffer tipado (TypedSamples) para la pestana de graficos del viewport.
 //   2. Buffer de lineas CSV (Samples) para la pestana "CAJA NEGRA" del panel
@@ -49,6 +52,11 @@ public sealed class DataLogger
     private readonly string _previousLogFilePath;
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
+    // Tramo de pared que no debe estirar el eje de los graficos: la pausa
+    // del simulador mientras esta grabacion estaba activa.
+    private TimeSpan _excluded = TimeSpan.Zero;
+    private TimeSpan? _freezeStarted;
+    private bool _simFrozen;
     private readonly List<BlackBoxSample> _typed = new(MaxSamples);
     private readonly List<BlackBoxMarker> _markers = new(256);
 
@@ -63,6 +71,9 @@ public sealed class DataLogger
     // append: un build/restart no tira el vuelo grabado. Clear() y la
     // rotacion por tamano siguen truncando a proposito.
     public bool IsRecording { get; private set; }
+
+    // El simulador esta congelado. La UI lo empuja; este logger no lee datarefs.
+    public bool SimFrozen => _simFrozen;
 
     public DataLogger(string logFilePath, string previousPath)
     {
@@ -110,13 +121,35 @@ public sealed class DataLogger
         if (IsRecording) return;
         IsRecording = true;
         WriteEventLine("Inicio: grabacion", chartMarker: true);
+        if (_simFrozen)
+            BeginFreezeSpan();
     }
 
     public void StopRecording()
     {
         if (!IsRecording) return;
+        // Cierra el hueco de pausa antes de la marca de fin, para que el
+        // grafico no estire el eje con el rato que el simulador estuvo quieto.
+        EndFreezeSpan();
         WriteEventLine("Fin: grabacion", chartMarker: true);
         IsRecording = false;
+    }
+
+    // Lo llama el refresco cuando cambia sim/time/paused o sim_speed.
+    // Sin grabacion solo recuerda el estado, para que un Empezar en plena
+    // pausa deje la marca y no muestree hasta que el mundo vuelva a correr.
+    public void SetSimFrozen(bool frozen)
+    {
+        if (frozen == _simFrozen) return;
+        _simFrozen = frozen;
+        if (!IsRecording) return;
+        if (frozen)
+            BeginFreezeSpan();
+        else
+        {
+            EndFreezeSpan();
+            WriteEventLine("Reanudacion: simulador", chartMarker: true);
+        }
     }
 
     public void Record(
@@ -136,8 +169,8 @@ public sealed class DataLogger
         string adaptation, string protection,
         PoseSample pose)
     {
-        if (!IsRecording) return;
-        double tSec = _clock.Elapsed.TotalSeconds;
+        if (!IsRecording || _simFrozen) return;
+        double tSec = SampleElapsedSec();
         _typed.Add(new BlackBoxSample(
             tSec,
             iasKt, altFt, aglFt, vsFpm,
@@ -190,7 +223,7 @@ public sealed class DataLogger
     // Sin grabacion activa se ignora (el log inferior de la UI sigue igual).
     public void RecordEvent(string note, bool chartMarker = false)
     {
-        if (!IsRecording) return;
+        if (!IsRecording || _simFrozen) return;
         WriteEventLine(note, chartMarker);
     }
 
@@ -198,7 +231,7 @@ public sealed class DataLogger
     {
         if (chartMarker && note.Length > 0)
         {
-            _markers.Add(new BlackBoxMarker(_clock.Elapsed.TotalSeconds, note));
+            _markers.Add(new BlackBoxMarker(SampleElapsedSec(), note));
             PruneMarkers();
         }
 
@@ -226,6 +259,34 @@ public sealed class DataLogger
         TryDelete(LogFilePath);
         TryDelete(_previousLogFilePath);
         OpenWriter(append: false);
+        // El borrado vacia las marcas: si seguimos grabando en pausa, la
+        // siguiente fila tiene que explicar por que no llegan muestras.
+        if (IsRecording && _simFrozen && _freezeStarted is not null)
+            WriteEventLine("Pausa: simulador", chartMarker: true);
+    }
+
+    private void BeginFreezeSpan()
+    {
+        if (_freezeStarted is not null) return;
+        _freezeStarted = _clock.Elapsed;
+        WriteEventLine("Pausa: simulador", chartMarker: true);
+    }
+
+    private void EndFreezeSpan()
+    {
+        if (_freezeStarted is not TimeSpan start) return;
+        _excluded += _clock.Elapsed - start;
+        _freezeStarted = null;
+    }
+
+    // Reloj de graficos: pared menos el tiempo congelado de esta grabacion.
+    private double SampleElapsedSec()
+    {
+        TimeSpan elapsed = _clock.Elapsed - _excluded;
+        if (_freezeStarted is TimeSpan start)
+            elapsed -= _clock.Elapsed - start;
+        if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+        return elapsed.TotalSeconds;
     }
 
     // Las marcas que quedan detras del buffer tipado ya no se ven en el

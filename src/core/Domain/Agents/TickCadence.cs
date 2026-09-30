@@ -63,11 +63,21 @@ public sealed class TickCadence
 
     // Devuelve lo acumulado y empieza de cero. Sin Tick desde la ultima vez
     // (core sin telemetria) devuelve Ticks = 0 y el resto NaN.
+    //
+    // Si pasaron mas de StaleWindowMs desde el Drain anterior (la grabacion
+    // acaba de empezar, o estuvo en pausa) lo acumulado abarca demasiado tiempo
+    // y no se corresponde con una fila de ~100 ms: se descarta.
+    private const double StaleWindowMs = 1000.0;
+    private double _lastDrainMs;
+
     public TickCadenceSummary Drain()
     {
         lock (_gate)
         {
-            TickCadenceSummary s = _ticks == 0
+            double now = _wall.Elapsed.TotalMilliseconds;
+            bool stale = now - _lastDrainMs > StaleWindowMs;
+            _lastDrainMs = now;
+            TickCadenceSummary s = _ticks == 0 || stale
                 ? TickCadenceSummary.Empty
                 : new TickCadenceSummary(_ticks, _dtMin, _dtMax,
                     _gapMax > 0f ? _gapMax : float.NaN,

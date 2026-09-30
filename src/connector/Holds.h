@@ -46,6 +46,7 @@
 #include <windows.h>
 
 #include "DatarefRegistry.h"
+#include "Logger.h"
 #include "Protocol.h"
 
 class Holds {
@@ -117,6 +118,7 @@ public:
     // de verdad hay escrito.
     void Apply(float dt, DatarefRegistry& registry) {
         uint64_t now = GetTickCount64();
+        cadRegistry_ = &registry;
 
         for (auto& [id, h] : holds_) {
             DatarefRegistry::Entry* e = registry.Get(id);
@@ -125,6 +127,18 @@ public:
             // mandar solo cuando el pulse expira.
             if (pulses_.count(id)) continue;
 
+            // Diagnostico: lo que hay en el dataref ANTES de reescribirlo contra
+            // lo que escribimos el frame anterior. Si difieren, alguien (X-Plane)
+            // movio el avion entre medias y lo que se dibuja no es lo que el
+            // core cree. Solo lee; no cambia lo que se escribe.
+            if (h.cad.primed && IsPlanePosition(e->name)) {
+                double ext = registry.Read(*e) - h.lastWritten;
+                h.cad.extSum += ext;
+                double a = std::fabs(ext);
+                if (a > 1e-3) ++h.cad.extCount;
+                h.cad.extMax = std::max(h.cad.extMax, a);
+            }
+
             if (h.ratePerSec > 0.0f && dt > 0.0f) {
                 double maxDelta = static_cast<double>(h.ratePerSec) * dt;
                 double delta = std::clamp(h.target - h.current, -maxDelta, maxDelta);
@@ -132,8 +146,16 @@ public:
             } else {
                 h.current = h.target;
             }
-            registry.Write(*e, h.current);
+            double written = h.current;
+            if (kExtrapolatePlanes && dt > 0.0f) {
+                const Hold* v = VelocityHold(id, h, *e, registry);
+                if (v) written += v->target * static_cast<double>(dt);
+            }
+            registry.Write(*e, written);
+            h.lastWritten = written;
+            Observe(e->name, h);
         }
+        ReportCadence(now);
 
         for (auto it = pulses_.begin(); it != pulses_.end();) {
             DatarefRegistry::Entry* e = registry.Get(it->first);
@@ -193,13 +215,131 @@ public:
     }
 
 private:
+    // Diagnostico de cadencia (solo mide, no cambia lo que se escribe): para
+    // los holds de POSICION de las IAs cuenta, por frame de X-Plane, si el valor
+    // escrito avanzo. Un hold que se mueve cada frame y de pronto repite el
+    // mismo valor (stale) o avanza el doble es un tiron visible: el core manda
+    // la pose por el pipe y aqui se ve con que regularidad llega de verdad.
+    struct Cadence {
+        bool primed = false;
+        double last = 0.0;
+        double meanStep = 0.0;
+        uint32_t frames = 0, stale = 0, doubles = 0, staleRun = 0, maxStaleRun = 0;
+        double maxStep = 0.0;
+        // Readback antes de reescribir: diferencia con lo escrito el frame anterior.
+        double extSum = 0.0, extMax = 0.0;
+        uint32_t extCount = 0;
+    };
+
     struct Hold {
         double target = 0.0;
         double current = 0.0;
         double previous = 0.0;  // lo que habia antes: a esto se vuelve al soltar
         float ratePerSec = 0.0f;
         uint32_t seq = 0;
+        Cadence cad;
+        double lastWritten = 0.0;   // lo ultimo escrito (con la extrapolacion)
+        // Solo holds de posicion de IA: hold de velocidad asociado (x -> v_x).
+        int8_t posKind = -1;        // -1 sin resolver, 0 no es posicion, 1 lo es
+        bool velResolved = false;
+        uint16_t velId = 0;
+        uint32_t velRetry = 0;
     };
+
+    // -- Extrapolacion de la pose de las IAs al dt EXACTO del frame ------------
+    //
+    // El core integra la pose con el dt del frame N y la manda por el pipe; el
+    // connector la escribe en el frame N+1, que dura otro dt. El ownship, que lo
+    // mueve X-Plane, avanza en ese frame por su dt real, asi que la IA se queda
+    // atras exactamente dt(N+1) * v. Como los frames no duran lo mismo (13-45 ms)
+    // ese retraso baila y la IA vista desde otro avion va a tirones. Escribiendo
+    // pos + v * dt(N+1) la IA queda en el instante del frame que se dibuja.
+    // No decide nada: usa la velocidad que el propio core mando en su hold.
+    static constexpr bool kExtrapolatePlanes = true;
+
+    static bool IsPlanePosition(const std::string& n) {
+        if (n.find("sim/multiplayer/position/plane") != 0) return false;
+        if (n.find("_v_") != std::string::npos) return false;   // velocidades
+        size_t k = n.size();
+        return k >= 2 && (n.compare(k - 2, 2, "_x") == 0 || n.compare(k - 2, 2, "_y") == 0 ||
+                          n.compare(k - 2, 2, "_z") == 0);
+    }
+
+    // planeN_x -> planeN_v_x (idem y, z).
+    static std::string VelocityName(const std::string& n) {
+        size_t k = n.size();
+        return n.substr(0, k - 2) + "_v" + n.substr(k - 2);
+    }
+
+    // Hold de velocidad que corresponde a este hold de posicion, o nullptr.
+    const Hold* VelocityHold(uint16_t id, Hold& h, const DatarefRegistry::Entry& e,
+                             DatarefRegistry& registry) {
+        if (h.posKind < 0) h.posKind = IsPlanePosition(e.name) ? 1 : 0;
+        if (h.posKind == 0) return nullptr;
+        if (!h.velResolved) {
+            // Reintento cada 30 frames: el hold de velocidad llega en el mismo
+            // mensaje que el de posicion, pero no hay garantia de orden.
+            if (h.velRetry++ % 30 != 0) return nullptr;
+            const std::string want = VelocityName(e.name);
+            for (const auto& [vid, vh] : holds_) {
+                (void)vh;
+                DatarefRegistry::Entry* ve = registry.Get(vid);
+                if (ve && vid != id && ve->name == want) {
+                    h.velId = vid;
+                    h.velResolved = true;
+                    break;
+                }
+            }
+            if (!h.velResolved) return nullptr;
+        }
+        auto it = holds_.find(h.velId);
+        if (it == holds_.end()) { h.velResolved = false; return nullptr; }
+        return &it->second;
+    }
+
+    void Observe(const std::string& name, Hold& h) {
+        if (!IsPlanePosition(name)) return;
+        Cadence& c = h.cad;
+        if (!c.primed) { c.primed = true; c.last = h.current; return; }
+        double step = std::fabs(h.current - c.last);
+        c.last = h.current;
+        ++c.frames;
+        if (step == 0.0) {
+            // Solo cuenta como stale si el hold ya venia moviendose.
+            if (c.meanStep > 0.0) {
+                ++c.stale;
+                if (++c.staleRun > c.maxStaleRun) c.maxStaleRun = c.staleRun;
+            }
+            return;
+        }
+        c.staleRun = 0;
+        if (c.meanStep > 0.0 && step > 1.6 * c.meanStep) ++c.doubles;
+        c.maxStep = std::max(c.maxStep, step);
+        c.meanStep = c.meanStep == 0.0 ? step : c.meanStep * 0.95 + step * 0.05;
+    }
+
+    // Cada ~5 s vuelca al log una linea por hold de posicion que se movio y tuvo
+    // algun frame sin avanzar o con avance doble; si todo va regular, no dice nada.
+    void ReportCadence(uint64_t now) {
+        if (now < nextReportMs_) return;
+        nextReportMs_ = now + 5000;
+        DatarefRegistry* reg = cadRegistry_;
+        for (auto& [id, h] : holds_) {
+            Cadence& c = h.cad;
+            if (c.frames > 0 && (c.stale > 0 || c.doubles > 0 || c.extCount > 0) && reg) {
+                DatarefRegistry::Entry* e = reg->Get(id);
+                LogInfo("Cadencia %s: %u frames, %u stale (racha max %u), %u dobles, "
+                        "paso medio %.3f max %.3f | externo: %u frames, suma %.3f max %.3f",
+                        e ? e->name.c_str() : "?", c.frames, c.stale, c.maxStaleRun,
+                        c.doubles, c.meanStep, c.maxStep, c.extCount, c.extSum, c.extMax);
+            }
+            c.frames = c.stale = c.doubles = c.maxStaleRun = c.extCount = 0;
+            c.maxStep = c.extSum = c.extMax = 0.0;
+        }
+    }
+
+    uint64_t nextReportMs_ = 0;
+    DatarefRegistry* cadRegistry_ = nullptr;
 
     struct PulseState {
         double value = 0.0;
