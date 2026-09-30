@@ -58,14 +58,22 @@ Inicio: interceptar AI — En el 6 | cfg dist=200m lat=0m vert=0m · Gsoft=5.5 �
 
 ## Rotación y vida del fichero
 
-- Al **arrancar** la UI: si `DataLog.csv` tiene contenido, se copia a
-  `DataLog.previous.csv` y se empieza uno nuevo con cabecera.
-- Al superar ~8 MB: rota igual (current → previous).
-- “Borrar todo” en la UI trunca ambos y vacía el buffer tipado.
+- Al **arrancar** la UI: si `DataLog.csv` tiene datos reales, se copia a
+  `DataLog.previous.csv` **solo si** no pisaría un previous más grande;
+  el CSV actual se reabre en **append** (un build/restart no lo trunca).
+- Al superar ~8 MB: rota (current → previous, misma regla de tamaño) y
+  empieza uno nuevo con cabecera.
+- Los scripts `build_and_deploy_ui.ps1` / `build_and_deploy_addon.ps1`
+  respaldan a `.previous` antes de matar el proceso (cierre suave + copia).
+- **«Borrar todo»** en la UI: vacía buffer tipado, marcas, líneas de UI y
+  **borra ambos** `DataLog.csv` + `DataLog.previous.csv`; recrea el actual
+  solo con cabecera. No queda otra copia.
 
 ## Despliegue
 
-El CSV está **junto al exe desplegado**, no en el repo. Tras
-`tools\build_and_deploy_ui.ps1` la ruta sigue siendo
-`…\plugins\AICopilot\win_x64\`. Si lees desde el workspace y no hay CSV,
-mira esa carpeta de X-Plane.
+El CSV está **junto al exe desplegado**, no en el repo:
+
+`E:\X-Plane 12\Resources\plugins\AICopilot\win_x64\DataLog.csv`
+
+Tras `tools\build_and_deploy_ui.ps1` la ruta no cambia. Si lees desde el
+workspace y no hay CSV, mira esa carpeta de X-Plane.

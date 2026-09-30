@@ -29,6 +29,11 @@ public sealed class Pid
     public float OutMin { get => _outMin; set => _outMin = value; }
     public float OutMax { get => _outMax; set => _outMax = value; }
 
+    // Escala global de las tres ganancias (gain scheduling): a mucha
+    // velocidad el mismo gesto de yugo mueve el avion mucho mas, y con la
+    // misma ganancia el lazo se vuelve inestable. 1 = ganancias de fabrica.
+    public float GainScale { get; set; } = 1f;
+
     public void Reset()
     {
         _integral = 0f;
@@ -38,7 +43,16 @@ public sealed class Pid
 
     // error = valor_deseado - valor_actual. Devuelve la salida ya saturada
     // entre outMin/outMax.
-    public float Update(float error, float dt)
+    public float Update(float error, float dt) => UpdateCore(error, dt, null);
+
+    // Igual, pero el termino D usa la velocidad angular MEDIDA (la del
+    // simulador, limpia) en vez de derivar el error a ~10 Hz: derivar el
+    // error mete el ruido de muestreo y los saltos del objetivo, y a alta
+    // velocidad eso realimenta el temblor. rate = derivada de la variable
+    // controlada (deg/s); d(error)/dt = -rate.
+    public float Update(float error, float dt, float rate) => UpdateCore(error, dt, rate);
+
+    private float UpdateCore(float error, float dt, float? rate)
     {
         if (dt <= 0f) return _lastOutput;
 
@@ -58,11 +72,13 @@ public sealed class Pid
             _integral = 0f;
         }
 
-        float derivative = _hasPrev ? (error - _prevError) / dt : 0f;
+        float derivative = rate.HasValue
+            ? -rate.Value
+            : _hasPrev ? (error - _prevError) / dt : 0f;
         _prevError = error;
         _hasPrev = true;
 
-        float raw = _kp * error + _ki * _integral + _kd * derivative;
+        float raw = GainScale * (_kp * error + _ki * _integral + _kd * derivative);
         float output = Math.Clamp(raw, _outMin, _outMax);
         if (output != raw && Math.Sign(error) == Math.Sign(raw))
             _integral -= error * dt;

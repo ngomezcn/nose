@@ -69,6 +69,10 @@ public sealed class TakeoffSequence
     private float _iasTarget = float.NaN;
     private float _flapTimer;
     private TakeoffStyle _style = TakeoffStyles.Relaxed;
+    // Si true, al llegar a la altitud de viraje se da por terminado el
+    // despegue (Done) sin viraje fijo ni subida a techo: el llamador
+    // (FlightDirector) encadena la interceptacion, que es quien gira.
+    private bool _handoffAtTurnAltitude;
 
     private bool _baroLogged;
     private bool _baroWarnedOutOfRange;
@@ -110,11 +114,14 @@ public sealed class TakeoffSequence
     public bool GearDownCommanded { get; private set; } = true;
 
     // El estilo entra entero, bajo el mismo candado que el arranque.
-    public void Start(TakeoffStyle style)
+    // handoffAtTurnAltitude: corta al alcanzar la altura de viraje (sin
+    // viraje de pista ni subida a techo) para encadenar otra secuencia.
+    public void Start(TakeoffStyle style, bool handoffAtTurnAltitude = false)
     {
         lock (_gate)
         {
             _style = style;
+            _handoffAtTurnAltitude = handoffAtTurnAltitude;
             _fieldAltFt = _d.AltFt.Float;
             VrKt = style.VrKt;
             RotatePitchDeg = style.RotatePitchDeg;
@@ -133,8 +140,10 @@ public sealed class TakeoffSequence
         TurnDeltaDeg = Math.Clamp(TurnDeltaDeg, -170f, 170f);
         TurnAltFt = Math.Max(500f, TurnAltFt);
         // La altitud de viraje siempre por debajo de la objetivo, por si el
-        // usuario ha metido valores raros.
-        TurnAltFt = Math.Min(TurnAltFt, TargetAltFt - 500f);
+        // usuario ha metido valores raros. Con handoff no importa el techo:
+        // se corta en TurnAlt y no se sigue subiendo.
+        if (!_handoffAtTurnAltitude)
+            TurnAltFt = Math.Min(TurnAltFt, TargetAltFt - 500f);
 
         _pitchPid.Reset();
         _bankPid.Reset();
@@ -154,10 +163,13 @@ public sealed class TakeoffSequence
         _baseHeadingDeg = _d.HeadingDeg.Float;
         _holdHeadingDeg = _baseHeadingDeg;
 
+        string handoffNote = _handoffAtTurnAltitude
+            ? $"handoff@{TurnAltFt:0}ft→intercept "
+            : $"viraje={TurnAltFt:0}ft ({TurnDeltaDeg:0}deg) nivel={TargetAltFt:0}ft ";
         LogAction($"Inicio: despegue [{_style.Name}] Vr={VrKt:0}kt rot={RotatePitchDeg:0}deg " +
                   $"IAS pista={_style.RollIasKt:0} limpieza={_style.CleanupIasKt:0} " +
                   $"subida={_style.ClimbIasKt:0} crucero={_style.CruiseIasKt:0} " +
-                  $"viraje={TurnAltFt:0}ft ({TurnDeltaDeg:0}deg) nivel={TargetAltFt:0}ft " +
+                  handoffNote +
                   $"rumboPista={_baseHeadingDeg:0}deg | " +
                   BlackBoxSnap.Of(FlightState.Capture(_d)));
 
@@ -335,6 +347,16 @@ public sealed class TakeoffSequence
                 HoldHeading(_holdHeadingDeg, dt);
                 if (ConditionSustained(_d.AltFt.Float >= TurnAltFt, dt))
                 {
+                    if (_handoffAtTurnAltitude)
+                    {
+                        LogAction(BlackBoxSnap.Join(
+                            $"Fin: despegue combate listo para interceptar — " +
+                            $"ALT={_d.AltFt.Float:0}ft IAS={_d.IasKt.Float:0}kt",
+                            BlackBoxSnap.Of(FlightState.Capture(_d))));
+                        _controls.ReleaseAllOverrides();
+                        SetPhase(TakeoffPhase.Done);
+                        break;
+                    }
                     _holdHeadingDeg = Pid.NormalizeAngleDeg360(_baseHeadingDeg + TurnDeltaDeg);
                     LogAction($"Iniciando viraje: rumbo objetivo nuevo = {_holdHeadingDeg:0}deg");
                     SetPhase(TakeoffPhase.Turn);

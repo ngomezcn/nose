@@ -132,6 +132,7 @@ public partial class App : Application
             _sequence.Update(frame.Dt);
             _maneuvers.Update(frame.Dt);
             _intercept.Update(frame.Dt);
+            _director.Tick();
         };
 
         MainWindow = _shell;

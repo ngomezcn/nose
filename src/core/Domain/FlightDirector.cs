@@ -6,6 +6,10 @@ namespace AICopilotCore.Domain;
 // overrides (AircraftControls): si dos corrieran a la vez se pisarian los
 // mandos. La UI y la ControlApi del driver LLM pasan por aqui para que la
 // exclusion mutua viva en un solo sitio, no duplicada en cada boton/endpoint.
+//
+// Interceptacion desde tierra: StartIntercept encola el blanco, arranca
+// despegue combate (handoff a minima altura) y Tick() encadena la
+// persecucion cuando el despegue llega a Done.
 public sealed class FlightDirector
 {
     private readonly TakeoffSequence _takeoff;
@@ -18,6 +22,16 @@ public sealed class FlightDirector
     private readonly object _logGate = new();
     private readonly Queue<string> _recentLog = new();
     private const int MaxRecentLog = 200;
+
+    private readonly object _pendingGate = new();
+    private PendingIntercept? _pending;
+
+    private sealed class PendingIntercept
+    {
+        public required int Index { get; init; }
+        public required InterceptStation Station { get; init; }
+        public required string Label { get; init; }
+    }
 
     public FlightDirector(TakeoffSequence takeoff, ManeuverSequence maneuvers,
                           InterceptSequence intercept,
@@ -37,6 +51,22 @@ public sealed class FlightDirector
     public ManeuverSequence Maneuvers => _maneuvers;
     public InterceptSequence Intercept => _intercept;
 
+    // Despegue combate en marcha como preludio de una interceptacion.
+    public bool IsInterceptPending
+    {
+        get { lock (_pendingGate) return _pending is not null; }
+    }
+
+    public string PendingInterceptLabel
+    {
+        get { lock (_pendingGate) return _pending?.Label ?? ""; }
+    }
+
+    public int PendingInterceptIndex
+    {
+        get { lock (_pendingGate) return _pending?.Index ?? -1; }
+    }
+
     public IReadOnlyList<string> RecentLog
     {
         get
@@ -47,9 +77,18 @@ public sealed class FlightDirector
 
     public void AbortAll()
     {
+        ClearPending();
         _takeoff.Abort();
         _maneuvers.Abort();
         _intercept.Abort();
+    }
+
+    // Cancela interceptacion en curso o el despegue combate pendiente.
+    public void AbortInterceptMission()
+    {
+        bool hadPending = ClearPending();
+        if (_intercept.IsRunning) _intercept.Abort();
+        else if (hadPending && _takeoff.IsRunning) _takeoff.Abort();
     }
 
     // Arranca un despegue. Corta maniobra/interceptacion si las hubiera.
@@ -61,6 +100,7 @@ public sealed class FlightDirector
             error = "no hay conexion con el plugin";
             return false;
         }
+        ClearPending();
         if (_maneuvers.IsRunning) _maneuvers.Abort();
         if (_intercept.IsRunning) _intercept.Abort();
         _takeoff.Start(style);
@@ -76,6 +116,7 @@ public sealed class FlightDirector
             error = "no hay conexion con el plugin";
             return false;
         }
+        ClearPending();
         if (_takeoff.IsRunning) _takeoff.Abort();
         if (_intercept.IsRunning) _intercept.Abort();
         _maneuvers.Start(ManeuverKind.LevelWings);
@@ -102,6 +143,7 @@ public sealed class FlightDirector
             return false;
         }
 
+        ClearPending();
         if (_takeoff.IsRunning) _takeoff.Abort();
         if (_intercept.IsRunning) _intercept.Abort();
         _maneuvers.Start(kind);
@@ -117,8 +159,34 @@ public sealed class FlightDirector
             error = "no hay conexion con el plugin";
             return false;
         }
-        if (_takeoff.IsRunning) _takeoff.Abort();
         if (_maneuvers.IsRunning) _maneuvers.Abort();
+
+        // En tierra (o demasiado lento): despegue combate hasta altura minima
+        // y Tick() encadena la persecucion. En el aire: intercept directo.
+        if (_intercept.NeedsOwnTakeoff())
+        {
+            if (_intercept.IsRunning) _intercept.Abort();
+            if (_takeoff.IsRunning) _takeoff.Abort();
+
+            lock (_pendingGate)
+            {
+                _pending = new PendingIntercept
+                {
+                    Index = xplmIndex,
+                    Station = station,
+                    Label = label,
+                };
+            }
+            _takeoff.Start(TakeoffStyles.CombatIntercept, handoffAtTurnAltitude: true);
+            Remember($"Interceptar {label}: despegue combate primero " +
+                     $"(handoff a +{TakeoffStyles.CombatIntercept.TurnHeightFt:0} ft), " +
+                     "luego giro hacia el blanco.");
+            error = "";
+            return true;
+        }
+
+        ClearPending();
+        if (_takeoff.IsRunning) _takeoff.Abort();
         if (!_intercept.Start(xplmIndex, station, label, out string refusal))
         {
             error = refusal;
@@ -126,6 +194,34 @@ public sealed class FlightDirector
         }
         error = "";
         return true;
+    }
+
+    // Llamar tras Update de las secuencias. Si el despegue combate del
+    // preludio acaba (Done), arranca la interceptacion hacia el blanco.
+    public void Tick()
+    {
+        PendingIntercept? pending;
+        lock (_pendingGate) pending = _pending;
+        if (pending is null) return;
+
+        if (_takeoff.Phase == TakeoffPhase.Done)
+        {
+            ClearPending();
+            if (!_intercept.Start(pending.Index, pending.Station, pending.Label,
+                                  out string refusal, afterOwnTakeoff: true))
+            {
+                Remember($"Interceptar {pending.Label}: no se pudo encadenar tras " +
+                         $"despegue — {refusal}");
+            }
+            return;
+        }
+
+        // Despegue abortado / perdido sin llegar a Done: la mision muere.
+        if (!_takeoff.IsRunning && _takeoff.Phase == TakeoffPhase.Idle)
+        {
+            ClearPending();
+            Remember($"Interceptar {pending.Label}: cancelada (despegue interrumpido).");
+        }
     }
 
     // Aborta secuencias, suelta overrides y pide al connector el escenario
@@ -157,6 +253,16 @@ public sealed class FlightDirector
     }
 
     public void ClearPendingGroundIdle() => PendingGroundIdle = false;
+
+    private bool ClearPending()
+    {
+        lock (_pendingGate)
+        {
+            bool had = _pending is not null;
+            _pending = null;
+            return had;
+        }
+    }
 
     private void Remember(string line)
     {

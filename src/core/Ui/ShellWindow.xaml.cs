@@ -319,9 +319,21 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         set => Set(ref _interceptStatusText, value);
     }
 
+    private string _interceptSequenceText = "En espera";
+    public string InterceptSequenceText {
+        get => _interceptSequenceText;
+        set => Set(ref _interceptSequenceText, value);
+    }
+
+    private string _interceptChecklistText = "";
+    public string InterceptChecklistText {
+        get => _interceptChecklistText;
+        set => Set(ref _interceptChecklistText, value);
+    }
+
     // --- Log de datos (panel izquierdo) -------------------------------------
 
-    private string _dataLogStatusText = "0 muestras";
+    private string _dataLogStatusText = "0 muestras · detenido";
     public string DataLogStatusText { get => _dataLogStatusText; set => Set(ref _dataLogStatusText, value); }
 
     // --- Config (panel izquierdo): "limites humanos" del control ----------
@@ -687,11 +699,11 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     }
 
     private void OnInterceptAbortClick(object sender, RoutedEventArgs e) {
-        if (!_intercept.IsRunning) {
+        if (!_intercept.IsRunning && !_director.IsInterceptPending) {
             Append("Interceptar: no hay ninguna interceptacion en marcha.");
             return;
         }
-        _director.Intercept.Abort();
+        _director.AbortInterceptMission();
     }
 
     // Todos los handlers de ToggleButton empiezan igual, y no es defensa
@@ -779,6 +791,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             GfxLinesToggle.IsChecked = _graphics.ShowLines;
             GfxMarkersToggle.IsChecked = _graphics.ShowMarkers;
             GfxPathToggle.IsChecked = _graphics.ShowPath;
+            GfxInterceptPathToggle.IsChecked = _graphics.ShowInterceptPath;
             GfxLabelTextBox.Text = _graphics.LabelText;
             GfxFontCombo.SelectedIndex = _graphics.Font;
             GfxColorR.Text = ((int)Math.Round(_graphics.ColorR * 255f)).ToString(CultureInfo.InvariantCulture);
@@ -796,6 +809,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         _graphics.ShowLines = GfxLinesToggle.IsChecked == true;
         _graphics.ShowMarkers = GfxMarkersToggle.IsChecked == true;
         _graphics.ShowPath = GfxPathToggle.IsChecked == true;
+        _graphics.ShowInterceptPath = GfxInterceptPathToggle.IsChecked == true;
         _graphics.LabelText = GfxLabelTextBox.Text ?? string.Empty;
         _graphics.Font = GfxFontCombo.SelectedIndex <= 0 ? 0 : 1;
 
@@ -839,8 +853,32 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
     private void OnClearDataLogClick(object sender, RoutedEventArgs e) {
         _dataLog.Clear();
+        UpdateDataLogRecordingUi();
         if (_blackBoxViewportActive)
-            _blackBoxView.Refresh(_dataLog.TypedSamples, _dataLog.Markers, "0 muestras · borrado");
+            _blackBoxView.Refresh(_dataLog.TypedSamples, _dataLog.Markers, DataLogStatusText);
+    }
+
+    private void OnStartDataLogClick(object sender, RoutedEventArgs e) {
+        _dataLog.StartRecording();
+        UpdateDataLogRecordingUi();
+        if (_blackBoxViewportActive)
+            _blackBoxView.Refresh(_dataLog.TypedSamples, _dataLog.Markers, DataLogStatusText);
+    }
+
+    private void OnStopDataLogClick(object sender, RoutedEventArgs e) {
+        _dataLog.StopRecording();
+        UpdateDataLogRecordingUi();
+        if (_blackBoxViewportActive)
+            _blackBoxView.Refresh(_dataLog.TypedSamples, _dataLog.Markers, DataLogStatusText);
+    }
+
+    private void UpdateDataLogRecordingUi() {
+        bool rec = _dataLog.IsRecording;
+        DataLogStartBtn.IsEnabled = !rec;
+        DataLogStopBtn.IsEnabled = rec;
+        DataLogStatusText = rec
+            ? $"{_dataLog.Count} muestras · grabando (~10 Hz)"
+            : $"{_dataLog.Count} muestras · detenido";
     }
 
     private void OnShowBlackBoxChartsClick(object sender, RoutedEventArgs e) =>
@@ -1148,12 +1186,36 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     // falta y que esta haciendo con los mandos lentos. Se pinta en mono para
     // que las cifras no bailen de un refresco a otro.
     private void RefreshInterceptStatus() {
-        if (!_intercept.IsRunning) {
+        bool pending = _director.IsInterceptPending;
+        bool running = _intercept.IsRunning;
+        bool includeOwnTakeoff = pending || _intercept.DidOwnTakeoff;
+
+        if (pending) {
+            InterceptSequenceText =
+                $"Despegue combate · {TakeoffSequence.PhaseName(_sequence.Phase)} → {_director.PendingInterceptLabel}";
+            InterceptChecklistText = InterceptSequence.BuildChecklistLine(
+                InterceptPhase.OwnTakeoff, includeOwnTakeoff: true, ownTakeoffActive: true);
+            InterceptStatusText =
+                $"Preludio: despegue combate hasta +{TakeoffStyles.CombatIntercept.TurnHeightFt:0} ft AGL.\n" +
+                $"Luego giro hacia {_director.PendingInterceptLabel} e interceptacion.\n" +
+                $"Fase despegue: {TakeoffSequence.PhaseName(_sequence.Phase)}";
+            return;
+        }
+
+        if (!running) {
+            InterceptSequenceText = "En espera";
+            InterceptChecklistText = InterceptSequence.BuildChecklistLine(
+                InterceptPhase.Idle, includeOwnTakeoff: false);
             InterceptStatusText = _client.IsConnected
-                ? "Sin interceptacion activa.\nElige un avion, una posicion y pulsa Interceptar."
+                ? "Sin interceptacion activa.\nElige un avion, una posicion y pulsa Interceptar.\n" +
+                  "En tierra: despega en combate solo y encadena la persecucion."
                 : "Sin conexion con el plugin.";
             return;
         }
+
+        InterceptSequenceText = _intercept.PhaseText;
+        InterceptChecklistText = InterceptSequence.BuildChecklistLine(
+            _intercept.Phase, includeOwnTakeoff, ownTakeoffActive: false);
 
         string range = double.IsNaN(_intercept.RangeM)
             ? "--"
@@ -1183,7 +1245,26 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
     // --- Refresco -------------------------------------------------------------
 
+    private bool _interceptPathSent;
+
+    // Empuja la ruta de interceptacion al connector (Refresh corre a 10 Hz).
+    // Solo con el flag activo y la intercept corriendo; al parar, una vez
+    // vacia para borrar (el connector ademas la caduca a 1 s).
+    private void PushInterceptPath() {
+        if (!_client.IsConnected) { _interceptPathSent = false; return; }
+        var path = _graphics.ShowInterceptPath && _intercept.IsRunning
+            ? _intercept.PlannedPath : null;
+        if (path != null && path.Count >= 2) {
+            _client.SetInterceptPath(path);
+            _interceptPathSent = true;
+        } else if (_interceptPathSent) {
+            _client.SetInterceptPath(null);
+            _interceptPathSent = false;
+        }
+    }
+
     private void Refresh() {
+        PushInterceptPath();
         bool connected = _client.IsConnected;
         ConnectionStatus = connected
             ? $"Conectado a {_client.PluginVersion}"
@@ -1193,8 +1274,10 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         bool maneuverActive = _maneuvers.IsRunning;
         bool takeoffActive = _sequence.IsRunning;
         bool interceptActive = _intercept.IsRunning;
+        bool interceptPending = _director.IsInterceptPending;
 
         ModeText = interceptActive ? _intercept.PhaseText
+                 : interceptPending ? $"Interceptar · Despegue combate"
                  : maneuverActive ? _maneuvers.PhaseText
                  : takeoffActive ? $"Despegue · {_sequence.StyleName}"
                  : "Manual";
@@ -1220,7 +1303,8 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
                    : maneuverActive ? _maneuvers.LastVsTarget
                    : takeoffActive ? _sequence.LastVsTarget : float.NaN;
         float altObj = takeoffActive ? _sequence.LastAltTarget : float.NaN;
-        float hdgObj = takeoffActive ? _sequence.HeadingTargetDeg : float.NaN;
+        float hdgObj = takeoffActive ? _sequence.HeadingTargetDeg
+                     : interceptActive ? _intercept.LastDesiredTrack : float.NaN;
         float thrCmd = interceptActive ? _intercept.LastThrottleCmd
                     : maneuverActive ? _maneuvers.LastThrottleCmd
                     : takeoffActive ? _sequence.LastThrottleCmd : float.NaN;
@@ -1262,12 +1346,13 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             Row("Freno", float.NaN, _d.ParkBrakeReadback.Float * 100f, "0", "%") + "\n" +
             Row("QNH", float.NaN, _d.BarometerPilot.Float, "0.00", "inHg");
 
-        // Caja negra: graba siempre que hay conexion. En Idle tambien aporta
-        // (trim, oscilaciones en vuelo libre, deriva de G...); el CSV rota a
-        // 8 MB y el buffer tipado se queda en ~5 min @ 10 Hz.
-        if (connected) {
+        // Caja negra: solo si el usuario pulso Empezar y hay conexion.
+        // En Idle tambien aporta (trim, oscilaciones, deriva de G...); el CSV
+        // rota a 8 MB y el buffer tipado se queda en ~5 min @ 10 Hz.
+        if (connected && _dataLog.IsRecording) {
             string phase = takeoffActive ? TakeoffSequence.PhaseName(_sequence.Phase) : "-";
             string action = interceptActive ? _intercept.PhaseText
+                          : interceptPending ? "Interceptar · Despegue combate"
                           : maneuverActive ? _maneuvers.PhaseText
                           : takeoffActive ? "Despegue" : "-";
             _dataLog.Record(
@@ -1293,12 +1378,16 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
                 weightLb: _d.TotalWeightKg.Float * 2.20462f, mach: _d.Mach.Float,
                 pitchRateDps: _d.PitchRateDegPerSec.Float,
                 rollRateDps: _d.RollRateDegPerSec.Float,
-                adaptation: maneuverActive ? _maneuvers.AdaptationText : "",
+                adaptation: maneuverActive ? _maneuvers.AdaptationText
+                          : interceptActive ? _intercept.TelemetryText : "",
                 protection: maneuverActive ? _maneuvers.ProtectionText : "");
         }
-        DataLogStatusText = !connected
-            ? $"{_dataLog.Count} muestras · sin conexion"
-            : $"{_dataLog.Count} muestras · grabando (~10 Hz)";
+        if (!connected)
+            DataLogStatusText = $"{_dataLog.Count} muestras · sin conexion";
+        else if (_dataLog.IsRecording)
+            DataLogStatusText = $"{_dataLog.Count} muestras · grabando (~10 Hz)";
+        else
+            DataLogStatusText = $"{_dataLog.Count} muestras · detenido";
 
         if (_blackBoxViewportActive)
             _blackBoxView.Refresh(_dataLog.TypedSamples, _dataLog.Markers, DataLogStatusText);

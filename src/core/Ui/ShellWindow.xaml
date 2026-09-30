@@ -510,9 +510,15 @@
                             <TextBlock Text="CONTROL" Style="{StaticResource SectionHeader}"/>
                             <Button Style="{StaticResource AccentButton}" Content="Interceptar"
                                     Click="OnInterceptStartClick" HorizontalAlignment="Stretch" Margin="0,2"
-                                    ToolTip="Va a por el avion seleccionado y se queda en la posicion elegida. Si sigue en tierra, espera a que despegue."/>
+                                    ToolTip="Si estas en tierra, despega en modo combate a minima altura y luego gira hacia el blanco. Si ya vuelas, persigue directamente."/>
                             <Button Style="{StaticResource DangerButton}" Content="Cancelar interceptacion"
                                     Click="OnInterceptAbortClick" HorizontalAlignment="Stretch" Margin="0,4,0,2"/>
+
+                            <TextBlock Text="SECUENCIA" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="{Binding InterceptSequenceText}" Style="{StaticResource TelemetryText}"
+                                       Foreground="{StaticResource CyanText}" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding InterceptChecklistText}" Style="{StaticResource TelemetryText}"
+                                       Margin="0,6,0,0"/>
 
                             <TextBlock Text="ESTADO" Style="{StaticResource SectionHeader}"/>
                             <TextBlock Text="{Binding InterceptStatusText}" TextWrapping="Wrap"
@@ -520,31 +526,34 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- Vista: caja negra / log de datos crudo. Se alimenta a
-                         ~10Hz desde el mismo timer que repinta la telemetria
-                         (ShellWindow.Refresh, via DataLogger.cs). "Ver graficos"
-                         abre la pestana del viewport; "Borrar todo" vacia buffer
-                         UI + fichero en disco. -->
+                    <!-- Vista: caja negra / log de datos crudo. Empezar/Detener
+                         controlan DataLogger.IsRecording; con grabacion activa
+                         se alimenta a ~10Hz desde ShellWindow.Refresh.
+                         "Ver graficos" abre la pestana del viewport; "Borrar
+                         todo" vacia buffer UI + fichero en disco. -->
                     <DockPanel x:Name="DataLogView" Visibility="Collapsed">
                         <StackPanel DockPanel.Dock="Top" Margin="14,0,14,6">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="{Binding DataLogStatusText}"
-                                           FontFamily="{StaticResource AICopilotFont}" FontSize="12"
-                                           Foreground="{StaticResource TextDim}" VerticalAlignment="Center"
-                                           TextWrapping="Wrap"/>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                    <Button Style="{StaticResource ToolButton}" Content="Ver graficos"
-                                            FontSize="12" Padding="8,2" Margin="0,0,6,0"
-                                            Click="OnShowBlackBoxChartsClick"
-                                            ToolTip="Abre la pestana Caja negra en el viewport central"/>
-                                    <Button Style="{StaticResource ToolButton}" Content="Borrar todo"
-                                            FontSize="12" Padding="8,2" Click="OnClearDataLogClick"/>
-                                </StackPanel>
-                            </Grid>
+                            <TextBlock Text="{Binding DataLogStatusText}"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12"
+                                       Foreground="{StaticResource TextDim}" VerticalAlignment="Center"
+                                       TextWrapping="Wrap"/>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button x:Name="DataLogStartBtn" Style="{StaticResource AccentButton}"
+                                        Content="Empezar a grabar" FontSize="12" Padding="10,4"
+                                        Margin="0,0,6,0" Click="OnStartDataLogClick"
+                                        ToolTip="Empieza a registrar telemetria en CSV y graficos (~10 Hz)"/>
+                                <Button x:Name="DataLogStopBtn" Style="{StaticResource DangerButton}"
+                                        Content="Detener" FontSize="12" Padding="10,4"
+                                        Margin="0,0,6,0" IsEnabled="False"
+                                        Click="OnStopDataLogClick"
+                                        ToolTip="Deja de grabar; conserva lo ya registrado"/>
+                                <Button Style="{StaticResource ToolButton}" Content="Ver graficos"
+                                        FontSize="12" Padding="8,2" Margin="0,0,6,0"
+                                        Click="OnShowBlackBoxChartsClick"
+                                        ToolTip="Abre la pestana Caja negra en el viewport central"/>
+                                <Button Style="{StaticResource ToolButton}" Content="Borrar todo"
+                                        FontSize="12" Padding="8,2" Click="OnClearDataLogClick"/>
+                            </StackPanel>
                             <TextBlock Text="{Binding DataLogFilePathText}" Margin="0,4,0,0"
                                        FontFamily="{StaticResource MonoFont}" FontSize="10"
                                        Foreground="{StaticResource TextFaint}" TextWrapping="Wrap"
@@ -865,6 +874,12 @@
                                           Margin="0,2"
                                           Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
                                           ToolTip="Predice donde estara el avion en ~1.5 s (integra velocidad+aceleracion). Sale 2.5 m por delante del CG; el horizonte se alarga/acorta con la acel. longitudinal"/>
+                            <ToggleButton x:Name="GfxInterceptPathToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Ruta de interceptacion" IsChecked="False"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                          ToolTip="Linea cian en el mundo 3D desde tu avion hasta el punto de estacion siguiendo el camino que el piloto automatico planea para interceptar; se actualiza mientras el blanco se mueve. Solo con interceptacion activa"/>
 
                             <Button Style="{StaticResource ToolButton}" Content="Restablecer graficos"
                                     Click="OnResetGraphicsClick" HorizontalAlignment="Stretch" Margin="0,14,0,2"

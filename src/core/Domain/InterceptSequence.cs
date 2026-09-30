@@ -5,6 +5,9 @@ namespace AICopilotCore.Domain;
 public enum InterceptPhase
 {
     Idle,
+    // Despegue combate propio antes de perseguir (solo UI / orquestacion;
+    // InterceptSequence no vuela esta fase: la vuela TakeoffSequence).
+    OwnTakeoff,
     // El blanco sigue en tierra: se vuela nivelado y se espera a que despegue.
     WaitingTakeoff,
     // Lejos: rumbo de colision, gas a fondo, sin mirar la separacion fina.
@@ -25,6 +28,13 @@ public enum InterceptPhase
 // despegue) y ManeuverSequence (una accion del catalogo). Las tres escriben
 // sobre los mismos overrides, asi que son mutuamente excluyentes: quien
 // arranca una corta las otras (lo hace el shell).
+//
+// NOTA (rehecho): el guiado ya no lo decide este fichero sino
+// InterceptPlanner.cs, en DOS etapas: Transito al punto de reunion (RP, 3 km
+// detras del blanco sobre su cola, apuntando al RP PREDICHO para cortar la
+// curva) y Formacion (copiar velocidad y cerrar suave sobre la estacion). Las
+// fases de abajo son el vocabulario con el que el lazo cambia limites y
+// autothrottle.
 //
 // -- Las tres fases, y por que son tres ---------------------------------
 //
@@ -88,6 +98,19 @@ public sealed class InterceptSequence
     private readonly SlewLimiter _flapRamp = new(FlapRatePerSec);
     private readonly SlewLimiter _speedbrakeRamp = new(SpeedbrakeRatePerSec);
 
+    // Planificador de aproximacion (InterceptPlanner.cs): decide rumbo,
+    // velocidad, fase y ruta; este lazo solo lo VUELA con suavidad. Corre a
+    // PlanPeriodSec (cada llamada simula decenas de candidatos por delante) y
+    // entre llamadas se reutiliza el ultimo plan.
+    private readonly TurnRateEstimator _turnEst = new();
+    private readonly SlewLimiter _iasCmdRamp = new(IasCmdRateKtPerSec);
+    private PlannerMemory? _plannerMem;
+    private readonly InterceptTrace _trace = new();
+    private InterceptPlan? _plan;
+    private float _planTimer = 99f;
+    private float _phaseDwell;
+    private float _trackFiltDeg = float.NaN;
+
     private int _targetIndex = -1;
     private string _targetLabel = "";
     private InterceptStation _station = InterceptStation.TailHigh;
@@ -98,6 +121,8 @@ public sealed class InterceptSequence
     private bool _announced;
     private float _gWarnTimer;
     private float _lowAglWarnTimer;
+    // True si esta mision empezo con despegue combate propio (checklist).
+    private bool _didOwnTakeoff;
 
     // Serpenteo: +1 = desviado a la derecha de la linea del blanco.
     private int _weaveSign = 1;
@@ -146,11 +171,17 @@ public sealed class InterceptSequence
     public double CrossM { get; private set; } = double.NaN;
     public double VerticalM { get; private set; } = double.NaN;
     public double TargetSpeedKt { get; private set; } = double.NaN;
+    // Lo que el planner pidio y el lazo persigue, para la caja negra.
+    public float LastDesiredTrack { get; private set; } = float.NaN;
+    public float LastTrackErr { get; private set; } = float.NaN;
+    public string TelemetryText { get; private set; } = "";
     public TargetAirState TargetState { get; private set; } = TargetAirState.Unknown;
     public bool Weaving => _weaveDeg > 0.5f;
+    public bool DidOwnTakeoff => _didOwnTakeoff;
 
     public static string PhaseName(InterceptPhase p) => p switch
     {
+        InterceptPhase.OwnTakeoff => "Despegue combate",
         InterceptPhase.WaitingTakeoff => "Esperando a que despegue",
         InterceptPhase.Pursuit => "Persecucion (cierre rapido)",
         InterceptPhase.Closing => "Acercamiento",
@@ -172,11 +203,23 @@ public sealed class InterceptSequence
 
     // --- Arranque y parada --------------------------------------------------
 
+    // En tierra (o demasiado lento) el director debe encadenar un despegue
+    // combate antes de llamar a Start. Publico para que FlightDirector lo
+    // consulte sin duplicar el umbral de IAS.
+    public bool NeedsOwnTakeoff()
+    {
+        lock (_gate)
+            return _d.OnGround.Bool || _d.IasKt.Float < MinOwnIasKt;
+    }
+
     // Devuelve false y el motivo si la interceptacion no se puede pedir ahora
     // mismo. Se niega en vez de intentarlo a medias: enganchar los overrides
     // de cabeceo y alabeo con el avion rodando por la pista es exactamente el
     // tipo de cosa que deja al usuario sin poder pilotar preguntandose por que.
-    public bool Start(int xplmIndex, InterceptStation station, string label, out string refusal)
+    // afterOwnTakeoff: el director ya hizo el despegue combate; no re-exige
+    // el umbral de IAS (puede estar justo por debajo un instante).
+    public bool Start(int xplmIndex, InterceptStation station, string label, out string refusal,
+                      bool afterOwnTakeoff = false)
     {
         lock (_gate)
         {
@@ -190,7 +233,7 @@ public sealed class InterceptSequence
                 refusal = "tu avion esta en tierra: despega primero";
                 return false;
             }
-            if (_d.IasKt.Float < MinOwnIasKt)
+            if (!afterOwnTakeoff && _d.IasKt.Float < MinOwnIasKt)
             {
                 refusal = $"hace falta al menos {MinOwnIasKt:0} kt para maniobrar " +
                           $"(vas a {_d.IasKt.Float:0} kt)";
@@ -200,6 +243,7 @@ public sealed class InterceptSequence
             _targetIndex = xplmIndex;
             _targetLabel = label;
             _station = station;
+            _didOwnTakeoff = afterOwnTakeoff;
 
             _pitchPid.Reset();
             _bankPid.Reset();
@@ -215,6 +259,14 @@ public sealed class InterceptSequence
             _flapsAreOurs = false;
             _weaveSign = 1;
             _weaveDeg = 0f;
+            _turnEst.Reset();
+            _plannerMem = null;
+            _trace.Begin();
+            _plan = null;
+            _planTimer = 99f;
+            _phaseDwell = 0f;
+            _trackFiltDeg = float.NaN;
+            _iasCmdRamp.Reset(_d.IasKt.Float);
             _announced = false;
             _settledElapsed = 0f;
             _statusLogTimer = StatusLogSeconds;
@@ -231,8 +283,11 @@ public sealed class InterceptSequence
             SetPhase(InterceptPhase.Pursuit);
             InterceptStationDef def = InterceptCatalog.Get(station);
             FlightState own = FlightState.Capture(_d);
+            string prelude = afterOwnTakeoff
+                ? $"Inicio: interceptar {label} tras despegue combate — {def.Label}"
+                : $"Inicio: interceptar {label} — {def.Label}";
             LogAction(BlackBoxSnap.Join(
-                $"Inicio: interceptar {label} — {def.Label}",
+                prelude,
                 def.Summary(_tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM),
                 InterceptConfigExtras(def),
                 BlackBoxSnap.Of(own)));
@@ -285,9 +340,13 @@ public sealed class InterceptSequence
     {
         _targetIndex = -1;
         _targetLabel = "";
+        _didOwnTakeoff = false;
         LastPitchTarget = LastBankTarget = LastIasTarget = LastVsTarget = float.NaN;
         RangeM = SeparationM = ClosureKt = AlongM = CrossM = VerticalM = double.NaN;
         TargetSpeedKt = double.NaN;
+        LastDesiredTrack = LastTrackErr = float.NaN;
+        TelemetryText = "";
+        _plan = null;
         TargetState = TargetAirState.Unknown;
         _weaveDeg = 0f;
         _flapCmd = _speedbrakeCmd = 0f;
@@ -298,7 +357,47 @@ public sealed class InterceptSequence
 
     public void Update(float dt)
     {
-        lock (_gate) { UpdateLocked(dt); }
+        lock (_gate) { UpdateLocked(dt); RefreshPlannedPathLocked(); }
+    }
+
+    // --- Ruta planificada (enchufe para la visualizacion) -------------------
+    // Polilinea en coordenadas locales OGL absolutas (+X este, +Y arriba,
+    // +Z sur) desde nuestra posicion hasta el punto de estacion. Copia
+    // inmutable, se reemplaza entera. null = no hay ruta. PLACEHOLDER: recta;
+    // el planner la sustituira por el camino real que volara el piloto auto.
+    private IReadOnlyList<(double X, double Y, double Z)>? _plannedPath;
+
+    public IReadOnlyList<(double X, double Y, double Z)>? PlannedPath
+    {
+        get { lock (_gate) { return _plannedPath; } }
+    }
+
+    private void RefreshPlannedPathLocked()
+    {
+        _plannedPath = null;
+        if (_phase == InterceptPhase.Idle || _phase == InterceptPhase.Lost) return;
+        if (!_d.LocalX.HasValue || !_d.LocalY.HasValue || !_d.LocalZ.HasValue) return;
+        double ox = _d.LocalX.Value, oy = _d.LocalY.Value, oz = _d.LocalZ.Value;
+
+        // El camino que vuela el planner. El primer punto se repone con la
+        // posicion propia de AHORA: el plan es de hace <=PlanPeriodSec y la
+        // linea tiene que salir pegada al avion.
+        if (_plan is { Path.Count: >= 2 } plan && _phase != InterceptPhase.WaitingTakeoff)
+        {
+            var pts = new (double X, double Y, double Z)[plan.Path.Count];
+            for (int i = 0; i < pts.Length; i++) pts[i] = plan.Path[i];
+            pts[0] = (ox, oy, oz);
+            _plannedPath = pts;
+            return;
+        }
+
+        TargetSnapshot t = TargetSnapshot.Capture(_d, _targetIndex);
+        if (!t.Valid) return;
+        InterceptStationDef def = InterceptCatalog.Get(_station);
+        (float aft, float right, float up) = def.Resolve(
+            _tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM);
+        InterceptGeometry now = InterceptGeometry.Solve(ox, oy, oz, t, aft, right, up, 0.0);
+        _plannedPath = new (double X, double Y, double Z)[] { (ox, oy, oz), (now.Px, now.Py, now.Pz) };
     }
 
     private void UpdateLocked(float dt)
@@ -309,6 +408,8 @@ public sealed class InterceptSequence
         _gWarnTimer += dt;
         _lowAglWarnTimer += dt;
         _slowWriteTimer += dt;
+        _planTimer += dt;
+        _phaseDwell += dt;
 
         FlightState st = FlightState.Capture(_d);
         // Un frame sin telemetria util no se "arregla" mandando un mando
@@ -404,30 +505,80 @@ public sealed class InterceptSequence
         VerticalM = now.UpM;
         ClosureKt = ClosureRateKt(t, ownX, ownY, ownZ, ownVx, ownVy, ownVz, now.SeparationM);
 
-        UpdatePhaseByRange(now.RangeM);
-
-        (float maxBank, float maxVsFpm, double maxLead) = PhaseLimits(_phase);
-        double lead = maxLead <= 0.0
-            ? 0.0
-            : InterceptGeometry.LeadSeconds(ownX, ownY, ownZ, t, aft, right, up, ownGsMps, maxLead);
-        InterceptGeometry aim = lead <= 0.0
-            ? now
-            : InterceptGeometry.Solve(ownX, ownY, ownZ, t, aft, right, up, lead);
-
-        // --- 1. Velocidad: es la que decide si hacen falta flaps y serpenteo -
-        float iasCmd = SolveSpeedCommand(st, t, now, ownGsKt, dt, out bool tooSlowForUs);
-
-        // --- 2. Rumbo y alabeo ----------------------------------------------
-        float desiredTrack = SolveTrack(t, now, aim, tooSlowForUs, ownGsKt);
-        float trackErr = Pid.NormalizeAngleDeg180(desiredTrack - ownTrack);
-
-        // El alabeo maximo de la fase, acotado ademas por la G que el ala
-        // puede dar de verdad a esta velocidad y peso: pedir 70 deg a 200 kt
-        // no da un viraje cerrado, da un buffet.
+        // --- Plan de aproximacion -----------------------------------------
+        double tgtTurnDegS = _turnEst.Update(t.TrackDeg, dt, t.GroundSpeedMps);
+        float minSafeClean0 = F14Aero.StallIasKt(st.WeightLb) * F14Aero.StallMarginFactor;
+        float maxIas0 = MathF.Min(_tuning.MaxTargetIasKt, st.VneKt * VneMarginFactor);
+        double iasPerGs0 = Math.Clamp(ownGsKt > 30.0 ? st.IasKt / ownGsKt : 1.0, 0.3, 1.6);
+        (float maxBank, float maxVsFpm, _) = PhaseLimits(_phase);
         float gBudget = MathF.Min(st.UsableG, _tuning.GSoftHigh * GBudgetFraction);
         maxBank = MathF.Min(maxBank, F14Aero.BankForLoadFactorDeg(gBudget));
 
-        float bankRaw = Math.Clamp(TrackToBankGain * trackErr, -maxBank, maxBank);
+        if (_plan == null || _planTimer >= PlanPeriodSec)
+        {
+            OwnLimits limits = OwnLimits.F14 with
+            {
+                // Con flaps fuera la perdida baja: el suelo de velocidad que
+                // se planifica es el de flaps completos; la ley de flaps los
+                // saca cuando la velocidad pedida se acerca al suelo limpio.
+                VminGsMps = minSafeClean0 * (1f - FlapStallReduction) / iasPerGs0 / TargetSnapshot.MpsToKnots,
+                VmaxGsMps = maxIas0 / iasPerGs0 / TargetSnapshot.MpsToKnots,
+                MaxG = Math.Max(gBudget, 2.0),
+                MaxBankDeg = maxBank,
+            };
+            _plan = InterceptPlanner.Plan(new InterceptPlanInput
+            {
+                OwnX = ownX, OwnY = ownY, OwnZ = ownZ,
+                OwnVx = ownVx, OwnVy = ownVy, OwnVz = ownVz,
+                TgtX = t.X, TgtY = t.Y, TgtZ = t.Z,
+                TgtVx = t.Vx, TgtVy = t.Vy, TgtVz = t.Vz,
+                TgtHeadingDeg = t.HeadingDeg,
+                TgtTurnRateDegPerS = tgtTurnDegS,
+                AftM = aft, RightM = right, UpM = up,
+                Limits = limits,
+                IasPerGs = iasPerGs0,
+                DtSec = _planTimer,
+                Memory = _plannerMem,
+            });
+            _plannerMem = _plan.Memory;
+            _planTimer = 0f;
+        }
+        InterceptPlan plan = _plan;
+
+        // La fase la sugiere el planner; se exige un minimo de permanencia
+        // para que un candidato que baila en el umbral no resiembre el
+        // autothrottle varias veces por segundo.
+        if (plan.SuggestedPhase != _phase && _phaseDwell >= PhaseMinDwellSec)
+            SetPhase(plan.SuggestedPhase,
+                $"planner: {plan.Regime}, a {BlackBoxSnap.F(now.RangeM, "0")} m, " +
+                $"ETA {(plan.Reaches ? BlackBoxSnap.F(plan.EtaSec, "0") + " s" : "?")}");
+        (maxBank, maxVsFpm, _) = PhaseLimits(_phase);
+        maxBank = MathF.Min(maxBank, F14Aero.BankForLoadFactorDeg(gBudget));
+
+        // --- 1. Velocidad: es la que decide si hacen falta flaps y serpenteo -
+        float iasCmd = SolveSpeedCommand(st, t, now, plan, ownGsKt, dt, out bool tooSlowForUs);
+
+        // --- 2. Rumbo y alabeo ----------------------------------------------
+        float desiredRaw = SolveTrack(t, now, plan, tooSlowForUs, ownGsKt);
+        // Paso bajo del rumbo pedido: el planner recalcula a 10 Hz y el zigzag
+        // del serpenteo cambia de signo de golpe; sin filtro cada salto llega
+        // entero al alabeo.
+        if (float.IsNaN(_trackFiltDeg)) _trackFiltDeg = ownTrack;
+        float filtStep = Pid.NormalizeAngleDeg180(desiredRaw - _trackFiltDeg);
+        _trackFiltDeg = Pid.NormalizeAngleDeg360(
+            _trackFiltDeg + filtStep * (1f - MathF.Exp(-dt / TrackFilterTauSec)));
+        float desiredTrack = _trackFiltDeg;
+        float trackErr = Pid.NormalizeAngleDeg180(desiredTrack - ownTrack);
+        LastDesiredTrack = desiredTrack;
+        LastTrackErr = trackErr;
+
+        // Feed-forward del giro del blanco cerca de la estacion (termino de
+        // blanco maniobrante del paper): sin el, un blanco que vira a 3 deg/s
+        // se escapa por fuera del puesto.
+        float bankFf = plan.Regime == InterceptRegime.Station
+            ? (float)(Math.Atan(ownGsMps * tgtTurnDegS * F14Aero.Deg2Rad / 9.81) * F14Aero.Rad2Deg)
+            : 0f;
+        float bankRaw = Math.Clamp(TrackToBankGain * trackErr + bankFf, -maxBank, maxBank);
         // Alivio de G: el backstop de las maniobras ABORTA, pero aqui abortar
         // seria soltar el avion en mitad de una persecucion. Se afloja el
         // alabeo, que es de donde sale la G en un viraje, y se avisa.
@@ -440,15 +591,28 @@ public sealed class InterceptSequence
                 LogAction($"AVISO: G={st.GNormal:0.0} en la persecucion -> aflojo el viraje.");
             }
         }
-        _bankTargetRamp.MaxRate = _tuning.ManeuverBankRampDegPerSec;
+        // Rampa propia y mas suave que la de las maniobras: 45 deg/s metia
+        // 67 deg de alabeo en 1.5 s y con ellos las G raras del log.
+        _bankTargetRamp.MaxRate = MathF.Min(_tuning.ManeuverBankRampDegPerSec, InterceptBankRampDegPerSec);
         float bankTarget = _bankTargetRamp.Update(bankRaw, dt);
         LastBankTarget = bankTarget;
-        _controls.SetRollInput(_bankPid.Update(bankTarget - st.BankDeg, dt), dt);
+        _bankPid.GainScale = AttitudeGainScale(st);
+        _controls.SetRollInput(_bankPid.Update(bankTarget - st.BankDeg, dt, st.RollRateDegPerSec), dt);
 
         // --- 3. Vertical ------------------------------------------------------
-        float vsCmd = (float)t.VerticalSpeedFpm +
-                      (float)(now.UpM * TargetSnapshot.MetersToFeet) / VerticalTauSec * 60f;
+        float vsCmd = (float)(plan.DesiredVsMps * TargetSnapshot.MpsToFpm);
+        // Vertical acoplado al viraje: el ala solo da sustentacion vertical
+        // ~cos(alabeo), y con un error de rumbo grande el viraje manda. Sin
+        // esto el log mostraba un picado de -9000 fpm en pleno viraje de 180
+        // con G negativa y el viraje invertido.
+        float bankCos = Math.Clamp(MathF.Cos(st.BankDeg * F14Aero.Deg2Rad), 0f, 1f);
+        maxVsFpm *= MathF.Max(bankCos, 0.25f);
+        float turnScale = Math.Clamp(1f - (MathF.Abs(trackErr) - 20f) / 40f, 0f, 1f);
+        if (vsCmd < 0f) vsCmd *= turnScale;
         vsCmd = Math.Clamp(vsCmd, -maxVsFpm, maxVsFpm);
+        // Proteccion de G baja: si el avion ya esta descargado no se le pide
+        // bajar mas.
+        if (st.GNormal < LowGGuard && vsCmd < st.VsFpm) vsCmd = st.VsFpm;
         // Suelo de terreno: no se sigue a nadie contra el suelo. Si el blanco
         // vuela bajo, se le acompana por encima y se dice.
         if (st.AglFt < _tuning.TerrainFloorAglFt && vsCmd < 0f)
@@ -481,6 +645,23 @@ public sealed class InterceptSequence
         _controls.SetThrottle(throttle, dt);
         FlushSlowControls();
 
+        TelemetryText = string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"int rng={now.RangeM:0} sep={now.SeparationM:0} cl={ClosureKt:0} " +
+            $"al={now.AlongM:0} cr={now.CrossM:0} vt={now.UpM:0} " +
+            $"trkObj={desiredTrack:0.0} trkErr={trackErr:0.0} iasObj={iasCmd:0} vsObj={vsCmd:0} " +
+            $"tgtGS={t.GroundSpeedKt:0} tgtTrk={t.TrackDeg:0} tgtTurn={tgtTurnDegS:0.0} " +
+            $"reg={plan.Regime} eta={(plan.Reaches ? plan.EtaSec.ToString("0") : "-")} " +
+            $"ovt={plan.PredictedOvertakeM:0} minSep={plan.PredictedMinSepM:0} pG={plan.PredictedPeakG:0.0} " +
+            $"brk={bankFf:0.0} wv={_weaveDeg:0}");
+
+        _trace.Row(dt, plan.Memory.Stage, plan.Regime, _phase, plan.Detouring ? 1 : 0,
+            ownX, ownY, ownZ, ownVx, ownVy, ownVz,
+            t.X, t.Y, t.Z, t.Vx, t.Vy, t.Vz, t.HeadingDeg, tgtTurnDegS,
+            now.RangeM, plan.RendezvousRangeM, now.AlongM, now.CrossM, now.UpM,
+            st.IasKt, st.BankDeg, st.GNormal,
+            plan.DesiredTrackDeg, desiredTrack, plan.DesiredGsMps, plan.DesiredIasMps,
+            iasCmd, vsCmd, bankTarget, plan.PredictedMinSepM, plan.EtaSec);
+
         // --- 5. Llegada --------------------------------------------------------
         if (_phase == InterceptPhase.Station && now.RangeM < CaptureRangeM &&
             Math.Abs(ClosureKt) < SettledClosureKt)
@@ -510,8 +691,8 @@ public sealed class InterceptSequence
     // Velocidad indicada que hay que pedirle al motor, y si esa velocidad es
     // mas lenta de lo que este avion puede volar.
     private float SolveSpeedCommand(in FlightState st, in TargetSnapshot t,
-                                    in InterceptGeometry now, double ownGsKt, float dt,
-                                    out bool tooSlowForUs)
+                                    in InterceptGeometry now, in InterceptPlan plan,
+                                    double ownGsKt, float dt, out bool tooSlowForUs)
     {
         // Techo: ni la VNE del avion cargado ni el tope que el usuario haya
         // puesto en Config. Es lo que impide que "lo mas rapido posible" se
@@ -525,39 +706,16 @@ public sealed class InterceptSequence
         iasPerGs = Math.Clamp(iasPerGs, 0.3, 1.6);
         float targetIasEquivalent = (float)(t.GroundSpeedKt * iasPerGs);
 
-        // Cuanto mas rapido que el blanco se puede ir AHORA MISMO sin pasarse
-        // de largo. Es una sola cuenta -- la de un frenado, v = sqrt(2*a*d) --
-        // y sustituye al corte duro que habia entre "gas a fondo" y "raciona
-        // el exceso": con distancia de sobra la formula pide mas velocidad de
-        // la que el avion tiene, el techo de VNE se la recorta, y sale gas a
-        // fondo sin ningun caso especial. A 15 km da 540 kt de exceso, a 3 km
-        // da 230, a 300 m da 70, a 50 m casi nada.
-        double reachMps;
-        if (_phase == InterceptPhase.Station)
-        {
-            // En formacion ya no se frena hacia un punto: se copia la
-            // velocidad del blanco y se corrige con lo retrasado o adelantado
-            // que se va (AlongM > 0 = el puesto esta por delante).
-            reachMps = Math.Clamp(now.AlongM / StationAlongTauSec,
-                                  -StationTrimMps, StationTrimMps);
-        }
-        else if (now.AlongM < 0.0 && now.RangeM < ClosingEnterM)
-        {
-            // Nos hemos pasado: el puesto queda por DETRAS en los ejes del
-            // blanco. Con la distancia a secas se pediria acelerar -- que es
-            // como se adelanta uno todavia mas -- asi que aqui la cuenta va
-            // con signo: descolgarse hasta volver a quedar por detras.
-            reachMps = -Math.Sqrt(2.0 * ClosingDecelMps2 * Math.Abs(now.AlongM));
-        }
-        else
-        {
-            double remaining = Math.Max(now.RangeM - CaptureRangeM, 0.0);
-            reachMps = Math.Sqrt(2.0 * ClosingDecelMps2 * remaining);
-        }
-        _desiredAlongGsKt = t.GroundSpeedKt + reachMps * TargetSnapshot.MpsToKnots;
-        float iasCmd = MathF.Min(maxIas,
-                                 targetIasEquivalent +
-                                 (float)(reachMps * TargetSnapshot.MpsToKnots));
+        // La velocidad la pide el planner: perfil de frenado con la
+        // deceleracion real del avion medida sobre el CAMINO de aproximacion
+        // (no sobre la recta), comprobado por adelantado con una simulacion
+        // del cierre completo. Aqui solo se suaviza (rampa) y se recorta al
+        // envolvente. El zigzag de los blancos lentos avanza sobre la linea
+        // del blanco a su misma velocidad.
+        _desiredAlongGsKt = t.GroundSpeedKt;
+        float planIasKt = (float)(plan.DesiredIasMps * TargetSnapshot.MpsToKnots);
+        _iasCmdRamp.MaxRate = IasCmdRateKtPerSec;
+        float iasCmd = MathF.Min(maxIas, _iasCmdRamp.Update(planIasKt, dt));
 
         // Guardia de proximidad: por debajo de esto ya no es una formacion,
         // es un riesgo de colision. Se pide ir mas despacio que el blanco
@@ -604,38 +762,25 @@ public sealed class InterceptSequence
         return iasCmd;
     }
 
-    // Rumbo (de trayectoria, no de morro) al que hay que volar este frame.
+    // Rumbo (de trayectoria, no de morro) al que hay que volar este frame: el
+    // del planner, que ya rodea al blanco para llegar por detras, salvo el
+    // serpenteo de los blancos que no se pueden igualar en velocidad.
     private float SolveTrack(in TargetSnapshot t, in InterceptGeometry now,
-                             in InterceptGeometry aim, bool tooSlowForUs, double ownGsKt)
+                             in InterceptPlan plan, bool tooSlowForUs, double ownGsKt)
     {
-        if (_phase != InterceptPhase.Station) { _weaveDeg = 0f; return aim.BearingDeg; }
-
-        // Serpenteo: si no se puede volar tan despacio como el blanco, se
-        // alarga el camino. El avance neto por la linea del blanco es
-        // V*cos(angulo), asi que el angulo que iguala los dos avances sale
-        // directo del cociente de velocidades.
-        if (tooSlowForUs && ownGsKt > 1.0)
+        if (_phase == InterceptPhase.Station && tooSlowForUs && ownGsKt > 1.0)
         {
+            // El avance neto por la linea del blanco es V*cos(angulo), asi que
+            // el angulo que iguala los dos avances sale del cociente de
+            // velocidades. El zigzag se invierte al pasarse de ancho, no con
+            // un reloj: queda acotado lateralmente por construccion.
             double ratio = Math.Clamp(_desiredAlongGsKt / ownGsKt, 0.05, 1.0);
             _weaveDeg = MathF.Min((float)(Math.Acos(ratio) * F14Aero.Rad2Deg), MaxWeaveDeg);
-            // El zigzag se invierte al pasarse de ancho, no con un reloj: asi
-            // el serpenteo queda acotado lateralmente por construccion y no
-            // se va abriendo si el blanco cambia de rumbo.
             if (Math.Abs(now.CrossM) > WeaveHalfWidthM) _weaveSign = Math.Sign(now.CrossM);
             return Pid.NormalizeAngleDeg360(t.TrackDeg + _weaveSign * _weaveDeg);
         }
-
         _weaveDeg = 0f;
-        // En formacion se vuela el rumbo del blanco mas una correccion
-        // lateral pequena. Perseguir el punto directamente (el rumbo que
-        // apunta a el) funciona lejos, pero de cerca hace que cada metro de
-        // error lateral pida un viraje: el avion acaba culebreando alrededor
-        // del puesto. Se mezclan los dos segun lo lejos que este.
-        float hold = t.TrackDeg + (float)Math.Clamp(now.CrossM * StationCrossGainDegPerM,
-                                                    -StationMaxOffsetDeg, StationMaxOffsetDeg);
-        float w = (float)Math.Clamp(now.HorizontalRangeM / StationBlendM, 0.0, 1.0);
-        return Pid.NormalizeAngleDeg360(
-            hold + w * Pid.NormalizeAngleDeg180(aim.BearingDeg - hold));
+        return (float)plan.DesiredTrackDeg;
     }
 
     // V/S pedida -> morro. El grueso lo pone un feedforward de trayectoria
@@ -654,13 +799,23 @@ public sealed class InterceptSequence
         // eso va multiplicado por el coseno del alabeo. Sin ese coseno, un
         // viraje cerrado pediria mucho mas morro del que toca.
         float alpha = st.AoaDeg * MathF.Cos(st.BankDeg * F14Aero.Deg2Rad);
+        // El lazo V/S -> morro es el "ola" lenta (~9 s) a baja velocidad: el
+        // error de V/S se satura al tope de trim (+-3 deg) y el avion cabecea
+        // arriba y abajo con +-1400 fpm (caja negra 14:52). Sus ganancias eran
+        // demasiado altas para el retardo del morro -> V/S; se bajan y ademas
+        // se atenuan con la velocidad (fpm por grado de trayectoria ~ TAS).
+        _vsPid.GainScale = VsGainBase * MathF.Sqrt(VsGainRefTasKt / MathF.Max(st.TasKt, VsGainRefTasKt));
         float trim = _vsPid.Update(vsCmdFpm - st.VsFpm, dt);
         float pitchRaw = Math.Clamp(gammaCmd + alpha + trim, -MaxPitchDeg, MaxPitchDeg);
 
         _pitchTargetRamp.MaxRate = _tuning.ManeuverPitchRampDegPerSec;
+        // Bajar el morro descarga el ala mucho mas rapido de lo que la carga
+        // al subirlo: la bajada se limita aparte.
+        _pitchTargetRamp.MaxRateFalling = PitchFallRateDegPerSec;
         float pitchTarget = _pitchTargetRamp.Update(pitchRaw, dt);
         LastPitchTarget = pitchTarget;
-        _controls.SetPitchInput(_pitchPid.Update(pitchTarget - st.PitchDeg, dt), dt);
+        _pitchPid.GainScale = AttitudeGainScale(st);
+        _controls.SetPitchInput(_pitchPid.Update(pitchTarget - st.PitchDeg, dt, st.PitchRateDegPerSec), dt);
     }
 
     // Que hacer mientras no hay nada que perseguir. No se sueltan los
@@ -678,7 +833,8 @@ public sealed class InterceptSequence
         _bankTargetRamp.MaxRate = _tuning.ManeuverBankRampDegPerSec;
         float bankTarget = _bankTargetRamp.Update(orbitBankDeg, dt);
         LastBankTarget = bankTarget;
-        _controls.SetRollInput(_bankPid.Update(bankTarget - st.BankDeg, dt), dt);
+        _bankPid.GainScale = AttitudeGainScale(st);
+        _controls.SetRollInput(_bankPid.Update(bankTarget - st.BankDeg, dt, st.RollRateDegPerSec), dt);
 
         LastVsTarget = 0f;
         ApplyPitchForVerticalSpeed(st, 0f, dt);
@@ -845,9 +1001,62 @@ public sealed class InterceptSequence
 
     private void LogAction(string msg) => ActionLogged?.Invoke(msg);
 
+    // Checklist de una linea (mismo formato que TakeoffSequence): [x] hechas,
+    // [>] actual, [ ] pendientes. includeOwnTakeoff añade "Despegue" al
+    // principio (mision que salio de tierra). ownTakeoffActive = aun estamos
+    // en ese despegue (el director lo marca; esta secuencia sigue Idle).
+    private static readonly (InterceptPhase Phase, string Label)[] ChecklistSteps =
+    {
+        (InterceptPhase.OwnTakeoff, "Despegue"),
+        (InterceptPhase.WaitingTakeoff, "Espera blanco"),
+        (InterceptPhase.Pursuit, "Persecucion"),
+        (InterceptPhase.Closing, "Acercamiento"),
+        (InterceptPhase.Station, "Formacion"),
+    };
+
+    public static string BuildChecklistLine(InterceptPhase current, bool includeOwnTakeoff,
+                                            bool ownTakeoffActive = false)
+    {
+        InterceptPhase effective = ownTakeoffActive ? InterceptPhase.OwnTakeoff
+            : current == InterceptPhase.Lost ? InterceptPhase.Pursuit
+            : current == InterceptPhase.Idle ? InterceptPhase.Idle
+            : current;
+
+        var sb = new System.Text.StringBuilder();
+        foreach ((InterceptPhase phase, string label) in ChecklistSteps)
+        {
+            if (phase == InterceptPhase.OwnTakeoff && !includeOwnTakeoff) continue;
+            char marker;
+            if (effective == InterceptPhase.Idle)
+                marker = ' ';
+            else if (effective == phase)
+                marker = '>';
+            else if (effective > phase)
+                marker = 'x';
+            else
+                marker = ' ';
+            if (sb.Length > 0) sb.AppendLine();
+            sb.Append('[').Append(marker).Append("] ").Append(label);
+        }
+        return sb.ToString();
+    }
+
     // --- Ganancias de los PID ---------------------------------------------------
     // Cabeceo y alabeo: las mismas que TakeoffSequence/ManeuverSequence, que
     // son las que estan rodadas en este avion.
+    // Las ganancias de arriba estan afinadas a velocidad de aproximacion.
+    // La autoridad del yugo crece con la presion dinamica (~IAS^2): a
+    // 620 kt (caja negra 14:41) el mismo Kp daba un lazo de alabeo con
+    // cruce ~5 rad/s + retardo de muestreo/rampa = oscilacion de ~1.5 s con
+    // el yugo saturando entre -1 y +1, y cabeceo alternando cada muestra.
+    // Se atenuan con (Vref/IAS)^1.5, sin subir de 1 por debajo de Vref.
+    private const float VsGainBase = 0.4f;
+    private const float VsGainRefTasKt = 300f;
+    private const float GainRefIasKt = 320f;
+    private const float GainScaleMin = 0.2f;
+    private static float AttitudeGainScale(in FlightState st) =>
+        Math.Clamp(MathF.Pow(GainRefIasKt / MathF.Max(st.IasKt, 1f), 1.5f), GainScaleMin, 1f);
+
     private const float PitchKp = 0.09f;
     private const float PitchKi = 0.015f;
     private const float PitchKd = 0.03f;
@@ -860,7 +1069,7 @@ public sealed class InterceptSequence
     private const float VsKp = 0.0025f;
     private const float VsKi = 0.0004f;
     private const float VsKd = 0.0008f;
-    private const float VsTrimLimitDeg = 8f;
+    private const float VsTrimLimitDeg = 3f;
 
     // Autothrottle. Mas vivo que el de las maniobras: en una interceptacion
     // la velocidad ES la maniobra, y 50 kt de error tienen que dar gas a
@@ -894,7 +1103,8 @@ public sealed class InterceptSequence
         {
             InterceptPhase.Pursuit => (72f, 9000f, 120.0),
             InterceptPhase.Closing => (50f, 4000f, 15.0),
-            InterceptPhase.Station => (32f, 2000f, 0.0),
+            // 45 deg: seguir a un blanco que vira a 3 deg/s y 150 m/s exige ~39 deg.
+            InterceptPhase.Station => (45f, 2000f, 0.0),
             _ => (25f, LoiterMaxVsFpm, 0.0),
         };
 
@@ -950,6 +1160,16 @@ public sealed class InterceptSequence
     private const float HoldingBankDeg = 20f;
     private const float LoiterIasKt = 280f;
     private const float LoiterMaxVsFpm = 1500f;
+
+    // Lazo suave: planner a 10 Hz, rumbo filtrado, alabeo y velocidad
+    // con rampa, bajada de morro limitada, vertical protegido de G baja.
+    private const float PlanPeriodSec = 0.1f;
+    private const float PhaseMinDwellSec = 1.5f;
+    private const float TrackFilterTauSec = 0.25f;
+    private const float InterceptBankRampDegPerSec = 25f;
+    private const float IasCmdRateKtPerSec = 25f;
+    private const float PitchFallRateDegPerSec = 6f;
+    private const float LowGGuard = 0.5f;
 
     private const float VneMarginFactor = 0.92f;
     private const float MinOwnIasKt = 120f;

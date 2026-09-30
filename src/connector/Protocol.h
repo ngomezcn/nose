@@ -44,7 +44,7 @@ namespace proto {
 // rechaza (y loguea) un HELLO con una version distinta en vez de
 // interpretar bytes con el layout equivocado, que es la clase de bug que
 // se manifiesta como "el avion hace cosas raras" en vez de como un error.
-constexpr uint16_t kVersion = 4;
+constexpr uint16_t kVersion = 5;
 
 constexpr const char* kPipeName = "\\\\.\\pipe\\AICopilot.v1";
 
@@ -70,6 +70,7 @@ enum class Op : uint8_t {
     // Payload:
     //   u8  flags   bit0=ownLabel bit1=otherLabels bit2=lines
     //               bit3=markers bit4=path
+    //               bit5=interceptPath
     //   u8  font    0=Basic 1=Proportional
     //   f32 r,g,b   color 0..1
     //   f32 scale   tamano relativo (marcador / grosor de linea)
@@ -82,6 +83,14 @@ enum class Op : uint8_t {
     //   f64 aiLat, aiLon, aiElevMsl, aiHdgTrue, aiSpeedMps
     //   str aiAircraftRelPath  (relativo a la raiz de X-Plane; vacio = C172)
     PlaceScenario = 0x0D,
+    // Ruta de interceptacion dibujada en el mundo 3D (flag bit5 de
+    // GraphicsConfig). Coordenadas locales OGL absolutas (+X este, +Y arriba,
+    // +Z sur). El core la reenvia a <=10 Hz; el connector la da por caducada
+    // si pasa >1 s sin actualizar. count=0 la borra.
+    // Payload:
+    //   u8  count   0..64
+    //   count x (f64 x, f64 y, f64 z)
+    InterceptPath = 0x0E,
 
     // --- connector -> core ---
     HelloAck = 0x81,

@@ -13,7 +13,7 @@ namespace AICopilotCore.Connector;
 // como double sea cual sea el tipo real del dataref.
 public static class Protocol
 {
-    public const ushort Version = 4;
+    public const ushort Version = 5;
 
     // El lado C# usa el nombre corto: NamedPipeClientStream le pone el
     // \.\pipe\ delante solo.
@@ -43,6 +43,8 @@ public enum Op : byte
     GraphicsConfig = 0x0C,
     // Escenario fijo usuario+IA: ver Protocol.h (lat/lon/elev/hdg/spd + path).
     PlaceScenario = 0x0D,
+    // Polilinea de interceptacion: ver Protocol.h (u8 count + count x 3 f64).
+    InterceptPath = 0x0E,
 
     // connector -> core
     HelloAck = 0x81,

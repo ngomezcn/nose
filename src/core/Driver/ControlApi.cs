@@ -37,10 +37,20 @@ public sealed class ControlApi
             maneuver = new { running = director.Maneuvers.IsRunning },
             intercept = new
             {
-                running = director.Intercept.IsRunning,
-                phase = director.Intercept.Phase.ToString(),
-                index = director.Intercept.TargetIndex,
-                station = director.Intercept.Station.ToString(),
+                running = director.Intercept.IsRunning || director.IsInterceptPending,
+                pendingTakeoff = director.IsInterceptPending,
+                phase = director.IsInterceptPending
+                    ? "OwnTakeoff"
+                    : director.Intercept.Phase.ToString(),
+                index = director.IsInterceptPending
+                    ? director.PendingInterceptIndex
+                    : director.Intercept.TargetIndex,
+                station = director.IsInterceptPending
+                    ? "" // estación se aplica tras el handoff
+                    : director.Intercept.Station.ToString(),
+                label = director.IsInterceptPending
+                    ? director.PendingInterceptLabel
+                    : director.Intercept.TargetLabel,
             },
             log = director.RecentLog.TakeLast(10),
         })));

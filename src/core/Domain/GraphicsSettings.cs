@@ -11,12 +11,14 @@ public sealed class GraphicsSettings
     public const byte FlagLines = 1 << 2;
     public const byte FlagMarkers = 1 << 3;
     public const byte FlagPath = 1 << 4;
+    public const byte FlagInterceptPath = 1 << 5;
 
     public bool ShowOwnLabel { get; set; } = true;
     public bool ShowOtherLabels { get; set; }
     public bool ShowLines { get; set; }
     public bool ShowMarkers { get; set; }
     public bool ShowPath { get; set; }
+    public bool ShowInterceptPath { get; set; }
 
     // 0 = Basic (mas pequena), 1 = Proportional (la del label "Jev" actual).
     private int _font = 1;
@@ -76,6 +78,7 @@ public sealed class GraphicsSettings
             if (ShowLines) f |= FlagLines;
             if (ShowMarkers) f |= FlagMarkers;
             if (ShowPath) f |= FlagPath;
+            if (ShowInterceptPath) f |= FlagInterceptPath;
             return f;
         }
     }
@@ -87,6 +90,7 @@ public sealed class GraphicsSettings
         ShowLines = false;
         ShowMarkers = false;
         ShowPath = false;
+        ShowInterceptPath = false;
         Font = 1;
         ColorR = 1.0f;
         ColorG = 0.85f;

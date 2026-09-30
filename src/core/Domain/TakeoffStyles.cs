@@ -137,6 +137,38 @@ public static class TakeoffStyles
         CruiseIasKt = 400f,
     };
 
+    // Misma energia que Combate, pero la secuencia corta en cuanto hay
+    // altura minima limpia: el giro lo hace ya la interceptacion hacia el
+    // blanco, no un viraje fijo de salida de pista. No aparece en los
+    // toggles de la UI de despegue; solo lo usa FlightDirector.
+    public static readonly TakeoffStyle CombatIntercept = new()
+    {
+        Id = TakeoffStyleId.Combat,
+        Name = "Combate",
+        Summary = "Despegue combate previo a interceptacion: a minima altura " +
+                  "se cede el control al interceptor.",
+        VrKt = 160f,
+        RotatePitchDeg = 15f,
+        ClimbPitchDeg = 18f,
+        EnroutePitchDeg = 15f,
+        LevelPitchDeg = 2.5f,
+        TurnHeightFt = 500f,
+        TurnDeltaDeg = 0f,
+        LevelHeightFt = 1000f,
+        MaxBankDeg = 45f,
+        PitchRampDegPerSec = 8f,
+        ReactionDelaySeconds = 0.2f,
+        HeadingCaptureDeg = 5f,
+        TakeoffFlapRatio = 0.15f,
+        FlapRetract1Kt = 200f,
+        FlapRetract2Kt = 250f,
+        GearUpAglFt = 15f,
+        RollIasKt = 350f,
+        CleanupIasKt = 320f,
+        ClimbIasKt = 350f,
+        CruiseIasKt = 400f,
+    };
+
     public static readonly TakeoffStyle Emergency = new()
     {
         Id = TakeoffStyleId.Emergency,

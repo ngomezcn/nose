@@ -253,6 +253,24 @@ public sealed class ConnectorClient : IDisposable
         Send(w);
     }
 
+    // Ruta de interceptacion (coords locales OGL absolutas). Vacia/null la
+    // borra en el connector. Maximo 64 puntos (se submuestrea si hay mas).
+    public void SetInterceptPath(IReadOnlyList<(double X, double Y, double Z)>? pts)
+    {
+        int n = pts?.Count ?? 0;
+        if (n > 64) n = 64;
+        var w = new MessageWriter(Op.InterceptPath);
+        w.U8((byte)n);
+        for (int i = 0; i < n; i++)
+        {
+            var p = pts![n == pts.Count ? i : (int)((long)i * (pts.Count - 1) / (n - 1))];
+            w.F64(p.X);
+            w.F64(p.Y);
+            w.F64(p.Z);
+        }
+        Send(w);
+    }
+
     // Teleporta usuario + IA a las coordenadas que decide el dominio
     // (SimScenario). El connector aplica PlaceUserAtLocation y, tras cargar
     // el aeropuerto, coloca la IA sin quedarsela (X-Plane la vuela).

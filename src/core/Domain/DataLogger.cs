@@ -5,11 +5,12 @@ using System.IO;
 
 namespace AICopilotCore.Domain;
 
-// Caja negra de vuelo: registro continuo de muestras para diagnosticar
-// temblores / oscilaciones y para pintar graficos (ver BlackBoxView).
-// No es logica de control -- no lee ni escribe datarefs por su cuenta, ni
-// decide nada del vuelo -- solo bufferiza lo que ShellWindow.Refresh() ya
-// calcula a ~10Hz y lo deja en tres sitios:
+// Caja negra de vuelo: registro de muestras para diagnosticar temblores /
+// oscilaciones y para pintar graficos (ver BlackBoxView). Arranca parado;
+// Empezar/Detener (panel CAJA NEGRA) activan IsRecording. No es logica de
+// control -- no lee ni escribe datarefs por su cuenta, ni decide nada del
+// vuelo -- solo bufferiza lo que ShellWindow.Refresh() ya calcula a ~10Hz
+// y lo deja en tres sitios:
 //
 //   1. Buffer tipado (TypedSamples) para la pestana de graficos del viewport.
 //   2. Buffer de lineas CSV (Samples) para la pestana "CAJA NEGRA" del panel
@@ -50,21 +51,53 @@ public sealed class DataLogger
 
     private StreamWriter? _writer;
 
+    // false = no escribe muestras ni eventos (salvo las marcas de
+    // Start/Stop). El fichero CSV se abre al arrancar la UI en modo
+    // append: un build/restart no tira el vuelo grabado. Clear() y la
+    // rotacion por tamano siguen truncando a proposito.
+    public bool IsRecording { get; private set; }
+
     public DataLogger()
+    {
+        PreservePreviousSnapshot();
+        OpenWriter(append: true);
+    }
+
+    // Copia DataLog.csv -> .previous solo si hay datos reales y no pisamos
+    // un snapshot anterior mas grande (dos restarts seguidos sin grabar
+    // no deben borrar el vuelo que quedo en .previous tras el primero).
+    private static void PreservePreviousSnapshot()
     {
         try
         {
             var info = new FileInfo(LogFilePath);
-            if (info.Exists && info.Length > Header.Length + 4)
-                File.Copy(LogFilePath, PreviousLogFilePath, overwrite: true);
+            if (!info.Exists || info.Length <= Header.Length + 4) return;
+
+            var prev = new FileInfo(PreviousLogFilePath);
+            if (prev.Exists && prev.Length > info.Length) return;
+
+            File.Copy(LogFilePath, PreviousLogFilePath, overwrite: true);
         }
         catch (IOException)
         {
         }
-        OpenWriter();
     }
 
     public int Count => Samples.Count;
+
+    public void StartRecording()
+    {
+        if (IsRecording) return;
+        IsRecording = true;
+        WriteEventLine("Inicio: grabacion", chartMarker: true);
+    }
+
+    public void StopRecording()
+    {
+        if (!IsRecording) return;
+        WriteEventLine("Fin: grabacion", chartMarker: true);
+        IsRecording = false;
+    }
 
     public void Record(
         string phase,
@@ -82,6 +115,7 @@ public sealed class DataLogger
         float pitchRateDps, float rollRateDps,
         string adaptation, string protection)
     {
+        if (!IsRecording) return;
         double tSec = _clock.Elapsed.TotalSeconds;
         _typed.Add(new BlackBoxSample(
             tSec,
@@ -123,7 +157,14 @@ public sealed class DataLogger
     // para pintar lineas verticales en la pestana de graficos. Las acciones
     // de vuelo (maniobra / intercept / despegue) pasan chartMarker=true;
     // mensajes del docker o de config solo van al CSV/log de texto.
+    // Sin grabacion activa se ignora (el log inferior de la UI sigue igual).
     public void RecordEvent(string note, bool chartMarker = false)
+    {
+        if (!IsRecording) return;
+        WriteEventLine(note, chartMarker);
+    }
+
+    private void WriteEventLine(string note, bool chartMarker)
     {
         if (chartMarker && note.Length > 0)
         {
@@ -160,7 +201,7 @@ public sealed class DataLogger
         CloseWriter();
         TryDelete(LogFilePath);
         TryDelete(PreviousLogFilePath);
-        OpenWriter();
+        OpenWriter(append: false);
     }
 
     // Las marcas que quedan detras del buffer tipado ya no se ven en el
@@ -199,23 +240,31 @@ public sealed class DataLogger
         {
             _writer?.Flush();
             _writer?.Dispose();
-            File.Copy(LogFilePath, PreviousLogFilePath, overwrite: true);
+            _writer = null;
+            var info = new FileInfo(LogFilePath);
+            var prev = new FileInfo(PreviousLogFilePath);
+            // Misma regla que al arrancar: no pisar un previous mas grande.
+            if (info.Exists && (!prev.Exists || info.Length >= prev.Length))
+                File.Copy(LogFilePath, PreviousLogFilePath, overwrite: true);
         }
         catch (IOException)
         {
         }
-        OpenWriter();
+        OpenWriter(append: false);
     }
 
-    private void OpenWriter()
+    private void OpenWriter(bool append = false)
     {
         try
         {
-            _writer = new StreamWriter(LogFilePath, append: false)
+            bool writeHeader = !append
+                || !File.Exists(LogFilePath)
+                || new FileInfo(LogFilePath).Length == 0;
+            _writer = new StreamWriter(LogFilePath, append)
             {
                 AutoFlush = true,
             };
-            _writer.WriteLine(Header);
+            if (writeHeader) _writer.WriteLine(Header);
         }
         catch (IOException)
         {

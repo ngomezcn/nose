@@ -279,6 +279,16 @@ void HandleMessage(const uint8_t* data, size_t size) {
             break;
         }
 
+        case proto::Op::InterceptPath: {
+            uint8_t n = r.U8();
+            if (!r.Ok() || n > 64) return;
+            double pts[64 * 3];
+            for (int i = 0; i < n * 3; ++i) pts[i] = r.F64();
+            if (!r.Ok()) return;
+            if (g_label) g_label->SetInterceptPath(pts, n);
+            break;
+        }
+
         case proto::Op::PlaceScenario: {
             double userLat = r.F64();
             double userLon = r.F64();

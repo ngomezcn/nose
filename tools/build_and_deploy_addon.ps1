@@ -169,7 +169,24 @@ if (-not $SkipLaunch) {
         $running = Get-Process -Name "AICopilotCore" -ErrorAction SilentlyContinue
         if ($running) {
             Write-Host "Reiniciando AICopilotCore.exe para reconectar tras el reload..."
-            $running | Stop-Process -Force -ErrorAction SilentlyContinue
+            # Respaldo de caja negra + cierre suave (igual que build_and_deploy_ui).
+            $csv = Join-Path $DestDir "DataLog.csv"
+            $prev = Join-Path $DestDir "DataLog.previous.csv"
+            if (Test-Path $csv) {
+                $len = (Get-Item $csv).Length
+                $prevLen = 0
+                if (Test-Path $prev) { $prevLen = (Get-Item $prev).Length }
+                if ($len -ge 200 -and $len -ge $prevLen) {
+                    Copy-Item -Path $csv -Destination $prev -Force
+                    Write-Host "Caja negra respaldada -> DataLog.previous.csv ($len bytes)"
+                }
+            }
+            foreach ($p in $running) {
+                try { $p.CloseMainWindow() | Out-Null } catch { }
+            }
+            Start-Sleep -Milliseconds 800
+            Get-Process -Name "AICopilotCore" -ErrorAction SilentlyContinue |
+                Stop-Process -Force -ErrorAction SilentlyContinue
             Start-Sleep -Milliseconds 300
         } else {
             Write-Host "Lanzando AICopilotCore.exe..."

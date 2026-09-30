@@ -28,10 +28,34 @@ $CorePublishOut = Join-Path $RepoRoot "src\core\bin\Release\net10.0-windows\win-
 $CoreDest = Join-Path $DestDir "AICopilotCore.exe"
 
 # --- 0. Cerrar el core si esta abierto --------------------------------------
+# Cierre suave primero (Window.Closing -> DataLogger.Close) para flush del
+# CSV; si no, Stop-Process -Force puede dejar la caja negra a medias.
+# Ademas se respalda DataLog.csv -> .previous antes de matar el proceso,
+# por si el cierre suave no llega a dispararse.
+function Backup-DataLog([string]$dir) {
+    $csv = Join-Path $dir "DataLog.csv"
+    $prev = Join-Path $dir "DataLog.previous.csv"
+    if (-not (Test-Path $csv)) { return }
+    $len = (Get-Item $csv).Length
+    if ($len -lt 200) { return }
+    $prevLen = 0
+    if (Test-Path $prev) { $prevLen = (Get-Item $prev).Length }
+    if ($len -ge $prevLen) {
+        Copy-Item -Path $csv -Destination $prev -Force
+        Write-Host "Caja negra respaldada -> DataLog.previous.csv ($len bytes)"
+    }
+}
+
 $coreWasRunning = Get-Process -Name "AICopilotCore" -ErrorAction SilentlyContinue
 if ($coreWasRunning) {
     Write-Host "Cerrando AICopilotCore.exe (instancia abierta)..."
-    $coreWasRunning | Stop-Process -Force -ErrorAction SilentlyContinue
+    Backup-DataLog $DestDir
+    foreach ($p in $coreWasRunning) {
+        try { $p.CloseMainWindow() | Out-Null } catch { }
+    }
+    Start-Sleep -Milliseconds 800
+    Get-Process -Name "AICopilotCore" -ErrorAction SilentlyContinue |
+        Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 300
 }
 
