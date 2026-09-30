@@ -315,6 +315,27 @@ public sealed class ConnectorClient : IDisposable
     // Sentinel de Op.CameraFollow: vista aerea que enmarca todas las naves.
     public const byte CameraOverviewIndex = 255;
 
+    // Bolita 3D del puesto objetivo. Posicion/velocidad en el marco estable del
+    // core (el connector resta el offset del origen). enabled=false la oculta.
+    public void SetStationMarker(bool enabled, double x, double y, double z,
+                                 float vx, float vy, float vz, float radiusM,
+                                 float r, float g, float b)
+    {
+        var w = new MessageWriter(Op.StationMarker);
+        w.U8(enabled ? (byte)1 : (byte)0);
+        w.F64(x);
+        w.F64(y);
+        w.F64(z);
+        w.F32(vx);
+        w.F32(vy);
+        w.F32(vz);
+        w.F32(radiusM);
+        w.F32(r);
+        w.F32(g);
+        w.F32(b);
+        Send(w);
+    }
+
     // Chase camara sobre un avion IA (XPLMControlCamera). xplmIndex 1..19.
     public void FollowCamera(int xplmIndex)
     {

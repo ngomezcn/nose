@@ -1,3 +1,5 @@
+using AICopilotCore.Domain.Agents;
+
 namespace AICopilotCore.Domain;
 
 // El planificador: coge la INTENCION de una maniobra (Maneuvers.cs) y el
@@ -30,6 +32,7 @@ namespace AICopilotCore.Domain;
 public sealed class ManeuverPlanner
 {
     private readonly ControlTuning _tuning;
+    private readonly IFlightProfile _profile;
 
     // Estado con memoria: filtros y anclas que necesitan continuidad entre
     // frames. Se reinician al empezar cada maniobra (Reset).
@@ -39,7 +42,11 @@ public sealed class ManeuverPlanner
     private float _entryIasKt = float.NaN;
     private float _aoaFilteredDeg = 3f;
 
-    public ManeuverPlanner(ControlTuning tuning) => _tuning = tuning;
+    public ManeuverPlanner(ControlTuning tuning, IFlightProfile? profile = null)
+    {
+        _tuning = tuning;
+        _profile = profile ?? F14Profile.Instance;
+    }
 
     // Altitud anclada al empezar (la que defienden los virajes y
     // Acelerar/Frenar) y velocidad de entrada. Publicas para la pantalla.
@@ -91,7 +98,7 @@ public sealed class ManeuverPlanner
         // ahora: si esta cayendo, el alabeo tiene que empezar a aflojar antes
         // de quedarse sin sustentacion, no cuando ya se quedo.
         float iasAhead = MathF.Max(s.IasKt + _iasRateKtPerSec * _tuning.SpeedLookaheadSeconds, 60f);
-        float nAvailable = F14Aero.UsableLoadFactor(iasAhead, s.WeightLb, s.MachNo);
+        float nAvailable = _profile.UsableLoadFactor(iasAhead, s.WeightLb, s.MachNo);
         float gBudgetMax = MathF.Min(def.GBudgetMax, nAvailable);
         float gBudgetMin = def.GPushMin;
 
@@ -122,7 +129,7 @@ public sealed class ManeuverPlanner
         // maniobra, y -- en los virajes suaves -- el que mantiene coordinada la
         // entrada (que la carga del ala crezca al ritmo que pide la maniobra y
         // no de golpe). Es lo que evita la comba de morro al entrar.
-        float rollRateAvail = F14Aero.RollRateAvailableDegPerSec(s.TasKt);
+        float rollRateAvail = _profile.RollRateAvailableDegPerSec(s.TasKt);
         float bankRate = MathF.Min(rollRateAvail, def.BankRateCapDegPerSec);
         float phiNow = MathF.Abs(s.BankDeg) * F14Aero.Deg2Rad;
         if (def.GOnsetGPerSec < 3f && phiNow > 0.05f)
@@ -232,7 +239,7 @@ public sealed class ManeuverPlanner
         // mas. En vuelo se vio exactamente eso -- el morro subiendo solo hasta
         // quedarse colgado a 84 kt. El error del modelo lo corrige el lazo de
         // V/S, que es el que tiene autoridad limitada y pasa por la rampa.
-        float aoaCmd = Math.Clamp(F14Aero.LevelAoaDeg(s.IasKt, s.WeightLb, nForBank),
+        float aoaCmd = Math.Clamp(_profile.LevelAoaDeg(s.IasKt, s.WeightLb, nForBank),
                                   0f, F14Aero.MaxAutoAoaDeg);
         float pitchCmd = gammaCmd + aoaCmd;
 
@@ -318,7 +325,7 @@ public sealed class ManeuverPlanner
     public AcroPlan PlanAerobatic(ManeuverDefinition def, in FlightState s)
     {
         var notes = new AdaptationNotes();
-        float nAvailable = F14Aero.UsableLoadFactor(s.IasKt, s.WeightLb, s.MachNo);
+        float nAvailable = _profile.UsableLoadFactor(s.IasKt, s.WeightLb, s.MachNo);
         float nCmd = MathF.Min(def.GBudgetMax, nAvailable);
 
         // Las acrobacias sin arco vertical (rollos) no piden altura: el plan es

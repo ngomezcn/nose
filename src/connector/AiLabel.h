@@ -113,7 +113,144 @@ public:
         }
     }
 
+    // Offset de origen (ver OriginWatch): los rastros se guardan en marco
+    // estable (real + offset) para no romperse cuando X-Plane mueve el origen.
+    void SetOriginOffset(double x, double z) { mOffX = x; mOffZ = z; }
+
+    // Metros por detras del avion (XPLM 0..19) donde arranca su rastro.
+    void SetTrailBehind(int plane, float meters) {
+        if (plane >= 0 && plane < kMaxPlanes)
+            mTrailBehindM[plane] = std::clamp(meters, 0.0f, 500.0f);
+    }
+
 private:
+    // Por debajo de esta distancia 3D al ownship no se dibuja el triangulo.
+    static constexpr float kTriangleHideDistM = 300.0f;
+
+    // Rastro: un punto cada kTrailStepSec, kTrailMax puntos (~2 min).
+    static constexpr int kTrailMax = 480;
+    static constexpr float kTrailStepSec = 0.25f;
+    static constexpr double kTrailJumpM = 2000.0;
+    struct Trail {
+        double x[kTrailMax], y[kTrailMax], z[kTrailMax];
+        int head = 0;   // siguiente escritura
+        int count = 0;
+        void Clear() { head = 0; count = 0; }
+    };
+    Trail mTrails[kMaxPlanes];
+    // Metros por detras del avion donde empieza a verse su rastro:
+    // ownship 10 m, IAs 25 m (configurable con SetTrailBehind).
+    float mTrailBehindM[kMaxPlanes] = {10.0f, 25.0f, 25.0f, 25.0f, 25.0f, 25.0f,
+                                       25.0f, 25.0f, 25.0f, 25.0f, 25.0f, 25.0f,
+                                       25.0f, 25.0f, 25.0f, 25.0f, 25.0f, 25.0f,
+                                       25.0f, 25.0f};
+    float mTrailLastSample = -100.0f;
+    double mOffX = 0.0, mOffZ = 0.0;
+
+    // Color fijo por avion (semitransparente al dibujar).
+    static void TrailColor(int plane, float& r, float& g, float& b) {
+        static const float pal[10][3] = {
+            {1.00f, 0.85f, 0.10f}, {0.20f, 0.85f, 1.00f}, {1.00f, 0.35f, 0.35f},
+            {0.45f, 1.00f, 0.45f}, {0.85f, 0.45f, 1.00f}, {1.00f, 0.60f, 0.15f},
+            {0.35f, 0.55f, 1.00f}, {1.00f, 0.45f, 0.80f}, {0.65f, 1.00f, 0.85f},
+            {0.90f, 0.90f, 0.90f}};
+        const float* c = pal[plane % 10];
+        r = c[0]; g = c[1]; b = c[2];
+    }
+
+    void SampleTrails(int active, double ownX, double ownY, double ownZ,
+                      const double* aiX, const double* aiY, const double* aiZ) {
+        const float now = XPLMGetElapsedTime();
+        const float dt = now - mTrailLastSample;
+        if (dt < kTrailStepSec) return;
+        const bool stale = dt > 1.5f;   // graficos estuvieron apagados/pausa
+        mTrailLastSample = now;
+        for (int i = 0; i < kMaxPlanes; ++i) {
+            Trail& t = mTrails[i];
+            if (i >= active) { t.Clear(); continue; }
+            double x = (i == 0 ? ownX : aiX[i - 1]) + mOffX;
+            double y = (i == 0 ? ownY : aiY[i - 1]);
+            double z = (i == 0 ? ownZ : aiZ[i - 1]) + mOffZ;
+            if (stale) t.Clear();
+            if (t.count > 0) {
+                const int last = (t.head + kTrailMax - 1) % kTrailMax;
+                if (std::fabs(x - t.x[last]) + std::fabs(z - t.z[last]) > kTrailJumpM)
+                    t.Clear();   // teletransporte / reset de marco
+            }
+            t.x[t.head] = x; t.y[t.head] = y; t.z[t.head] = z;
+            t.head = (t.head + 1) % kTrailMax;
+            if (t.count < kTrailMax) ++t.count;
+        }
+    }
+
+    // curX/Y/Z[i]: posicion viva (marco real) del avion i. El rastro se dibuja
+    // desde lo mas viejo hasta kTrailBehind[i] metros (a lo largo de la
+    // trayectoria) por detras del avion, no pegado a el.
+    void DrawTrails(int active, const double* curX, const double* curY,
+                    const double* curZ, const float* world, const float* proj,
+                    const int* vp) const {
+        const float vpL = static_cast<float>(vp[0]);
+        const float vpB = static_cast<float>(vp[1]);
+        const float vpR = vpL + vp[2];
+        const float vpT = vpB + vp[3];
+        glLineWidth(std::clamp(2.0f * mScale, 1.5f, 5.0f));
+        static thread_local double px[kTrailMax + 1], py[kTrailMax + 1],
+            pz[kTrailMax + 1];
+        for (int i = 0; i < active && i < kMaxPlanes; ++i) {
+            const Trail& t = mTrails[i];
+            if (t.count < 1) continue;
+            int n = 0;
+            for (int k = 0; k < t.count; ++k) {
+                const int idx = (t.head + kTrailMax - t.count + k) % kTrailMax;
+                px[n] = t.x[idx] - mOffX; py[n] = t.y[idx]; pz[n] = t.z[idx] - mOffZ;
+                ++n;
+            }
+            px[n] = curX[i]; py[n] = curY[i]; pz[n] = curZ[i];
+            ++n;
+
+            // Recorta los ultimos mTrailBehindM[i] metros de trayectoria.
+            double remaining = mTrailBehindM[i];
+            bool cut = remaining <= 0.0;
+            for (int j = n - 1; j >= 1 && !cut; --j) {
+                const double dx = px[j - 1] - px[j], dy = py[j - 1] - py[j],
+                             dz = pz[j - 1] - pz[j];
+                const double seg = std::sqrt(dx * dx + dy * dy + dz * dz);
+                if (seg >= remaining && seg > 1e-6) {
+                    const double f = remaining / seg;
+                    px[j] += dx * f; py[j] += dy * f; pz[j] += dz * f;
+                    n = j + 1;
+                    cut = true;
+                } else {
+                    remaining -= seg;
+                }
+            }
+            if (!cut || n < 2) continue;   // aun no hay tanto rastro
+
+            float r, g, b;
+            TrailColor(i, r, g, b);
+            float psx = 0, psy = 0;
+            bool pok = false;
+            glBegin(GL_LINES);
+            for (int k = 0; k < n; ++k) {
+                float sx = 0, sy = 0;
+                const bool ok = ProjectSoft(px[k], py[k], pz[k], world, proj, vp, sx, sy);
+                if (pok && ok) {
+                    float x0 = psx, y0 = psy, x1 = sx, y1 = sy;
+                    if (ClipLine(x0, y0, x1, y1, vpL, vpB, vpR, vpT)) {
+                        // Mas viejo = mas transparente (max ~0.45).
+                        const float a = 0.45f * static_cast<float>(k) / n;
+                        glColor4f(r, g, b, a);
+                        glVertex2f(x0, y0);
+                        glVertex2f(x1, y1);
+                    }
+                }
+                psx = sx; psy = sy; pok = ok;
+            }
+            glEnd();
+        }
+        glLineWidth(1.0f);
+    }
+
     static constexpr uint8_t kFlagLines = 1 << 2;
     static constexpr uint8_t kFlagMarkers = 1 << 3;
     static constexpr uint8_t kFlagPath = 1 << 4;
@@ -283,6 +420,14 @@ private:
             }
         }
 
+        {
+            double aiX[kMaxAi], aiY[kMaxAi], aiZ[kMaxAi];
+            for (int s = 0; s < kMaxAi; ++s) {
+                aiX[s] = ai[s].x; aiY[s] = ai[s].y; aiZ[s] = ai[s].z;
+            }
+            SampleTrails(active, ownX, ownY, ownZ, aiX, aiY, aiZ);
+        }
+
         if (mFlags & kFlagMarkers)
             LogDiamond(ownX, ownY, ownZ, ownCgOk, ownCgSx, ownCgSy,
                        ai[0].x, ai[0].y, ai[0].z, ai[0].cgOk, ai[0].cgSx, ai[0].cgSy,
@@ -294,6 +439,14 @@ private:
             XPLMSetGraphicsState(0 /*fog*/, 0 /*tex*/, 0 /*light*/,
                                  0 /*alpha test*/, 1 /*blend*/,
                                  0 /*depth test*/, 0 /*depth write*/);
+            {
+                double cX[kMaxPlanes], cY[kMaxPlanes], cZ[kMaxPlanes];
+                cX[0] = ownX; cY[0] = ownY; cZ[0] = ownZ;
+                for (int s = 0; s < kMaxAi; ++s) {
+                    cX[s + 1] = ai[s].x; cY[s + 1] = ai[s].y; cZ[s + 1] = ai[s].z;
+                }
+                DrawTrails(active, cX, cY, cZ, world, proj, viewport);
+            }
             const float lineW = std::clamp(1.0f * mScale, 1.0f, 4.0f);
             glLineWidth(lineW);
 
@@ -326,7 +479,9 @@ private:
                                            /*signedLabel=*/false);
                     }
 
-                    if ((mFlags & kFlagTriangle) && cornerOk) {
+                    // Regla de ocultacion: a menos de 300 m no hay triangulo.
+                    if ((mFlags & kFlagTriangle) && cornerOk &&
+                        dist3d >= kTriangleHideDistM) {
                         // Si la linea recta esta activa, un cateto casi
                         // alineado con ella en pantalla es redundante: se
                         // solapa. Sin linea recta se dibujan los dos.

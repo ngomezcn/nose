@@ -24,8 +24,14 @@ public sealed class A330Profile : IFlightProfile
     }
 
     public string Name => "A330";
-    // Peso de crucero tipico; la aero F-14 se usa solo como esqueleto cinematico.
-    public float ReferenceWeightLb => 380000f;
+    // La cinematica reusa el esqueleto F-14 (ver Accel/AoA/UsableLF abajo).
+    // El State.WeightLb alimenta ManeuverPlanner / EnvelopeProtection via
+    // F14Aero, asi que DEBE ser el peso de referencia del caza: poner aqui
+    // el peso de placa del A330 (~380.000 lb) deja UsableLoadFactor en el
+    // suelo (1.05 g) y el planificador manda alabeo 0 / subida 0 — las
+    // acciones de ruta "no hacen nada". El caracter airliner viene del
+    // tope de alabeo, ritmos y el *0.45 de aceleracion.
+    public float ReferenceWeightLb => F14Aero.ReferenceWeightLb;
     public float VneKt => 365f;
     public float PitchLagSec { get; }
     public float RollLagSec { get; }

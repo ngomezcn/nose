@@ -289,7 +289,7 @@ public static class InterceptPlanner
     // Zona de seguridad alrededor del blanco: dentro, se empuja radialmente
     // hacia fuera (proporcional a la intrusion) antes de que actue la guardia
     // dura de la secuencia. Radio/altura: ControlTuning.SafeHorizontalM/SafeVerticalM.
-    private const double RouteMaxM = 600.0;
+    private const double RouteMaxM = 2500.0;
     private const double CrossLinearM = 60.0;
     private const double CrossAccelMps2 = 2.0;
     private const double SafePushScaleMps = 40.0;
@@ -787,23 +787,21 @@ public static class InterceptPlanner
         GetStationPoint(t, x, out double sE, out double sN, out double sU);
 
         // Ruta segura al puesto: si la recta hacia el (en el marco del blanco)
-        // pasa por su zona segura, se apunta antes a un punto de paso DETRAS
-        // del blanco, del lado en que ya se esta, y luego al puesto.
+        // pasa por su zona segura, se apunta antes a un punto de paso a un lado
+        // del blanco (perpendicular a la recta en su punto mas cercano, a 1.5
+        // radios seguros), y luego al puesto. Vale para cualquier azimut: pasar
+        // por detras, rodear por el costado o ir a un puesto delante de el.
         double clear = 1.5 * x.SafeH;
         double pAlong = a - x.Aft, pCross = c + x.Right;
         double sAlong = -x.Aft, sCross = x.Right;
-        if (dh < RouteMaxM && SegmentMissM(pAlong, pCross, sAlong, sCross) < clear)
+        bool routed = false;
+        if (dh < RouteMaxM &&
+            RouteWaypoint(pAlong, pCross, sAlong, sCross, clear, out double wAlong, out double wCross))
         {
-            // Punto de paso lo mas cerca posible: justo detras del blanco. Si ya
-            // se esta por detras de su travesano se corta directo hacia el eje;
-            // si se esta por delante, se sigue del lado actual hasta quedar detras.
-            double vAlong = Math.Min(sAlong, -1.5 * clear);
-            double vCross = 0.0;
-            if (SegmentMissM(pAlong, pCross, vAlong, vCross) < clear)
-                vCross = (pCross >= 0.0 ? 1.0 : -1.0) * Math.Max(Math.Abs(pCross), 1.3 * clear);
-            a = pAlong - vAlong;
-            c = pCross - vCross;
+            a = pAlong - wAlong;
+            c = pCross - wCross;
             dh = Math.Sqrt(a * a + c * c);
+            routed = true;
         }
         var cmd = new Cmd
         {
@@ -820,7 +818,7 @@ public static class InterceptPlanner
         // (con una correccion lateral acotada) y se frena por debajo de su
         // velocidad hasta que nos adelante. Sobre la zona de estacion lo
         // resuelve la ley de marco de abajo.
-        if (dh >= x.Zone && a > 0.0 && dh < DropBackMaxM)
+        if (!routed && dh >= x.Zone && a > 0.0 && dh < DropBackMaxM)
         {
             double off = Math.Clamp(-c * DropBackLatDegPerM * Deg, -DropBackMaxOffRad, DropBackMaxOffRad);
             double wBack = Math.Min(DropBackBaseMps + DropBackGain * a, DropBackCapMps);
@@ -834,7 +832,7 @@ public static class InterceptPlanner
             return cmd;
         }
 
-        if (dh >= x.Zone)
+        if (!routed && dh >= x.Zone)
         {
             // Fuera de la zona de estacion se guia en INERCIAL: persecucion con
             // adelanto hacia la estacion PREDICHA, con el cierre racionado sobre
@@ -922,6 +920,27 @@ public static class InterceptPlanner
         // Feed-forward: termino de blanco maniobrante (a poca distancia).
         cmd.PsiDotFF = dh < 4000.0 ? t.Omega : 0.0;
         return cmd;
+    }
+
+    // Punto de paso si la recta p0 -> p1 pasa a menos de `clear` del origen
+    // (el blanco). Devuelve false si la recta ya es segura.
+    private static bool RouteWaypoint(double x0, double y0, double x1, double y1, double clear,
+                                      out double wx, out double wy)
+    {
+        wx = wy = 0.0;
+        double dx = x1 - x0, dy = y1 - y0;
+        double l2 = dx * dx + dy * dy;
+        double u = l2 < 1e-6 ? 0.0 : Math.Clamp(-(x0 * dx + y0 * dy) / l2, 0.0, 1.0);
+        double mx = x0 + u * dx, my = y0 + u * dy;
+        if (Math.Sqrt(mx * mx + my * my) >= clear) return false;
+        double len = Math.Sqrt(l2);
+        if (len < 1e-6) { wx = -1.5 * clear; wy = 0.0; return true; }
+        double nx = -dy / len, ny = dx / len;
+        double side = mx * nx + my * ny;
+        double sgn = Math.Abs(side) < 1e-3 ? (y0 >= 0.0 ? 1.0 : -1.0) : Math.Sign(side);
+        wx = sgn * nx * 1.5 * clear;
+        wy = sgn * ny * 1.5 * clear;
+        return true;
     }
 
     // Distancia minima del origen (el blanco) al segmento p0->p1 (marco del blanco).

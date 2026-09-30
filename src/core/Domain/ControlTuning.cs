@@ -340,32 +340,18 @@ public sealed class ControlTuning
     // hardcodeados antes de que existiera esta clase).
     // --- Interceptacion (InterceptSequence) ---------------------------------
     //
-    // Cada puesto del catalogo (Domain/Intercept.cs) tiene SU PROPIA
-    // configuracion de distancias: metros por detras del blanco, separacion
-    // lateral y separacion vertical (en modulo; el lado / signo vertical lo
-    // pone el puesto). Se leen cada frame, asi que un cambio se aplica en
-    // caliente, incluso con la interceptacion en marcha.
-    public sealed record StationOffsets(float AftM, float LateralM, float VerticalM);
-
-    private static readonly StationOffsets[] StationDefaults =
+    // Puesto respecto al blanco en polares (azimut 0..360 alrededor de su
+    // avion, distancia horizontal y altura). Se lee cada frame: un cambio se
+    // aplica en caliente, incluso con la interceptacion en marcha.
+    private StationSpec _station = StationSpec.Default;
+    public StationSpec Station
     {
-        /* TailHigh      */ new(200f, 0f, 40f),
-        /* ParallelRight */ new(50f, 100f, 0f),
-        /* ParallelLeft  */ new(50f, 100f, 0f),
-        /* Above         */ new(100f, 0f, 80f),
-        /* Below         */ new(100f, 0f, 80f),
-    };
-
-    private readonly StationOffsets[] _stationOffsets = (StationOffsets[])StationDefaults.Clone();
-
-    public StationOffsets GetStationOffsets(InterceptStation id) =>
-        Volatile.Read(ref _stationOffsets[(int)id]);
-
-    public void SetStationOffsets(InterceptStation id, float aftM, float lateralM, float verticalM) =>
-        Volatile.Write(ref _stationOffsets[(int)id], new StationOffsets(
-            Math.Clamp(aftM, 0f, 2000f),
-            Math.Clamp(lateralM, 0f, 1000f),
-            Math.Clamp(verticalM, 0f, 500f)));
+        get => Volatile.Read(ref _station);
+        set => Volatile.Write(ref _station, new StationSpec(
+            ((value.AzimuthDeg % 360f) + 360f) % 360f,
+            Math.Clamp(value.DistanceM, 0f, 2000f),
+            Math.Clamp(value.HeightM, -500f, 500f)));
+    }
 
     // Zona de seguridad alrededor del blanco: cilindro de radio horizontal y
     // semialtura vertical. Dentro, el planner empuja hacia fuera y la
@@ -386,18 +372,22 @@ public sealed class ControlTuning
 
     // Puesto resuelto a (atras, derecha, arriba) con signo, listo para la
     // geometria. Un puesto configurado DENTRO de la zona de seguridad se
-    // aleja (hacia atras) hasta su borde + 30 %: no tiene sentido pedir
+    // aleja (radialmente) hasta su borde + 30 %: no tiene sentido pedir
     // formar en un sitio que el propio guiado esta empujando a abandonar.
-    public (float Aft, float Right, float Up) ResolveStation(InterceptStation id)
+    public (float Aft, float Right, float Up) ResolveStation()
     {
-        InterceptStationDef def = InterceptCatalog.Get(id);
-        StationOffsets o = GetStationOffsets(id);
-        float aft = o.AftM;
-        float right = Math.Sign(def.RightFactor) * o.LateralM;
-        float up = Math.Sign(def.UpFactor) * o.VerticalM;
+        StationSpec spec = Station;
+        (float aft, float right, float up) = spec.Offsets();
         float minH = SafeHorizontalM * 1.3f;
-        if (MathF.Abs(up) < SafeVerticalM * 1.3f && MathF.Sqrt(aft * aft + right * right) < minH)
-            aft = MathF.Sqrt(MathF.Max(minH * minH - right * right, 0f));
+        if (MathF.Abs(up) < SafeVerticalM * 1.3f)
+        {
+            float d = MathF.Sqrt(aft * aft + right * right);
+            if (d < minH)
+            {
+                if (d < 1e-3f) { aft = minH; right = 0f; }
+                else { float k = minH / d; aft *= k; right *= k; }
+            }
+        }
         return (aft, right, up);
     }
 
@@ -443,7 +433,7 @@ public sealed class ControlTuning
         MinTargetIasKt = 130f;
         MaxTargetIasKt = 650f;
 
-        for (int i = 0; i < StationDefaults.Length; i++) _stationOffsets[i] = StationDefaults[i];
+        Station = StationSpec.Default;
         SafeHorizontalM = 25f;
         SafeVerticalM = 15f;
     }

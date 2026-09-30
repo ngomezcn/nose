@@ -124,7 +124,10 @@ public sealed class InterceptSequence
 
     private int _targetIndex = -1;
     private string _targetLabel = "";
-    private InterceptStation _station = InterceptStation.TailHigh;
+    // Ultimo puesto resuelto: detecta cambios en caliente (deslizadores).
+    private (float Aft, float Right, float Up) _lastStation;
+    private bool _haveLastStation;
+    private float _stationLogTimer;
 
     private InterceptPhase _phase = InterceptPhase.Idle;
     private float _statusLogTimer;
@@ -174,7 +177,6 @@ public sealed class InterceptSequence
     public bool IsRunning => _phase != InterceptPhase.Idle;
     public InterceptPhase Phase => _phase;
     public int TargetIndex => _targetIndex;
-    public InterceptStation Station => _station;
     public bool IsRepositioning => _repositioning;
     public string TargetLabel => _targetLabel;
 
@@ -219,8 +221,7 @@ public sealed class InterceptSequence
         {
             if (_phase == InterceptPhase.Idle) return "Sin interceptacion activa";
             string label = string.IsNullOrEmpty(_targetLabel) ? $"IA {_targetIndex}" : _targetLabel;
-            string station = InterceptCatalog.Get(_station).Label;
-            return $"Interceptar {label} · {PhaseName(_phase)} [{station}]";
+            return $"Interceptar {label} · {PhaseName(_phase)} [{_tuning.Station.Summary()}]";
         }
     }
 
@@ -241,7 +242,7 @@ public sealed class InterceptSequence
     // tipo de cosa que deja al usuario sin poder pilotar preguntandose por que.
     // afterOwnTakeoff: el director ya hizo el despegue combate; no re-exige
     // el umbral de IAS (puede estar justo por debajo un instante).
-    public bool Start(int xplmIndex, InterceptStation station, string label, out string refusal,
+    public bool Start(int xplmIndex, string label, out string refusal,
                       bool afterOwnTakeoff = false)
     {
         lock (_gate)
@@ -277,7 +278,7 @@ public sealed class InterceptSequence
 
             _targetIndex = xplmIndex;
             _targetLabel = label;
-            _station = station;
+            _haveLastStation = false;
             _didOwnTakeoff = afterOwnTakeoff;
 
             _pitchPid.Reset();
@@ -317,15 +318,14 @@ public sealed class InterceptSequence
             _body.EnableThrottleOverride();
 
             SetPhase(InterceptPhase.Pursuit);
-            InterceptStationDef def = InterceptCatalog.Get(station);
             FlightState own = _body.State;
             string prelude = afterOwnTakeoff
-                ? $"Inicio: interceptar {label} tras despegue combate — {def.Label}"
-                : $"Inicio: interceptar {label} — {def.Label}";
+                ? $"Inicio: interceptar {label} tras despegue combate"
+                : $"Inicio: interceptar {label}";
             LogAction(BlackBoxSnap.Join(
                 prelude,
-                StationSummary(station),
-                InterceptConfigExtras(def),
+                StationSummary(),
+                InterceptConfigExtras(),
                 BlackBoxSnap.Of(own)));
             _repositioning = false;
             refusal = "";
@@ -333,64 +333,48 @@ public sealed class InterceptSequence
         }
     }
 
-    // Cambia el puesto de formacion con la interceptacion ya en marcha.
-    // En Station/Closing (o cerca) abre una transicion: se vuela un poco mas
-    // despacio que el blanco, se desliza al nuevo puesto y se vuelve a
-    // igualar. Lejos (Pursuit) solo actualiza el objetivo; el planner ya
-    // lleva el avion al sitio nuevo sin el frenado de formacion.
-    public bool ChangeStation(InterceptStation station, out string refusal)
+    // El puesto se lee de ControlTuning cada frame, asi que moverlo (azimut /
+    // distancia / altura) con la interceptacion en marcha lo aplica en
+    // caliente. Aqui solo se detecta el cambio para preparar la transicion:
+    // formacion (no un re-transito completo) y rampa de velocidad algo mas
+    // viva. Se rearma el planner y se loguea como mucho cada 2 s para que
+    // arrastrar un deslizador no inunde el registro.
+    private void TrackStationChange((float Aft, float Right, float Up) st, float dt)
     {
-        lock (_gate)
+        _stationLogTimer += dt;
+        if (!_haveLastStation)
         {
-            if (_phase == InterceptPhase.Idle)
-            {
-                refusal = "no hay interceptacion en marcha";
-                return false;
-            }
-            if (station == _station)
-            {
-                refusal = "";
-                return true;
-            }
+            _lastStation = st;
+            _haveLastStation = true;
+            return;
+        }
+        float d = MathF.Abs(st.Aft - _lastStation.Aft) + MathF.Abs(st.Right - _lastStation.Right) +
+                  MathF.Abs(st.Up - _lastStation.Up);
+        if (d < 0.5f) return;
+        _lastStation = st;
 
-            InterceptStation from = _station;
-            _station = station;
-            InterceptStationDef def = InterceptCatalog.Get(station);
-            bool near =
-                _phase is InterceptPhase.Station or InterceptPhase.Closing ||
-                (!double.IsNaN(RangeM) && RangeM < RepositionArmRangeM);
-
-            if (near)
-            {
-                _repositioning = true;
-                _announced = false;
-                _settledElapsed = 0f;
-                // Formacion, no un re-transito completo: el puesto nuevo suele
-                // estar a cientos de metros, no a kilometros.
-                if (_plannerMem is not null)
-                {
-                    _plannerMem = _plannerMem with
-                    {
-                        Stage = 1,
-                        SideLocked = false,
-                    };
-                }
-                if (_phase == InterceptPhase.Station)
-                    SetPhase(InterceptPhase.Closing,
-                        $"cambio de estacion {InterceptCatalog.Get(from).Label} → {def.Label}");
-            }
-
-            _plan = null;
-            _planTimer = 99f;
+        bool near = _phase is InterceptPhase.Station or InterceptPhase.Closing ||
+                    (!double.IsNaN(RangeM) && RangeM < RepositionArmRangeM);
+        if (near)
+        {
+            _repositioning = true;
+            _announced = false;
+            _settledElapsed = 0f;
+            if (_plannerMem is not null)
+                _plannerMem = _plannerMem with { Stage = 1, SideLocked = false };
+            if (_phase == InterceptPhase.Station)
+                SetPhase(InterceptPhase.Closing, "cambio de puesto");
+        }
+        _plan = null;
+        _planTimer = 99f;
+        if (_stationLogTimer >= 2f)
+        {
+            _stationLogTimer = 0f;
             LogAction(BlackBoxSnap.Join(
-                $"Interceptacion: cambio de estacion → {def.Label}",
-                StationSummary(station),
-                near
-                    ? "transicion: cruce rapido por detras del blanco con zona segura"
-                    : "en persecucion: el planificador apunta ya al puesto nuevo",
+                $"Interceptacion: puesto → {_tuning.Station.Summary()}",
+                near ? "transicion: cruce rapido por detras del blanco con zona segura"
+                     : "en persecucion: el planificador apunta ya al puesto nuevo",
                 InterceptLiveExtras()));
-            refusal = "";
-            return true;
         }
     }
 
@@ -597,8 +581,8 @@ public sealed class InterceptSequence
         }
 
         // --- Geometria ------------------------------------------------------
-        InterceptStationDef def = InterceptCatalog.Get(_station);
-        (float aft, float right, float up) = _tuning.ResolveStation(_station);
+        (float aft, float right, float up) = _tuning.ResolveStation();
+        TrackStationChange((aft, right, up), dt);
         // Blanco parado: el puesto de formacion se eleva a ~2 km para que el
         // interceptor no intente "formar" a ras de pista. El offset del
         // catalogo (p. ej. Abajo, UpFactor negativo) no puede dejar el puesto
@@ -799,7 +783,7 @@ public sealed class InterceptSequence
             Math.Abs(ClosureKt) < SettledClosureKt)
         {
             _repositioning = false;
-            LogAction($"Interceptacion: puesto {def.Label} alcanzado — igualo velocidad.");
+            LogAction("Interceptacion: puesto alcanzado — igualo velocidad.");
         }
 
         if (_phase == InterceptPhase.Station && now.RangeM < CaptureRangeM &&
@@ -811,7 +795,7 @@ public sealed class InterceptSequence
                 _announced = true;
                 _repositioning = false;
                 LogAction(BlackBoxSnap.Join(
-                    $"Fin: interceptacion establecida sobre {_targetLabel} — {def.Label}",
+                    $"Fin: interceptacion establecida sobre {_targetLabel} — {_tuning.Station.Summary()}",
                     $"{now.SeparationM:0} m sep, blanco {t.GroundSpeedKt:0} kt",
                     tooSlowForUs
                         ? "va demasiado lento: mantengo minimo seguro serpenteando"
@@ -1020,8 +1004,7 @@ public sealed class InterceptSequence
                              double ownX, double ownY, double ownZ,
                              double ownVx, double ownVy, double ownVz)
     {
-        InterceptStationDef def = InterceptCatalog.Get(_station);
-        (float aft, float right, float up) = _tuning.ResolveStation(_station);
+        (float aft, float right, float up) = _tuning.ResolveStation();
         InterceptGeometry g = InterceptGeometry.Solve(ownX, ownY, ownZ, t, aft, right, up, 0.0);
         RangeM = g.RangeM;
         SeparationM = g.SeparationM;
@@ -1122,14 +1105,10 @@ public sealed class InterceptSequence
             BlackBoxSnap.Short(own)));
     }
 
-    private string StationSummary(InterceptStation id)
-    {
-        (float aft, float right, float up) = _tuning.ResolveStation(id);
-        return InterceptStationDef.Summary(aft, right, up);
-    }
+    private string StationSummary() => _tuning.Station.Summary();
 
-    private string InterceptConfigExtras(InterceptStationDef _) =>
-        $"cfg {StationSummary(_station)} · zona segura {_tuning.SafeHorizontalM:0}m/{_tuning.SafeVerticalM:0}m · Gsoft={_tuning.GSoftHigh:0.0} " +
+    private string InterceptConfigExtras() =>
+        $"cfg {StationSummary()} · zona segura {_tuning.SafeHorizontalM:0}m/{_tuning.SafeVerticalM:0}m · Gsoft={_tuning.GSoftHigh:0.0} " +
         $"sueloAGL={_tuning.TerrainFloorAglFt:0}ft · " +
         $"umbrales cierre<{ClosingEnterM:0}m formacion<{StationEnterM:0}m salida>{StationExitM:0}m";
 

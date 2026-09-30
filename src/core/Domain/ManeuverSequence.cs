@@ -95,7 +95,7 @@ public sealed class ManeuverSequence
         _body = body;
         _profile = profile ?? F14Profile.Instance;
         _tuning = tuning;
-        _planner = new ManeuverPlanner(tuning);
+        _planner = new ManeuverPlanner(tuning, _profile);
         _protection = new EnvelopeProtection(tuning);
     }
 

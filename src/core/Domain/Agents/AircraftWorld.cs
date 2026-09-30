@@ -240,9 +240,10 @@ public sealed class AircraftWorld : ITargetSource
 
         if (plan.UserIntercept)
         {
-            if (Get(0).StartIntercept(1, plan.UserStation, aiLabel, out string err,
+            _tuning.Station = plan.UserStation;
+            if (Get(0).StartIntercept(1, aiLabel, out string err,
                                       alreadyFlying: !plan.UserOnGround))
-                lines.Add($"Interceptor: interceptando a {aiLabel} ({InterceptCatalog.Get(plan.UserStation).Label.ToLowerInvariant()}).");
+                lines.Add($"Interceptor: interceptando a {aiLabel} ({_tuning.Station.Summary()}).");
             else
                 lines.Add($"Interceptor: interceptacion rechazada ({err}).");
         }

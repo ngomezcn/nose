@@ -24,6 +24,7 @@ public partial class ShellWindow {
         bool intercept = a.Intercept.IsRunning;
         bool maneuver = a.Maneuvers.IsRunning;
         bool takeoff = a.Takeoff.IsRunning;
+        bool cruise = a.Cruise.IsRunning;
         const float N = float.NaN;
         return new AgentTargets(
             Pitch: intercept ? a.Intercept.LastPitchTarget : maneuver ? a.Maneuvers.LastPitchTarget
@@ -34,7 +35,10 @@ public partial class ShellWindow {
                : takeoff ? a.Takeoff.LastIasTarget : N,
             Vs: intercept ? a.Intercept.LastVsTarget : maneuver ? a.Maneuvers.LastVsTarget
               : takeoff ? a.Takeoff.LastVsTarget : N,
-            Alt: takeoff ? a.Takeoff.LastAltTarget : N,
+            // Ruta: la altitud objetivo vive en CruisePilot (nudges ±1000 ft).
+            Alt: takeoff ? a.Takeoff.LastAltTarget
+               : cruise ? a.Cruise.TargetAltitudeFt
+               : N,
             Heading: takeoff ? a.Takeoff.HeadingTargetDeg : intercept ? a.Intercept.LastDesiredTrack : N,
             Throttle01: intercept ? a.Intercept.LastThrottleCmd : maneuver ? a.Maneuvers.LastThrottleCmd
                       : takeoff ? a.Takeoff.LastThrottleCmd : N,
@@ -48,6 +52,7 @@ public partial class ShellWindow {
 
     private void Refresh() {
         bool connected = _client.IsConnected;
+        UpdateStationMarker();
         ConnectionStatus = connected
             ? $"Conectado a {_client.PluginVersion}"
             : "Sin conexion con el plugin";

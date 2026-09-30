@@ -28,7 +28,6 @@ public sealed class AircraftAgent
     private sealed class PendingIntercept
     {
         public required int Index { get; init; }
-        public required InterceptStation Station { get; init; }
         public required string Label { get; init; }
     }
 
@@ -172,10 +171,6 @@ public sealed class AircraftAgent
             modeText = "Manual";
         }
 
-        InterceptStation station;
-        lock (_pendingGate)
-            station = intercept ? Intercept.Station : (_pending?.Station ?? Intercept.Station);
-
         return new AgentView(
             XplmIndex, Label, Profile.Name, mode, modeText, sequence,
             TakeoffSequence.BuildChecklistLine(Takeoff.Phase),
@@ -184,7 +179,7 @@ public sealed class AircraftAgent
             maneuver, Maneuvers.ActiveLabel, Maneuvers.PhaseText,
             Maneuvers.AdaptationText, Maneuvers.ProtectionText,
             intercept, interceptPending, targetIdx, targetLabel,
-            Intercept.PhaseText, station);
+            Intercept.PhaseText);
     }
 
     // --- Ordenes ------------------------------------------------------------
@@ -320,7 +315,7 @@ public sealed class AircraftAgent
     // (A->B con B->A) con un mensaje claro, sin tocar lo que el avion ya hacia.
     // alreadyFlying: el llamador sabe que el avion esta en el aire (inicio de
     // simulacion en vuelo) aunque la telemetria aun diga IAS 0, p. ej. en pausa.
-    public bool StartIntercept(int targetIdx, InterceptStation station, string label,
+    public bool StartIntercept(int targetIdx, string label,
                                out string error, bool alreadyFlying = false)
     {
         if (!CheckConnected(out error)) return false;
@@ -347,7 +342,6 @@ public sealed class AircraftAgent
                 _pending = new PendingIntercept
                 {
                     Index = targetIdx,
-                    Station = station,
                     Label = label,
                 };
             }
@@ -361,7 +355,7 @@ public sealed class AircraftAgent
 
         ClearInterceptPending(keepRegistration: false);
         if (Takeoff.IsRunning) Takeoff.Abort();
-        if (!Intercept.Start(targetIdx, station, label, out string refusal,
+        if (!Intercept.Start(targetIdx, label, out string refusal,
                              afterOwnTakeoff: alreadyFlying))
         {
             error = refusal;
@@ -369,44 +363,6 @@ public sealed class AircraftAgent
         }
         error = "";
         return true;
-    }
-
-    public bool ChangeInterceptStation(InterceptStation station, out string error)
-    {
-        lock (_pendingGate)
-        {
-            if (_pending is not null)
-            {
-                _pending = new PendingIntercept
-                {
-                    Index = _pending.Index,
-                    Station = station,
-                    Label = _pending.Label,
-                };
-                Remember($"Interceptar {_pending.Label}: estacion → " +
-                         $"{InterceptCatalog.Get(station).Label} (tras el despegue).");
-            }
-        }
-
-        if (Intercept.IsRunning)
-        {
-            if (!Intercept.ChangeStation(station, out string refusal))
-            {
-                error = refusal;
-                return false;
-            }
-            error = "";
-            return true;
-        }
-
-        if (IsInterceptPending)
-        {
-            error = "";
-            return true;
-        }
-
-        error = "no hay interceptacion en marcha";
-        return false;
     }
 
     // Todo parado. Un avion sin mandos propios (cinematico) se devuelve a la IA
@@ -463,7 +419,7 @@ public sealed class AircraftAgent
             if (Takeoff.Phase == TakeoffPhase.Done)
             {
                 ClearInterceptPending(keepRegistration: true);
-                if (!Intercept.Start(pendingIx.Index, pendingIx.Station, pendingIx.Label,
+                if (!Intercept.Start(pendingIx.Index, pendingIx.Label,
                                      out string refusal, afterOwnTakeoff: true))
                 {
                     _registry.Unregister(XplmIndex);

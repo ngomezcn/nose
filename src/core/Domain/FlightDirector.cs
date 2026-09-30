@@ -101,17 +101,6 @@ public sealed class FlightDirector
         else a.AbortInterceptMission();
     }
 
-    public bool ChangeInterceptStation(InterceptStation station, out string error)
-    {
-        AircraftAgent? a = Focused;
-        if (a is null)
-        {
-            error = GlobalFocusError;
-            return false;
-        }
-        return a.ChangeInterceptStation(station, out error);
-    }
-
     public bool StartRoute(TakeoffStyle style, CruiseMode cruiseMode,
                            out string error, out string startedAs)
     {
@@ -192,7 +181,7 @@ public sealed class FlightDirector
     }
 
     // El avion en foco es el interceptor; xplmIndex es el blanco.
-    public bool StartIntercept(int xplmIndex, InterceptStation station, string label,
+    public bool StartIntercept(int xplmIndex, string label,
                                out string error)
     {
         AircraftAgent? a = Focused;
@@ -201,7 +190,7 @@ public sealed class FlightDirector
             error = GlobalFocusError;
             return false;
         }
-        return a.StartIntercept(xplmIndex, station, label, out error);
+        return a.StartIntercept(xplmIndex, label, out error);
     }
 
     // --- Inicios de simulacion (solo Global) -----------------------------------

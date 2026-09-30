@@ -143,8 +143,8 @@ public sealed class CruisePilot
                 return;
             }
 
-            if (!_mode.DoesTurns) return;
-
+            // Los virajes MANUALES (panel RUTA) deben completarse tambien en
+            // modo Recto: DoesTurns solo gobierna los virajes programados.
             if (_turning)
             {
                 float turned = MathF.Abs(Pid.NormalizeAngleDeg180(
@@ -155,11 +155,15 @@ public sealed class CruisePilot
                     _straightElapsed = 0f;
                     ScheduleNextStraight();
                     StartManeuverPreservingAlt(ManeuverKind.LevelWings);
-                    LogAction($"Ruta [{_mode.Name}]: fin viraje " +
-                              $"(+{turned:0}°) → recto ~{_nextTurnAtSec:0}s");
+                    string next = _mode.DoesTurns
+                        ? $" → recto ~{_nextTurnAtSec:0}s"
+                        : " → recto";
+                    LogAction($"Ruta [{_mode.Name}]: fin viraje (+{turned:0}°){next}");
                 }
                 return;
             }
+
+            if (!_mode.DoesTurns) return;
 
             _straightElapsed += dt;
             if (_straightElapsed < _nextTurnAtSec) return;
@@ -210,7 +214,14 @@ public sealed class CruisePilot
             FlightState s = _body.State;
             float current = float.IsNaN(_targetAltFt) ? s.AltFt : _targetAltFt;
             // Mismo suelo AGL tipico que ControlTuning.TerrainFloorAglFt.
-            float floorMsl = s.AltFt - MathF.Max(s.AglFt, 0f) + 600f;
+            // AGL NaN (IA observando / sin captura): no inventar suelo.
+            float agl = float.IsNaN(s.AglFt) ? 0f : MathF.Max(s.AglFt, 0f);
+            float floorMsl = s.AltFt - agl + 600f;
+            if (float.IsNaN(floorMsl) || float.IsNaN(current))
+            {
+                error = "sin altitud valida";
+                return false;
+            }
             float next = Math.Clamp(current + deltaFt, floorMsl, F14Aero.ServiceCeilingFt);
             if (MathF.Abs(next - current) < 1f)
             {

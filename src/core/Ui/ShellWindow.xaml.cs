@@ -364,49 +364,50 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         set => Set(ref _interceptEmptyVisibility, value);
     }
 
-    // Posicion que usara la PROXIMA interceptacion. Cambiarla con una en
-    // marcha no la mueve: hay que volver a pulsar Interceptar, igual que el
-    // estilo de despegue no se aplica a un despegue ya empezado.
-    private InterceptStation _stationId = InterceptStation.TailHigh;
-    private bool _switchingStation;
-    public string InterceptStationSummary => InterceptCatalog.Get(_stationId).Description;
-    public string InterceptStationSpec
-    {
-        get
-        {
-            (float aft, float right, float up) = _tuning.ResolveStation(_stationId);
-            return InterceptStationDef.Summary(aft, right, up);
+    // Puesto respecto al blanco en polares: azimut (0 = delante de su morro,
+    // 90 = derecha, 180 = cola, 270 = izquierda), distancia horizontal y
+    // altura. Sin posiciones predefinidas. Son deslizadores ligados a
+    // ControlTuning.Station: se aplican en tiempo real, tambien con una
+    // interceptacion en marcha, y la bolita 3D del juego sigue el cambio.
+    public string InterceptStationSpec => _tuning.Station.Summary();
+
+    // El puesto nunca puede quedar DENTRO de la zona de seguridad (cilindro
+    // SafeH x SafeV alrededor del blanco): si el regulador que se mueve lo
+    // llevaria dentro, se queda en el borde. La distancia baja hasta SafeH y
+    // la altura hasta +-SafeV (conserva el signo que llevaba).
+    private void UpdateStation(float? az = null, float? dist = null, float? height = null) {
+        StationSpec cur = _tuning.Station;
+        float d = dist ?? cur.DistanceM, h = height ?? cur.HeightM;
+        float safeH = _tuning.SafeHorizontalM, safeV = _tuning.SafeVerticalM;
+        if (dist is not null && MathF.Abs(h) < safeV) d = MathF.Max(d, safeH);
+        if (height is not null && d < safeH) {
+            float sign = h != 0f ? MathF.Sign(h) : (cur.HeightM < 0f ? -1f : 1f);
+            h = sign * MathF.Max(MathF.Abs(h), safeV);
         }
+        _tuning.Station = new StationSpec(az ?? cur.AzimuthDeg, d, h);
+        NotifyStationChanged();
+        // Si se corrigio el valor, el slider debe volver al corregido.
+        Dispatcher.BeginInvoke(new Action(NotifyStationChanged));
     }
 
-    // Distancias del puesto SELECCIONADO (cada puesto guarda las suyas) y zona
-    // de seguridad. Son deslizadores ligados a ControlTuning: se aplican en
-    // tiempo real, tambien con una interceptacion en marcha.
-    public bool StationHasLateral => InterceptCatalog.Get(_stationId).HasLateral;
-    public bool StationHasVertical => InterceptCatalog.Get(_stationId).HasVertical;
-    public Visibility StationLateralVisibility => StationHasLateral ? Visibility.Visible : Visibility.Collapsed;
-    public Visibility StationVerticalVisibility => StationHasVertical ? Visibility.Visible : Visibility.Collapsed;
-
-    public double StationAftM {
-        get => _tuning.GetStationOffsets(_stationId).AftM;
-        set => UpdateStation(aft: (float)value);
-    }
-    public double StationLateralM {
-        get => _tuning.GetStationOffsets(_stationId).LateralM;
-        set => UpdateStation(lateral: (float)value);
-    }
-    public double StationVerticalM {
-        get => _tuning.GetStationOffsets(_stationId).VerticalM;
-        set => UpdateStation(vertical: (float)value);
-    }
-
-    private void UpdateStation(float? aft = null, float? lateral = null, float? vertical = null) {
-        var o = _tuning.GetStationOffsets(_stationId);
-        _tuning.SetStationOffsets(_stationId, aft ?? o.AftM, lateral ?? o.LateralM, vertical ?? o.VerticalM);
-        OnPropertyChanged(nameof(StationAftM));
-        OnPropertyChanged(nameof(StationLateralM));
-        OnPropertyChanged(nameof(StationVerticalM));
+    private void NotifyStationChanged() {
+        OnPropertyChanged(nameof(StationAzimuthDeg));
+        OnPropertyChanged(nameof(StationDistanceM));
+        OnPropertyChanged(nameof(StationHeightM));
         OnPropertyChanged(nameof(InterceptStationSpec));
+    }
+
+    public double StationAzimuthDeg {
+        get => _tuning.Station.AzimuthDeg;
+        set => UpdateStation(az: (float)value);
+    }
+    public double StationDistanceM {
+        get => _tuning.Station.DistanceM;
+        set => UpdateStation(dist: (float)value);
+    }
+    public double StationHeightM {
+        get => _tuning.Station.HeightM;
+        set => UpdateStation(height: (float)value);
     }
 
     public double SafeHorizontalM {
@@ -419,6 +420,86 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         set { _tuning.SafeVerticalM = (float)value; OnPropertyChanged(nameof(SafeVerticalM));
               OnPropertyChanged(nameof(InterceptStationSpec)); }
     }
+
+    // --- Bolita 3D del puesto (overlay del connector) -----------------------
+    // Se recalcula en cada refresco de UI (10 Hz) con el blanco seleccionado y
+    // el puesto actual; el connector extrapola con la velocidad del blanco.
+    private bool _markerShown;
+    private bool _showStationMarker = true;
+    public bool ShowStationMarker {
+        get => _showStationMarker;
+        set => Set(ref _showStationMarker, value);
+    }
+    private StationSpec? _lastMarkerStation;
+
+    private void UpdateStationMarker() {
+        if (!_client.IsConnected) { _markerShown = false; return; }
+        // Sin interceptor (foco Global) o con el propio interceptor como blanco
+        // el puesto no significa nada: saldria pegado a "mi avion".
+        bool want = ShowStationMarker && !_director.IsGlobalFocus &&
+                    SelectedInterceptTarget is InterceptTargetEntry target &&
+                    target.XplmIndex != _director.FocusedXplmIndex &&
+                    _director.World.TryCapture(target.XplmIndex, out _);
+        if (!want) {
+            if (_markerShown) {
+                _client.SetStationMarker(false, 0, 0, 0, 0, 0, 0, 1f, 0, 0, 0);
+                _markerShown = false;
+            }
+            return;
+        }
+        var entry = SelectedInterceptTarget!;
+        _director.World.TryCapture(entry.XplmIndex, out TargetSnapshot snap);
+        (float aft, float right, float up) = _tuning.ResolveStation();
+        InterceptGeometry g = InterceptGeometry.Solve(0, 0, 0, snap, aft, right, up, 0.0);
+
+        // El puesto gira con el morro del blanco: en un viraje se mueve en arco,
+        // no con la velocidad del blanco. Se suma la velocidad de esa rotacion
+        // (d offset / d psi * yawRate) para que el connector extrapole bien.
+        float yawRate = EstimateTargetYawRate(entry.XplmIndex, snap.HeadingDeg);
+        double psi = snap.HeadingDeg * Math.PI / 180.0;
+        double fwdE = Math.Sin(psi), fwdN = Math.Cos(psi);
+        double rgtE = Math.Cos(psi), rgtN = -Math.Sin(psi);
+        double dOffE = yawRate * (-aft * rgtE - right * fwdE);
+        double dOffN = yawRate * (-aft * rgtN - right * fwdN);
+        float mvx = (float)(snap.Vx + dOffE);
+        float mvy = (float)snap.Vy;
+        float mvz = (float)(snap.Vz - dOffN);
+        // Roja si el puesto pedido cae dentro de la zona de seguridad (p. ej. al
+        // subir esos reguladores con el puesto ya colocado); cian si no.
+        StationSpec st = _tuning.Station;
+        bool inside = st.DistanceM < _tuning.SafeHorizontalM && MathF.Abs(st.HeightM) < _tuning.SafeVerticalM;
+        _client.SetStationMarker(true, g.Px, g.Py, g.Pz, mvx, mvy, mvz,
+                                 StationMarkerRadiusM,
+                                 inside ? 1.0f : 0.15f, inside ? 0.12f : 0.9f, inside ? 0.12f : 1.0f);
+        _markerShown = true;
+    }
+
+    // Velocidad de guinada del blanco (rad/s, + = a derechas) a partir de los
+    // rumbos de refrescos consecutivos, filtrada para no amplificar el ruido.
+    private int _yawIdx = -1;
+    private float _yawPrevDeg;
+    private long _yawPrevTicks;
+    private float _yawRate;
+
+    private float EstimateTargetYawRate(int idx, float headingDeg) {
+        long now = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (idx != _yawIdx) {
+            _yawIdx = idx; _yawPrevDeg = headingDeg; _yawPrevTicks = now; _yawRate = 0f;
+            return 0f;
+        }
+        float dt = (float)((now - _yawPrevTicks) / (double)System.Diagnostics.Stopwatch.Frequency);
+        if (dt < 0.02f) return _yawRate;
+        if (dt > 1.0f) { _yawPrevDeg = headingDeg; _yawPrevTicks = now; _yawRate = 0f; return 0f; }
+        float dPsi = headingDeg - _yawPrevDeg;
+        while (dPsi > 180f) dPsi -= 360f;
+        while (dPsi < -180f) dPsi += 360f;
+        float raw = dPsi * MathF.PI / 180f / dt;
+        _yawRate += (raw - _yawRate) * 0.5f;
+        _yawPrevDeg = headingDeg; _yawPrevTicks = now;
+        return _yawRate;
+    }
+
+    private const float StationMarkerRadiusM = 6f;
 
     private string _interceptStatusText = "Sin interceptacion activa.";
     public string InterceptStatusText {
@@ -614,12 +695,9 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         RecoverPitchCaptureText = FmtTuning(_tuning.RecoverPitchCaptureDeg);
         RecoverMinSecondsText = FmtTuning(_tuning.RecoverMinSeconds);
 
-        OnPropertyChanged(nameof(StationAftM));
-        OnPropertyChanged(nameof(StationLateralM));
-        OnPropertyChanged(nameof(StationVerticalM));
+        NotifyStationChanged();
         OnPropertyChanged(nameof(SafeHorizontalM));
         OnPropertyChanged(nameof(SafeVerticalM));
-        OnPropertyChanged(nameof(InterceptStationSpec));
 
         SpeedStepText = FmtTuning(_tuning.SpeedStepKt);
         MinTargetIasText = FmtTuning(_tuning.MinTargetIasKt);
@@ -931,10 +1009,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
                 _client.ReleaseCamera();
         }
 
-        // El selector de puesto refleja el del avion enfocado si intercepta.
         AgentView? view = _director.FocusedView;
-        if (view is { InterceptRunning: true } or { InterceptPending: true })
-            SetStationUi(view.InterceptStation);
         SyncRoutePanelFromFocus(view);
 
         UpdateFocusText();
@@ -1046,55 +1121,6 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
     // --- Interceptar --------------------------------------------------------
     //
-    // Mismo patron que el selector de estilo de despegue: Click ademas de
-    // Checked para que pulsar el que ya esta activo no lo desmarque y deje la
-    // seleccion vacia.
-    private void OnInterceptStationClick(object sender, RoutedEventArgs e) {
-        if (!IsInitialized || sender is not System.Windows.Controls.Primitives.ToggleButton tab) return;
-        if (tab.IsChecked != true) tab.IsChecked = true;
-    }
-
-    private void OnInterceptStationChanged(object sender, RoutedEventArgs e) {
-        if (!IsInitialized || _switchingStation) return;
-        if (sender is not System.Windows.Controls.Primitives.ToggleButton { IsChecked: true, Tag: string tag }) return;
-        if (!Enum.TryParse(tag, out InterceptStation id)) return;
-
-        SetStationUi(id);
-
-        // Con la interceptacion del avion en foco en marcha (o pendiente de
-        // despegue) el cambio de boton mueve el puesto de formacion; no hace
-        // falta abortar y volver a pedir.
-        AircraftAgent? a = _director.Focused;
-        if (a is not null && (a.Intercept.IsRunning || a.IsInterceptPending)) {
-            if (_director.ChangeInterceptStation(id, out string err))
-                Append($"Interceptar: puesto → {InterceptCatalog.Get(id).Label}.");
-            else if (!string.IsNullOrEmpty(err))
-                Append($"Interceptar: no se pudo cambiar de puesto — {err}.");
-        }
-    }
-
-    // Marca el boton de puesto sin disparar ChangeInterceptStation.
-    private void SetStationUi(InterceptStation id) {
-        _switchingStation = true;
-        try {
-            StationTailHigh.IsChecked = id == InterceptStation.TailHigh;
-            StationParallelLeft.IsChecked = id == InterceptStation.ParallelLeft;
-            StationParallelRight.IsChecked = id == InterceptStation.ParallelRight;
-            StationAbove.IsChecked = id == InterceptStation.Above;
-            StationBelow.IsChecked = id == InterceptStation.Below;
-            _stationId = id;
-            OnPropertyChanged(nameof(InterceptStationSummary));
-            OnPropertyChanged(nameof(InterceptStationSpec));
-            OnPropertyChanged(nameof(StationAftM));
-            OnPropertyChanged(nameof(StationLateralM));
-            OnPropertyChanged(nameof(StationVerticalM));
-            OnPropertyChanged(nameof(StationLateralVisibility));
-            OnPropertyChanged(nameof(StationVerticalVisibility));
-        } finally {
-            _switchingStation = false;
-        }
-    }
-
     // Ultimo motivo de rechazo al pedir una interceptacion (InterceptRegistry:
     // mutua, ciclo, a si mismo...). Se muestra en el panel Interceptar.
     private string _lastInterceptRefusal = "";
@@ -1113,7 +1139,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             return;
         }
 
-        if (!_director.StartIntercept(target.XplmIndex, _stationId, target.Name, out string refusal)) {
+        if (!_director.StartIntercept(target.XplmIndex, target.Name, out string refusal)) {
             _lastInterceptRefusal = refusal;
             Append($"Interceptar {target.Name} ({_director.FocusedLabel}): no se puede ahora mismo -- {refusal}");
         } else {

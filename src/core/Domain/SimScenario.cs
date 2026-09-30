@@ -41,7 +41,7 @@ public sealed record SimStartPlan
     // Ordenes que se dan al llegar ScenarioReady.
     public required bool AiRoute { get; init; }
     public required bool UserIntercept { get; init; }
-    public InterceptStation UserStation { get; init; } = InterceptStation.TailHigh;
+    public StationSpec UserStation { get; init; } = StationSpec.Default;
 
     // Relativo a la raiz de X-Plane. A330 AI viene de serie en XP12.
     public string AiAircraftRelPath { get; init; } = SimScenarios.AiAircraftRelPath;
@@ -119,7 +119,7 @@ public static class SimScenarios
             AiLat = lat, AiLon = lon, AiElevMsl = Fl200M,
             AiHdgTrue = Rwy06Hdg, AiSpeedMps = speed, AiOnGround = false,
             AiRoute = true, UserIntercept = true,
-            UserStation = InterceptStation.ParallelLeft,
+            UserStation = StationSpec.LeftWing,
         };
     }
 

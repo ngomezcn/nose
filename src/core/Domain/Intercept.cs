@@ -24,91 +24,39 @@ namespace AICopilotCore.Domain;
 // es -Z. Es el error facil de cometer aqui, y sale como una interceptacion
 // que se coloca al otro lado del blanco.
 
-// Donde ponerse respecto al blanco. "Cola alta" es la de por defecto: es la
-// posicion de interceptacion real -- detras y algo por encima se ve al otro
-// avion entero recortado contra el suelo, la separacion se controla con el
-// gas, y no se vuela dentro de su estela.
-public enum InterceptStation
+// Donde ponerse respecto al blanco: un punto en coordenadas POLARES
+// alrededor de su avion, sin posiciones predefinidas.
+//   AzimuthDeg  0 = justo delante de su morro, 90 = a su derecha,
+//               180 = justo detras (cola), 270 = a su izquierda.
+//   DistanceM   distancia HORIZONTAL al blanco.
+//   HeightM     altura sobre (+) o bajo (-) el blanco.
+public sealed record StationSpec(float AzimuthDeg, float DistanceM, float HeightM)
 {
-    TailHigh,
-    ParallelRight,
-    ParallelLeft,
-    Above,
-    Below,
-}
+    // Por defecto: detras y algo por encima (la interceptacion clasica).
+    public static readonly StationSpec Default = new(180f, 200f, 40f);
+    // Ala izquierda, ligeramente atrasado (inicio de simulacion "en formacion").
+    public static readonly StationSpec LeftWing = FromOffsets(50f, -100f, 0f);
 
-// Una posicion del catalogo. Los factores son solo el SIGNO / aplicabilidad
-// (lado derecho = +1, izquierdo = -1, por encima = +1, por debajo = -1, 0 =
-// no aplica): los modulos de las distancias son por puesto y se editan en
-// ControlTuning (GetStationOffsets / SetStationOffsets).
-//
-// Los ejes son los del BLANCO, no los nuestros: Aft = metros por detras de
-// su cola, Right = metros a su derecha, Up = metros por encima.
-public sealed record InterceptStationDef(
-    InterceptStation Id,
-    string Label,
-    string Description,
-    float AftFactor,
-    float RightFactor,
-    float UpFactor)
-{
-    public bool HasLateral => RightFactor != 0f;
-    public bool HasVertical => UpFactor != 0f;
-
-    // "200 m detras / 40 m por encima": lo que se pinta debajo de los botones
-    // para que el numero y lo que va a hacer el avion se vean juntos.
-    public static string Summary(float aft, float right, float up)
+    // (atras, derecha, arriba) en metros, en los ejes del BLANCO.
+    public (float Aft, float Right, float Up) Offsets()
     {
-        var parts = new List<string>();
-        if (MathF.Abs(aft) >= 1f) parts.Add($"{aft:0} m detras");
-        if (MathF.Abs(right) >= 1f)
-            parts.Add($"{MathF.Abs(right):0} m a la {(right > 0f ? "derecha" : "izquierda")}");
-        if (MathF.Abs(up) >= 1f)
-            parts.Add($"{MathF.Abs(up):0} m por {(up > 0f ? "encima" : "debajo")}");
-        return parts.Count == 0 ? "pegado al blanco" : string.Join(" / ", parts);
+        double az = AzimuthDeg * Math.PI / 180.0;
+        double forward = DistanceM * Math.Cos(az);
+        double right = DistanceM * Math.Sin(az);
+        return ((float)-forward, (float)right, HeightM);
     }
-}
 
-public static class InterceptCatalog
-{
-    // Los factores estan elegidos para que NINGUNA posicion se quede mas
-    // atras que la distancia pedida (ese era el requisito: "no mas de 200 m
-    // desde atras") y para que las de al lado queden lo bastante adelantadas
-    // como para verse desde la cabina del otro -- que es de lo que va una
-    // interceptacion militar: que te vean.
-    public static readonly IReadOnlyList<InterceptStationDef> All = new[]
+    public static StationSpec FromOffsets(float aft, float right, float up)
     {
-        new InterceptStationDef(InterceptStation.TailHigh, "Cola alta",
-            "Detras y un poco por encima: la posicion de interceptacion clasica. " +
-            "Se ve al blanco entero, la separacion se controla con el gas y no se " +
-            "vuela dentro de su estela.",
-            AftFactor: 1f, RightFactor: 0f, UpFactor: 1f),
+        double d = Math.Sqrt(aft * (double)aft + right * (double)right);
+        double az = d < 1e-6 ? 180.0 : Math.Atan2(right, -aft) * 180.0 / Math.PI;
+        if (az < 0.0) az += 360.0;
+        return new StationSpec((float)az, (float)d, up);
+    }
 
-        new InterceptStationDef(InterceptStation.ParallelRight, "Paralelo derecha",
-            "Al costado derecho del blanco, ligeramente atrasado: formacion de ala, " +
-            "para que su piloto nos vea sin tener que girar del todo la cabeza.",
-            AftFactor: 1f, RightFactor: 1f, UpFactor: 0f),
-
-        new InterceptStationDef(InterceptStation.ParallelLeft, "Paralelo izquierda",
-            "Al costado izquierdo del blanco, ligeramente atrasado: la formacion de " +
-            "interceptacion estandar (al interceptado se le señala por su izquierda).",
-            AftFactor: 1f, RightFactor: -1f, UpFactor: 0f),
-
-        new InterceptStationDef(InterceptStation.Above, "Arriba",
-            "Por encima y algo atras: domina la geometria y deja sitio para picar " +
-            "si el blanco maniobra.",
-            AftFactor: 1f, RightFactor: 0f, UpFactor: 1f),
-
-        new InterceptStationDef(InterceptStation.Below, "Abajo",
-            "Por debajo y algo atras: la posicion desde la que se inspecciona el " +
-            "vientre del otro avion (cargas externas, tren, daños).",
-            AftFactor: 1f, RightFactor: 0f, UpFactor: -1f),
-    };
-
-    private static readonly Dictionary<InterceptStation, InterceptStationDef> ByKind =
-        All.ToDictionary(s => s.Id);
-
-    public static InterceptStationDef Get(InterceptStation id) => ByKind[id];
+    public string Summary() =>
+        string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"azimut {AzimuthDeg:0}° · {DistanceM:0} m · altura {HeightM:+0;-0;0} m");
 }
 
 // Si el blanco esta volando o no. Unknown existe a proposito: mientras no

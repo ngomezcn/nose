@@ -44,7 +44,7 @@ namespace proto {
 // rechaza (y loguea) un HELLO con una version distinta en vez de
 // interpretar bytes con el layout equivocado, que es la clase de bug que
 // se manifiesta como "el avion hace cosas raras" en vez de como un error.
-constexpr uint16_t kVersion = 13;
+constexpr uint16_t kVersion = 14;
 
 constexpr const char* kPipeName = "\\\\.\\pipe\\AICopilot.v1";
 
@@ -99,6 +99,16 @@ enum class Op : uint8_t {
     //                  1..19 = chase detras de esa IA (indice XPLM)
     //                  255 = vista aerea: enmarca ownship + IAs activas
     CameraFollow = 0x0F,
+    // Bolita 3D del puesto objetivo (overlay; ver StationMarker.h). El punto
+    // va en el marco ESTABLE del core; el connector le resta el offset del
+    // origen. La velocidad sirve para extrapolar entre mensajes.
+    // Payload:
+    //   u8  enable     0 = ocultar
+    //   f64 x, y, z    posicion del puesto (marco estable del core)
+    //   f32 vx, vy, vz velocidad del punto (m/s)
+    //   f32 radiusM    radio real de la esfera
+    //   f32 r, g, b    color 0..1
+    StationMarker = 0x10,
 
     // --- connector -> core ---
     HelloAck = 0x81,

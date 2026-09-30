@@ -39,6 +39,7 @@
 
 #include "AiControl.h"
 #include "AiLabel.h"
+#include "StationMarker.h"
 #include "CameraFollow.h"
 #include "DatarefRegistry.h"
 #include "Holds.h"
@@ -64,6 +65,7 @@ Holds* g_holds = nullptr;
 Subscriptions* g_subs = nullptr;
 SafetyGuard* g_guard = nullptr;
 AiLabel* g_label = nullptr;
+StationMarker* g_marker = nullptr;
 
 uint32_t g_frame = 0;
 uint32_t g_lastSession = 0;
@@ -96,6 +98,7 @@ void NotifyOverviewFocus(int xplmIndex) {
 // Suelta todo y avisa al core. Se usa desde los mensajes de X-Plane
 // (choque, aeropuerto nuevo, avion recargado) y desde XPluginDisable.
 void ReleaseEverything(const char* reason, bool notifyCore) {
+    if (g_marker) g_marker->Set(false, 0, 0, 0, 0, 0, 0, 1.0f, 0, 0, 0);
     camera_follow::Stop();
     ai_control::Release();
     // OJO: no cancela la colocacion pendiente de PlaceScenario. AIRPORT_LOADED
@@ -361,6 +364,27 @@ void HandleMessage(const uint8_t* data, size_t size) {
             break;
         }
 
+        case proto::Op::StationMarker: {
+            uint8_t enable = r.U8();
+            double x = r.F64();
+            double y = r.F64();
+            double z = r.F64();
+            float vx = r.F32();
+            float vy = r.F32();
+            float vz = r.F32();
+            float radius = r.F32();
+            float cr = r.F32();
+            float cg = r.F32();
+            float cb = r.F32();
+            if (!r.Ok()) return;
+            // Marco estable del core -> marco local real de X-Plane.
+            if (g_marker)
+                g_marker->Set(enable != 0, x - g_registry->OriginOffsetX(), y,
+                              z - g_registry->OriginOffsetZ(), vx, vy, vz, radius,
+                              cr, cg, cb);
+            break;
+        }
+
         case proto::Op::CameraFollow: {
             uint8_t planeIndex = r.U8();
             if (!r.Ok()) return;
@@ -480,6 +504,9 @@ float FlightLoopCallback(float wallDt, float, int, void*) {
         if (g_origin.Update(*g_registry, originText)) {
             SendEvent(proto::EventKind::OriginShift, originText);
         }
+        if (g_label)
+            g_label->SetOriginOffset(g_registry->OriginOffsetX(),
+                                     g_registry->OriginOffsetZ());
     }
 
     // 2. Seguridad primero: si el core murio o se quedo mudo, soltar antes
@@ -544,6 +571,8 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
 
     g_label = new AiLabel();
     g_label->Init();
+    g_marker = new StationMarker();
+    g_marker->Init();
 
     camera_follow::SetOverviewFocusNotify(&NotifyOverviewFocus);
 
@@ -556,6 +585,7 @@ PLUGIN_API void XPluginStop() {
     camera_follow::Shutdown();
 
     delete g_label;  g_label = nullptr;
+    delete g_marker; g_marker = nullptr;
     delete g_pipe;   g_pipe = nullptr;
     delete g_guard;  g_guard = nullptr;
     delete g_subs;   g_subs = nullptr;
@@ -574,6 +604,7 @@ PLUGIN_API int XPluginEnable() {
     // veces como haga falta con X-Plane corriendo.
     g_pipe->Start(proto::kPipeName);
     g_label->Enable();
+    g_marker->Enable();
     return 1;
 }
 
@@ -585,6 +616,7 @@ PLUGIN_API void XPluginDisable() {
     ReleaseEverything("el plugin se esta desactivando", true);
     g_pipe->Stop();
     g_label->Disable();
+    g_marker->Disable();
     g_lastSession = 0;
 }
 

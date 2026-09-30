@@ -703,80 +703,51 @@
                                 </ListBox.ItemContainerStyle>
                             </ListBox>
 
-                            <TextBlock Text="POSICION" Style="{StaticResource SectionHeader}"/>
-                            <ToggleButton x:Name="StationTailHigh" Style="{StaticResource ToolToggle}"
-                                          Content="Cola alta (por defecto)" Tag="TailHigh" IsChecked="True"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2" Checked="OnInterceptStationChanged"
-                                          Click="OnInterceptStationClick"
-                                          ToolTip="Detras y un poco por encima: la posicion de interceptacion clasica."/>
-                            <ToggleButton x:Name="StationParallelLeft" Style="{StaticResource ToolToggle}"
-                                          Content="Paralelo izquierda" Tag="ParallelLeft"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2" Checked="OnInterceptStationChanged"
-                                          Click="OnInterceptStationClick"
-                                          ToolTip="A su costado izquierdo, ligeramente atrasado."/>
-                            <ToggleButton x:Name="StationParallelRight" Style="{StaticResource ToolToggle}"
-                                          Content="Paralelo derecha" Tag="ParallelRight"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2" Checked="OnInterceptStationChanged"
-                                          Click="OnInterceptStationClick"
-                                          ToolTip="A su costado derecho, ligeramente atrasado."/>
-                            <ToggleButton x:Name="StationAbove" Style="{StaticResource ToolToggle}"
-                                          Content="Arriba" Tag="Above"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2" Checked="OnInterceptStationChanged"
-                                          Click="OnInterceptStationClick"
-                                          ToolTip="Por encima y algo atras: domina la geometria."/>
-                            <ToggleButton x:Name="StationBelow" Style="{StaticResource ToolToggle}"
-                                          Content="Abajo" Tag="Below"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2" Checked="OnInterceptStationChanged"
-                                          Click="OnInterceptStationClick"
-                                          ToolTip="Por debajo y algo atras: para inspeccionar su vientre."/>
-
-                            <TextBlock Text="{Binding InterceptStationSummary}" Margin="0,8,0,0"
-                                       TextWrapping="Wrap"
-                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
+                            <TextBlock Text="PUESTO ALREDEDOR DEL BLANCO" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="Una bolita 3D en el simulador marca el punto exacto. Se mueve en tiempo real al ajustar los reguladores (0 = delante de su morro, 90 = derecha, 180 = cola, 270 = izquierda)."
+                                       TextWrapping="Wrap" FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
                                        Foreground="{StaticResource TextDim}"/>
+                            <StackPanel Margin="0,3" ToolTip="Angulo alrededor del avion blanco: 0 = delante, 90 = derecha, 180 = detras, 270 = izquierda.">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
+                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
+                                               Text="{Binding StationAzimuthDeg, StringFormat={}{0:0}°}"/>
+                                    <TextBlock Text="Azimut (360°)" Style="{StaticResource FieldLabel}"/>
+                                </DockPanel>
+                                <Slider Style="{StaticResource ShellSlider}" Minimum="0" Maximum="359"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding StationAzimuthDeg, Mode=TwoWay}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,3" ToolTip="Distancia horizontal al blanco.">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
+                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
+                                               Text="{Binding StationDistanceM, StringFormat={}{0:0} m}"/>
+                                    <TextBlock Text="Distancia" Style="{StaticResource FieldLabel}"/>
+                                </DockPanel>
+                                <Slider Style="{StaticResource ShellSlider}" Minimum="0" Maximum="1000"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding StationDistanceM, Mode=TwoWay}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,3" ToolTip="Altura sobre (+) o bajo (-) el blanco.">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
+                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
+                                               Text="{Binding StationHeightM, StringFormat={}{0:0} m}"/>
+                                    <TextBlock Text="Altura" Style="{StaticResource FieldLabel}"/>
+                                </DockPanel>
+                                <Slider Style="{StaticResource ShellSlider}" Minimum="-300" Maximum="300"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding StationHeightM, Mode=TwoWay}"/>
+                            </StackPanel>
                             <TextBlock Text="{Binding InterceptStationSpec}" Margin="0,6,0,0"
                                        TextWrapping="Wrap" Style="{StaticResource TelemetryText}"
                                        Foreground="{StaticResource CyanText}"/>
-
-                            <TextBlock Text="DISTANCIAS DE ESTE PUESTO" Style="{StaticResource SectionHeader}"/>
-                            <StackPanel Margin="0,3" ToolTip="Metros por detras del blanco. Cada puesto guarda los suyos; se aplica en tiempo real.">
-                                <DockPanel>
-                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
-                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
-                                               Text="{Binding StationAftM, StringFormat={}{0:0} m}"/>
-                                    <TextBlock Text="Atras del blanco" Style="{StaticResource FieldLabel}"/>
-                                </DockPanel>
-                                <Slider Style="{StaticResource ShellSlider}" Minimum="0" Maximum="500"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        Value="{Binding StationAftM, Mode=TwoWay}"/>
-                            </StackPanel>
-                            <StackPanel Margin="0,3" Visibility="{Binding StationLateralVisibility}" ToolTip="Separacion lateral de este puesto (el lado lo fija el puesto).">
-                                <DockPanel>
-                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
-                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
-                                               Text="{Binding StationLateralM, StringFormat={}{0:0} m}"/>
-                                    <TextBlock Text="Lateral" Style="{StaticResource FieldLabel}"/>
-                                </DockPanel>
-                                <Slider Style="{StaticResource ShellSlider}" Minimum="0" Maximum="300"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        Value="{Binding StationLateralM, Mode=TwoWay}"/>
-                            </StackPanel>
-                            <StackPanel Margin="0,3" Visibility="{Binding StationVerticalVisibility}" ToolTip="Separacion vertical de este puesto (encima/debajo lo fija el puesto).">
-                                <DockPanel>
-                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
-                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
-                                               Text="{Binding StationVerticalM, StringFormat={}{0:0} m}"/>
-                                    <TextBlock Text="Vertical" Style="{StaticResource FieldLabel}"/>
-                                </DockPanel>
-                                <Slider Style="{StaticResource ShellSlider}" Minimum="0" Maximum="300"
-                                        TickFrequency="1" IsSnapToTickEnabled="True"
-                                        Value="{Binding StationVerticalM, Mode=TwoWay}"/>
-                            </StackPanel>
+                            <ToggleButton Style="{StaticResource ToolToggle}" Content="Mostrar bola del puesto"
+                                          IsChecked="{Binding ShowStationMarker, Mode=TwoWay}"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,6,0,0"
+                                          ToolTip="Dibuja en X-Plane la bola donde el interceptor quiere estar respecto al blanco elegido."/>
 
                             <TextBlock Text="ZONA DE SEGURIDAD" Style="{StaticResource SectionHeader}"/>
                             <StackPanel Margin="0,3" ToolTip="Radio horizontal alrededor del blanco que nunca se invade. Tiempo real.">

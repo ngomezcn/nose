@@ -43,8 +43,7 @@ public sealed record AgentView(
     bool InterceptPending,         // despegue combate y luego persecucion
     int InterceptTargetIndex,      // -1 = ninguno
     string InterceptTargetLabel,
-    string InterceptPhaseText,
-    InterceptStation InterceptStation)
+    string InterceptPhaseText)
 {
     public bool IsBusy => TakeoffRunning || CruiseRunning || ManeuverRunning ||
                           InterceptRunning || InterceptPending || RoutePending;
