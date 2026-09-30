@@ -94,29 +94,33 @@ public static class InterceptEngagement
     public static double MaxClosureMps(double rangeToTargetM, InterceptSituation sit)
     {
         double r = Math.Max(rangeToTargetM, 0.0);
+        // Es un techo de SEGURIDAD: el frenado real lo impone el perfil de
+        // deceleracion del planner (sqrt(2*a*d) con el retardo descontado).
+        // Antes era 40 m/s a 5 km y 22 a 2.5 km: con el blanco a 340 kt el
+        // caza iba a +30 kt y tardaba minutos en recorrer 5 km.
         double baseCap;
         if (r >= SpeedMatchRangeM)
             baseCap = 140.0;                         // lejos: ~270 kt de cierre
         else if (r >= SpeedHardRangeM)
         {
-            // 8 km → 90, 5 km → 40
+            // 8 km → 115, 5 km → 80
             double t = (r - SpeedHardRangeM) / (SpeedMatchRangeM - SpeedHardRangeM);
-            baseCap = 40.0 + t * 50.0;
+            baseCap = 80.0 + t * 35.0;
         }
         else if (r >= 2500.0)
         {
-            // 5 km → 40, 2.5 km → 22
+            // 5 km → 80, 2.5 km → 50
             double t = (r - 2500.0) / (SpeedHardRangeM - 2500.0);
-            baseCap = 22.0 + t * 18.0;
+            baseCap = 50.0 + t * 30.0;
         }
         else if (r >= 800.0)
         {
-            // 2.5 km → 22, 0.8 km → 12
+            // 2.5 km → 50, 0.8 km → 25
             double t = (r - 800.0) / (2500.0 - 800.0);
-            baseCap = 12.0 + t * 10.0;
+            baseCap = 25.0 + t * 25.0;
         }
         else
-            baseCap = 8.0;                           // zona de estacion
+            baseCap = 10.0 + 15.0 * (r / 800.0);     // zona de estacion
 
         return sit switch
         {
@@ -128,9 +132,9 @@ public static class InterceptEngagement
                 : 90.0),
             // Overtaking: no cerrar (cierre negativo lo pone CapDesiredGs).
             InterceptSituation.Overtaking => Math.Min(baseCap, 5.0),
-            InterceptSituation.SternNear => Math.Min(baseCap, 28.0),
+            InterceptSituation.SternNear => Math.Min(baseCap, 90.0),
             InterceptSituation.SternFar => baseCap,
-            InterceptSituation.BeamFar => Math.Min(baseCap, r < SpeedHardRangeM ? 30.0 : baseCap),
+            InterceptSituation.BeamFar => Math.Min(baseCap, r < SpeedHardRangeM ? 60.0 : baseCap),
             _ => baseCap,
         };
     }

@@ -258,7 +258,14 @@ public static class InterceptPlanner
     private const double DetourBackM = 1500.0;
     // Adelanto maximo de la puntería y giro maximo que se extrapola del blanco.
     private const double MaxLeadSec = 90.0;
-    private const double MaxPredTurnRad = 150.0 * Deg;
+    // El giro del blanco solo se extrapola unos segundos y poco angulo: un
+    // viraje de 1 deg/s medido en ruta lenta (cierre de 30 m/s => adelanto de
+    // 60-90 s) se proyectaba a 60-90 deg y arrastraba el punto de mira km
+    // hacia un lado; la caja negra mostraba 50 deg de alabeo alternando y
+    // vueltas alrededor del blanco sin llegar. Un viraje real dura poco; si
+    // sigue, el estimador lo vuelve a medir.
+    private const double MaxPredTurnSec = 8.0;
+    private const double MaxPredTurnRad = 40.0 * Deg;
     // Blanco que gira: el radio de giro propio a la velocidad de vuelo tiene que
     // caber (con este margen) en el del blanco, o no se le puede seguir.
     private const double TurnFitMargin = 0.85;
@@ -977,7 +984,8 @@ public static class InterceptPlanner
             n = t.N + t.V * Math.Cos(trk) * tau;
             return;
         }
-        double tArc = Math.Clamp(tau, -MaxPredTurnRad / Math.Abs(om), MaxPredTurnRad / Math.Abs(om));
+        double arcMax = Math.Min(MaxPredTurnRad / Math.Abs(om), MaxPredTurnSec);
+        double tArc = Math.Clamp(tau, -arcMax, arcMax);
         double tEnd = t.Track + om * tArc;
         e = t.E + t.V / om * (Math.Cos(t.Track) - Math.Cos(tEnd)) + t.V * Math.Sin(tEnd) * (tau - tArc);
         n = t.N + t.V / om * (Math.Sin(tEnd) - Math.Sin(t.Track)) + t.V * Math.Cos(tEnd) * (tau - tArc);
