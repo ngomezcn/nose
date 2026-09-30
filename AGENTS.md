@@ -163,3 +163,39 @@ sigue la skill
 antes de diagnosticar. Los CSV están junto al exe, no en el repo.
 Pregunta o deduce **qué avión** (ownship vs `planeN`) antes de leer el
 fichero equivocado.
+
+## 5. Agentes en paralelo: worktrees de Cursor (no pelearse en el mismo árbol)
+
+Varios agentes en el mismo checkout se pisan. Para tareas en paralelo
+usa worktrees de Cursor (no hace falta crearlos a mano con `git
+worktree add`):
+
+- **Agents Window:** al crear/mover un agente, elige worktree.
+- **IDE:** comando `/worktree` (o `/best-of-n` para comparar modelos).
+- Setup automático en [`.cursor/worktrees.json`](.cursor/worktrees.json)
+  (`dotnet restore` del core). Cursor crea/limpia el worktree solo;
+  al acabar aplica con `/apply-worktree` o merge/PR desde el panel.
+
+Reparto: zonas que no se solapen (`src/connector` vs `src/core`, etc.).
+Si dos tareas tocan el mismo archivo, serialízalas. **No** lances
+`tools\build_and_deploy*.ps1` desde varios worktrees a la vez: todos
+despliegan al mismo `E:\X-Plane 12\...\AICopilot\win_x64\`. El deploy
+lo hace el checkout principal (o un solo agente) tras integrar.
+
+## 5. Agentes en paralelo: worktrees de Cursor (no pelearse en el mismo árbol)
+
+Varios agentes en el mismo checkout se pisan. Para tareas en paralelo
+usa worktrees de Cursor (no hace falta crearlos a mano con `git
+worktree add`):
+
+- **Agents Window:** al crear/mover un agente, elige worktree.
+- **IDE:** comando `/worktree` (o `/best-of-n` para comparar modelos).
+- Setup automático en [`.cursor/worktrees.json`](.cursor/worktrees.json)
+  (`dotnet restore` del core). Cursor crea/limpia el worktree solo;
+  al acabar aplica con `/apply-worktree` o merge/PR desde el panel.
+
+Reparto: zonas que no se solapen (`src/connector` vs `src/core`, etc.).
+Si dos tareas tocan el mismo archivo, serialízalas. **No** lances
+`tools\build_and_deploy*.ps1` desde varios worktrees a la vez: todos
+despliegan al mismo `E:\X-Plane 12\...\AICopilot\win_x64\`. El deploy
+lo hace el checkout principal (o un solo agente) tras integrar.

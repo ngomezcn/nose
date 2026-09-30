@@ -2,8 +2,13 @@
 //
 // Aplica Op.CameraFollow via XPLMControlCamera:
 //   0     = soltar
-//   1..19 = chase detras de una IA (lee planeN_x/y/z/psi)
+//   1..19 = chase orbitable sobre una IA (lee planeN_x/y/z/psi)
 //   255   = vista aerea que enmarca ownship + IAs activas
+//
+// Controles chase (mismo gesto que la camara libre de X-Plane):
+//   clic derecho + arrastre = orbitar alrededor del avion
+//   rueda del raton         = zoom (factor focal XPLMCameraPosition_t.zoom)
+//   teclas , y .            = alejar / acercar (radio de orbita / dolly)
 //
 // Sin logica de dominio: el core decide cuándo; aquí solo se leen datarefs
 // y se rellena XPLMCameraPosition_t cada frame.
@@ -14,8 +19,17 @@
 #include <cstdint>
 #include <cstdio>
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+
 #include "XPLMCamera.h"
 #include "XPLMDataAccess.h"
+#include "XPLMDisplay.h"
 #include "XPLMPlanes.h"
 
 #include "Logger.h"
@@ -41,12 +55,33 @@ inline XPLMDataRef g_userZ = nullptr;
 inline XPLMDataRef g_aiX[kMaxAi] = {};
 inline XPLMDataRef g_aiY[kMaxAi] = {};
 inline XPLMDataRef g_aiZ[kMaxAi] = {};
+inline XPLMDataRef g_frameDt = nullptr;
 inline bool g_overviewRefsReady = false;
 
+// Chase: orbita esferica alrededor del CG de la IA (apuntando siempre a el).
 constexpr float kChaseDistM = 50.0f;
-constexpr float kChaseHeightM = 12.0f;
-constexpr float kChasePitchDeg = -8.0f;
+constexpr float kChaseElevDeg = 8.0f;
 constexpr float kDeg2Rad = 0.01745329252f;
+constexpr float kOrbitSensDegPerBoxel = 0.25f;
+constexpr float kDistRatePerSec = 1.8f;   // e^(±rate*dt) con ,/.
+constexpr float kZoomStep = 1.12f;       // por click de rueda
+constexpr float kMinDistM = 3.0f;
+constexpr float kMaxDistM = 5000.0f;
+constexpr float kMinZoom = 0.25f;
+constexpr float kMaxZoom = 16.0f;
+constexpr float kMinElevDeg = -85.0f;
+constexpr float kMaxElevDeg = 85.0f;
+
+inline float g_azimDeg = 0.0f;   // rumbo camara (0 = norte)
+inline float g_elevDeg = kChaseElevDeg;
+inline float g_distM = kChaseDistM;
+inline float g_zoom = 1.0f;      // 1.0 = normal; 2.0 = 2x tele (SDK)
+inline bool g_orbitDragging = false;
+inline int g_lastMouseX = 0;
+inline int g_lastMouseY = 0;
+inline int g_pendingWheelClicks = 0;  // >0 = zoom in (tele)
+
+inline XPLMWindowID g_inputWindow = nullptr;
 
 // Vista aerea: pitch casi nadir; altura = margen * radio horizontal / tan(fov/2).
 constexpr float kOverviewPitchDeg = -88.0f;
@@ -67,6 +102,164 @@ inline void ClearChaseRefs() {
 inline void ClearState() {
     g_mode = Mode::Off;
     ClearChaseRefs();
+    g_orbitDragging = false;
+    g_pendingWheelClicks = 0;
+}
+
+inline float Wrap360(float deg) {
+    deg = std::fmod(deg, 360.0f);
+    if (deg < 0.0f) deg += 360.0f;
+    return deg;
+}
+
+inline void ResetChaseOrbit(float planeHdgDeg) {
+    g_azimDeg = Wrap360(planeHdgDeg);
+    g_elevDeg = kChaseElevDeg;
+    g_distM = kChaseDistM;
+    g_zoom = 1.0f;
+    g_orbitDragging = false;
+    g_pendingWheelClicks = 0;
+}
+
+// Solo orbitar/dolly cuando el foco de SO esta en X-Plane (no en la UI core).
+inline bool XPlaneHasFocus() {
+    HWND fg = GetForegroundWindow();
+    if (!fg) return false;
+    DWORD pid = 0;
+    GetWindowThreadProcessId(fg, &pid);
+    return pid == GetCurrentProcessId();
+}
+
+inline void SyncInputWindowBounds() {
+    if (!g_inputWindow) return;
+    int left = 0, top = 0, right = 0, bottom = 0;
+    XPLMGetScreenBoundsGlobal(&left, &top, &right, &bottom);
+    XPLMSetWindowGeometry(g_inputWindow, left, top, right, bottom);
+}
+
+inline void SetInputWindowVisible(bool visible) {
+    if (!g_inputWindow) return;
+    if (visible) {
+        SyncInputWindowBounds();
+        XPLMSetWindowIsVisible(g_inputWindow, 1);
+        // Encima de otros overlays del mismo layer para recibir rueda/RMB.
+        XPLMBringWindowToFront(g_inputWindow);
+    } else {
+        XPLMSetWindowIsVisible(g_inputWindow, 0);
+    }
+}
+
+inline void DrawInputWindow(XPLMWindowID /*inWindowID*/, void* /*inRefcon*/) {
+    // Invisible: captura RMB (orbita) y rueda (zoom focal).
+}
+
+// Clic derecho: consumir para que XP no cambie de vista
+// (xplm_ControlCameraUntilViewChanges) ni entre en free-look.
+inline int HandleRightClick(XPLMWindowID /*inWindowID*/, int x, int y,
+                            XPLMMouseStatus status, void* /*inRefcon*/) {
+    if (g_mode != Mode::Chase) return 0;
+
+    switch (status) {
+    case xplm_MouseDown:
+        g_orbitDragging = true;
+        g_lastMouseX = x;
+        g_lastMouseY = y;
+        return 1;
+    case xplm_MouseDrag:
+        if (g_orbitDragging) {
+            g_azimDeg = Wrap360(
+                g_azimDeg - (x - g_lastMouseX) * kOrbitSensDegPerBoxel);
+            // y global sube hacia arriba; arrastrar arriba = mas elevacion.
+            g_elevDeg = std::clamp(
+                g_elevDeg + (y - g_lastMouseY) * kOrbitSensDegPerBoxel,
+                kMinElevDeg, kMaxElevDeg);
+            g_lastMouseX = x;
+            g_lastMouseY = y;
+        }
+        return 1;
+    case xplm_MouseUp:
+        g_orbitDragging = false;
+        return 1;
+    default:
+        return 1;
+    }
+}
+
+// wheel 0 = eje vertical; clicks > 0 = rueda hacia delante.
+inline int HandleMouseWheel(XPLMWindowID /*inWindowID*/, int /*x*/, int /*y*/,
+                            int wheel, int clicks, void* /*inRefcon*/) {
+    if (g_mode != Mode::Chase) return 0;
+    if (wheel != 0) return 0;
+    g_pendingWheelClicks += clicks;
+    return 1;
+}
+
+// Reclamar el cursor sobre el 3D para que la ventana reciba rueda/RMB;
+// clic izquierdo sigue pasando (sin handleMouseClickFunc).
+inline XPLMCursorStatus HandleCursor(XPLMWindowID /*inWindowID*/, int /*x*/,
+                                     int /*y*/, void* /*inRefcon*/) {
+    if (g_mode != Mode::Chase) return xplm_CursorDefault;
+    return xplm_CursorArrow;
+}
+
+inline void EnsureInputWindow() {
+    if (g_inputWindow) return;
+
+    int left = 0, top = 0, right = 1024, bottom = 0;
+    XPLMGetScreenBoundsGlobal(&left, &top, &right, &bottom);
+
+    XPLMCreateWindow_t params = {};
+    params.structSize = sizeof(params);
+    params.left = left;
+    params.top = top;
+    params.right = right;
+    params.bottom = bottom;
+    params.visible = 0;
+    params.drawWindowFunc = DrawInputWindow;
+    params.handleMouseClickFunc = nullptr;  // LMB al sim / cockpit
+    params.handleKeyFunc = nullptr;
+    params.handleCursorFunc = HandleCursor;
+    params.handleMouseWheelFunc = HandleMouseWheel;
+    params.refcon = nullptr;
+    params.decorateAsFloatingWindow = xplm_WindowDecorationNone;
+    // Floating: encima del 3D; decoration None deja pasar LMB sin handler.
+    params.layer = xplm_WindowLayerFloatingWindows;
+    params.handleRightClickFunc = HandleRightClick;
+
+    g_inputWindow = XPLMCreateWindowEx(&params);
+    if (!g_inputWindow) {
+        LogWarn("CameraFollow: no se pudo crear ventana de input.");
+        return;
+    }
+    XPLMSetWindowPositioningMode(g_inputWindow, xplm_WindowPositionFree, -1);
+}
+
+inline void DestroyInputWindow() {
+    if (!g_inputWindow) return;
+    XPLMDestroyWindow(g_inputWindow);
+    g_inputWindow = nullptr;
+}
+
+// , = alejar (mas radio); . = acercar (menos radio). Solo con foco en XP.
+inline void PollDistanceKeys(float dt) {
+    if (g_mode != Mode::Chase || !XPlaneHasFocus()) return;
+    const bool farther = (GetAsyncKeyState(VK_OEM_COMMA) & 0x8000) != 0;
+    const bool closer = (GetAsyncKeyState(VK_OEM_PERIOD) & 0x8000) != 0;
+    if (farther == closer) return;
+    const float factor = std::exp(kDistRatePerSec * dt);
+    if (farther)
+        g_distM = std::min(g_distM * factor, kMaxDistM);
+    else
+        g_distM = std::max(g_distM / factor, kMinDistM);
+}
+
+inline void ApplyPendingZoom() {
+    if (g_pendingWheelClicks == 0) return;
+    const int clicks = g_pendingWheelClicks;
+    g_pendingWheelClicks = 0;
+    // clicks > 0 = rueda hacia delante = mas tele (zoom up), NO dolly.
+    g_zoom *= std::pow(kZoomStep, static_cast<float>(clicks));
+    g_zoom = std::clamp(g_zoom, kMinZoom, kMaxZoom);
 }
 
 inline void EnsureOverviewRefs() {
@@ -74,6 +267,7 @@ inline void EnsureOverviewRefs() {
     g_userX = XPLMFindDataRef("sim/flightmodel/position/local_x");
     g_userY = XPLMFindDataRef("sim/flightmodel/position/local_y");
     g_userZ = XPLMFindDataRef("sim/flightmodel/position/local_z");
+    g_frameDt = XPLMFindDataRef("sim/operation/misc/frame_rate_period");
     for (int i = 0; i < kMaxAi; ++i) {
         char path[64];
         std::snprintf(path, sizeof(path),
@@ -89,32 +283,52 @@ inline void EnsureOverviewRefs() {
     g_overviewRefsReady = true;
 }
 
+inline float FrameDt() {
+    if (!g_frameDt)
+        g_frameDt = XPLMFindDataRef("sim/operation/misc/frame_rate_period");
+    float dt = g_frameDt ? XPLMGetDataf(g_frameDt) : (1.0f / 60.0f);
+    if (dt < 0.001f || dt > 0.1f) dt = 1.0f / 60.0f;
+    return dt;
+}
+
 inline int ChaseCameraCallback(XPLMCameraPosition_t* outCameraPosition,
                                int inIsLosingControl,
                                void* /*inRefcon*/) {
     if (inIsLosingControl) {
+        SetInputWindowVisible(false);
         ClearState();
         return 0;
     }
     if (!outCameraPosition || !g_refX || !g_refY || !g_refZ || !g_refPsi) {
+        SetInputWindowVisible(false);
         ClearState();
         return 0;
     }
 
+    SyncInputWindowBounds();
+    PollDistanceKeys(FrameDt());
+    ApplyPendingZoom();
+
     const double px = XPLMGetDatad(g_refX);
     const double py = XPLMGetDatad(g_refY);
     const double pz = XPLMGetDatad(g_refZ);
-    const float hdg = XPLMGetDataf(g_refPsi);
-    const float rad = hdg * kDeg2Rad;
 
     // OpenGL local: +X este, +Y up, +Z sur. Rumbo 0 = norte (-Z).
-    outCameraPosition->x = static_cast<float>(px - std::sin(rad) * kChaseDistM);
-    outCameraPosition->y = static_cast<float>(py + kChaseHeightM);
-    outCameraPosition->z = static_cast<float>(pz + std::cos(rad) * kChaseDistM);
-    outCameraPosition->pitch = kChasePitchDeg;
-    outCameraPosition->heading = hdg;
+    // Camara en orbita esferica; mira al CG (heading=azim, pitch=-elev).
+    const float az = g_azimDeg * kDeg2Rad;
+    const float el = g_elevDeg * kDeg2Rad;
+    const float cosEl = std::cos(el);
+    const float dx = -g_distM * cosEl * std::sin(az);
+    const float dy = g_distM * std::sin(el);
+    const float dz = g_distM * cosEl * std::cos(az);
+
+    outCameraPosition->x = static_cast<float>(px + dx);
+    outCameraPosition->y = static_cast<float>(py + dy);
+    outCameraPosition->z = static_cast<float>(pz + dz);
+    outCameraPosition->pitch = -g_elevDeg;
+    outCameraPosition->heading = g_azimDeg;
     outCameraPosition->roll = 0.0f;
-    outCameraPosition->zoom = 1.0f;
+    outCameraPosition->zoom = g_zoom;
     return 1;
 }
 
@@ -201,6 +415,7 @@ inline int OverviewCameraCallback(XPLMCameraPosition_t* outCameraPosition,
 
 inline void Stop() {
     if (g_mode == Mode::Off) return;
+    SetInputWindowVisible(false);
     XPLMDontControlCamera();
     LogInfo("CameraFollow: Stop (mode=%u planeIndex=%u).",
             static_cast<unsigned>(g_mode),
@@ -237,9 +452,12 @@ inline bool Start(uint8_t planeIndex) {
     }
 
     if (g_mode != Mode::Off) {
+        SetInputWindowVisible(false);
         XPLMDontControlCamera();
         ClearState();
     }
+
+    EnsureInputWindow();
 
     g_mode = Mode::Chase;
     g_followingIndex = planeIndex;
@@ -247,6 +465,8 @@ inline bool Start(uint8_t planeIndex) {
     g_refY = ry;
     g_refZ = rz;
     g_refPsi = rpsi;
+    ResetChaseOrbit(XPLMGetDataf(rpsi));
+    SetInputWindowVisible(true);
 
     XPLMControlCamera(xplm_ControlCameraUntilViewChanges, ChaseCameraCallback,
                       nullptr);
@@ -263,6 +483,7 @@ inline bool StartOverview() {
     }
 
     if (g_mode != Mode::Off) {
+        SetInputWindowVisible(false);
         XPLMDontControlCamera();
         ClearState();
     }
@@ -274,6 +495,11 @@ inline bool StartOverview() {
                       nullptr);
     LogInfo("CameraFollow: Start overview.");
     return true;
+}
+
+inline void Shutdown() {
+    Stop();
+    DestroyInputWindow();
 }
 
 }  // namespace camera_follow

@@ -41,3 +41,8 @@ DataLog.csv
 # Editor/OS cruft
 .DS_Store
 Thumbs.db
+
+# Worktrees locales de agentes (Cursor/Claude); no versionar checkouts anidados
+.claude/worktrees/
+src/.claude/
+.cursor/worktrees/

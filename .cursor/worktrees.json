@@ -1,0 +1,8 @@
+﻿{
+  "setup-worktree-windows": [
+    "dotnet restore src/core/AICopilotCore.csproj"
+  ],
+  "setup-worktree": [
+    "dotnet restore src/core/AICopilotCore.csproj"
+  ]
+}

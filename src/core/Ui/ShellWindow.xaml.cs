@@ -6,12 +6,14 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using AICopilotCore.Connector;
 using AICopilotCore.Domain;
+using static AICopilotCore.Ui.NativeMethods;
 
 namespace AICopilotCore.Ui;
 
@@ -101,6 +103,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
         InitializeComponent();
         DataContext = this;
+        HookFloatingChrome();
 
         // Los campos de texto de la pestana de Config no llevan un valor por
         // defecto propio: se leen del propio ControlTuning para que haya una
@@ -264,6 +267,19 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         get => _focusText;
         set => Set(ref _focusText, value);
     }
+
+    // Desplegable EN FOCO inline (sin Popup HWND: ver comentario en el XAML).
+    private bool _focusPickerOpen;
+    public bool FocusPickerOpen {
+        get => _focusPickerOpen;
+        set {
+            if (_focusPickerOpen == value) return;
+            Set(ref _focusPickerOpen, value);
+            OnPropertyChanged(nameof(FocusPickerListVisibility));
+        }
+    }
+    public Visibility FocusPickerListVisibility =>
+        FocusPickerOpen ? Visibility.Visible : Visibility.Collapsed;
 
     private AircraftListEntry? _selectedAircraft;
     public AircraftListEntry? SelectedAircraft {
@@ -713,12 +729,21 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             Append("Foco: elige GLOBAL o un avion de la lista.");
             return;
         }
+        ApplyFocus(ac);
+    }
 
-        bool wasGlobal = _director.IsGlobalFocus;
+    private void OnFocusPickerItemClick(object sender, RoutedEventArgs e) {
+        if (sender is not FrameworkElement { Tag: AircraftListEntry ac }) return;
+        SelectedAircraft = ac;
+        ApplyFocus(ac);
+        FocusPickerOpen = false;
+    }
+
+    private void ApplyFocus(AircraftListEntry ac) {
         _director.SetFocus(ac.XplmIndex, ac.Name);
 
         if (ac.IsGlobal) {
-            // Vista de zona: soltar chase de IA y enmarcar todas las naves.
+            // Vista de zona: enmarcar todas las naves.
             // Ritmo de telemetria Other*: conserva AiHold/Intercept si siguen.
             if (_director.AiHold.IsRunning)
                 _d.FocusOtherPlane(_director.AiHold.XplmIndex - 1);
@@ -732,10 +757,6 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             return;
         }
 
-        // Salir de GLOBAL: suelta la camara overview (chase solo con el boton).
-        if (wasGlobal && _client.IsConnected)
-            _client.ReleaseCamera();
-
         // Ritmo de telemetria Other*: la IA en foco a ~60 Hz para el panel
         // derecho; al volver al local, conserva el slot de AiHold/Intercept
         // si sigue activo.
@@ -746,13 +767,22 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         else if (!_intercept.IsRunning)
             _d.FocusOtherPlane(-1);
 
+        // Camara automatica al cambiar de foco: chase en IA, soltar en local
+        // (el ownship usa la vista nativa de X-Plane).
+        if (_client.IsConnected) {
+            if (ac.XplmIndex >= 1)
+                _client.FollowCamera(ac.XplmIndex);
+            else
+                _client.ReleaseCamera();
+        }
+
         UpdateFocusText();
         RefreshAircraftList();
         string role = ac.XplmIndex == 0 ? "LOCAL" : "IA";
         Append($"Foco: {role} · {ac.Name}.");
     }
 
-        // Activa marcadores + lineas y pide la vista aerea al connector.
+    // Activa marcadores + lineas y pide la vista aerea al connector.
     // (Las etiquetas de texto son por avion; no se fuerzan aqui.)
     // Los toggles de Graficos se sincronizan para que la UI refleje lo dibujado.
     private void ApplyGlobalFocusPresentation() {
@@ -1175,6 +1205,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     }
 
     private void ApplyLeftView(LeftPanelView view) {
+        FocusPickerOpen = false;
         AircraftView.Visibility = view == LeftPanelView.Aircraft ? Visibility.Visible : Visibility.Collapsed;
         TakeoffView.Visibility = view == LeftPanelView.Takeoff ? Visibility.Visible : Visibility.Collapsed;
         ActionsView.Visibility = view == LeftPanelView.Actions ? Visibility.Visible : Visibility.Collapsed;
@@ -1870,6 +1901,110 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     private const float MetersToFeet = 3.28084f;
     private const double MpsToKnots = 1.943844;
 
+    // --- Popups flotantes vs X-Plane ------------------------------------------
+    // Tooltips y ComboBox abren un HWND aparte. Con EnsureZOrder el shell esta
+    // debajo de X-Plane, asi que esos Popups quedan negros o tapan el hueco.
+    // Mientras estan abiertos los subimos a TOPMOST; al cerrar, reapilamos.
+
+    private static bool _floatingChromeHooked;
+
+    private void HookFloatingChrome() {
+        if (!_floatingChromeHooked) {
+            _floatingChromeHooked = true;
+            EventManager.RegisterClassHandler(typeof(System.Windows.Controls.ToolTip),
+                System.Windows.Controls.ToolTip.OpenedEvent,
+                new RoutedEventHandler(OnAnyToolTipOpened));
+            EventManager.RegisterClassHandler(typeof(System.Windows.Controls.ToolTip),
+                System.Windows.Controls.ToolTip.ClosedEvent,
+                new RoutedEventHandler(OnAnyToolTipClosed));
+        }
+        PreviewMouseDown += OnShellPreviewMouseDownCloseFocusPicker;
+        // Los pocos ComboBox del shell (p.ej. fuente de etiquetas): su dropdown
+        // es un Popup HWND; hay que elevarlo igual que los tooltips.
+        GfxFontCombo.DropDownOpened += OnGfxFontComboDropDownOpened;
+    }
+
+    private void OnShellPreviewMouseDownCloseFocusPicker(object sender, MouseButtonEventArgs e) {
+        if (!FocusPickerOpen) return;
+        if (e.OriginalSource is DependencyObject src && IsUnder(src, FocusPickerHost))
+            return;
+        FocusPickerOpen = false;
+    }
+
+    private static bool IsUnder(DependencyObject? node, DependencyObject ancestor) {
+        while (node != null) {
+            if (ReferenceEquals(node, ancestor)) return true;
+            DependencyObject? parent = null;
+            if (node is Visual)
+                parent = VisualTreeHelper.GetParent(node);
+            if (parent is null && node is FrameworkElement fe)
+                parent = fe.Parent;
+            node = parent;
+        }
+        return false;
+    }
+
+    private static void OnAnyToolTipOpened(object sender, RoutedEventArgs e) {
+        if (sender is not System.Windows.Controls.ToolTip tip) return;
+        ShellWindow? shell = FindShellFor(tip.PlacementTarget as DependencyObject);
+        shell?._docker?.EnsureStacked();
+        ElevateFloating(tip, topmost: true);
+    }
+
+    private static void OnAnyToolTipClosed(object sender, RoutedEventArgs e) {
+        if (sender is not System.Windows.Controls.ToolTip tip) return;
+        ElevateFloating(tip, topmost: false);
+        FindShellFor(tip.PlacementTarget as DependencyObject)?._docker?.EnsureStacked();
+    }
+
+    private void OnGfxFontComboDropDownOpened(object? sender, EventArgs e) {
+        ElevateComboPopup(GfxFontCombo);
+    }
+
+    private void ElevateComboPopup(ComboBox cb) {
+        _docker?.EnsureStacked();
+        cb.ApplyTemplate();
+        if (cb.Template.FindName("PART_Popup", cb) is not Popup popup) return;
+
+        void ElevateChild() {
+            if (popup.Child is Visual child)
+                ElevateFloating(child, topmost: true);
+        }
+        ElevateChild();
+        cb.Dispatcher.BeginInvoke(ElevateChild, DispatcherPriority.Loaded);
+
+        EventHandler? onClosed = null;
+        onClosed = (_, _) => {
+            popup.Closed -= onClosed;
+            if (popup.Child is Visual child)
+                ElevateFloating(child, topmost: false);
+            _docker?.EnsureStacked();
+        };
+        popup.Closed += onClosed;
+    }
+
+    private static ShellWindow? FindShellFor(DependencyObject? d) {
+        if (d != null && Window.GetWindow(d) is ShellWindow fromTree) return fromTree;
+        if (Application.Current is null) return null;
+        foreach (Window w in Application.Current.Windows)
+            if (w is ShellWindow s) return s;
+        return null;
+    }
+
+    private static void ElevateFloating(Visual visual, bool topmost) {
+        void Apply() {
+            if (PresentationSource.FromVisual(visual) is not HwndSource src) return;
+            SetWindowPos(src.Handle,
+                         topmost ? HWND_TOPMOST : HWND_NOTOPMOST,
+                         0, 0, 0, 0,
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        }
+        if (PresentationSource.FromVisual(visual) is null)
+            visual.Dispatcher.BeginInvoke(Apply, DispatcherPriority.Loaded);
+        else
+            Apply();
+    }
+
     private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null) {
         field = value;
         OnPropertyChanged(name);
@@ -1890,6 +2025,10 @@ public sealed class AircraftListEntry : INotifyPropertyChanged {
     public bool IsLocal { get; init; }
     public int XplmIndex { get; init; }
 
+    // Texto del desplegable EN FOCO ("GLOBAL · zona", "LOCAL · F-14"...).
+    public string FocusLabel =>
+        IsGlobal ? "GLOBAL · zona" : $"{RoleLabel} · {Name}";
+
     private string _name = "";
     public string Name {
         get => _name;
@@ -1897,6 +2036,7 @@ public sealed class AircraftListEntry : INotifyPropertyChanged {
             if (_name == value) return;
             _name = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Name)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FocusLabel)));
         }
     }
 
@@ -1907,6 +2047,7 @@ public sealed class AircraftListEntry : INotifyPropertyChanged {
             if (_roleLabel == value) return;
             _roleLabel = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RoleLabel)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FocusLabel)));
         }
     }
 

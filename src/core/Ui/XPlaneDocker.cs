@@ -231,6 +231,13 @@ public sealed class XPlaneDocker : IDisposable {
     // Va sin comprobar si "hace falta": pedir una posicion Z que ya se tiene
     // no repinta nada, y averiguarlo recorriendo la lista Z no es viable --
     // un escritorio normal tiene cientos de ventanas en ella.
+    public void EnsureStacked() {
+        if (_shellHwnd == IntPtr.Zero || _hwnd == IntPtr.Zero || !IsWindow(_hwnd)) return;
+        EnsureZOrder();
+    }
+
+    public IntPtr XPlaneHwnd => _hwnd;
+
     private void EnsureZOrder() {
         // Sincrona a proposito: es nuestra ventana, asi que no hay riesgo de
         // quedarse esperando a que el simulador atienda su cola.

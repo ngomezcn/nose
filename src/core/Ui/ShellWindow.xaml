@@ -113,7 +113,7 @@
                     <ToggleButton x:Name="InterceptTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE945;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
-                                  ToolTip="Interceptar: ir a por otro avion (blanco) y mantenerse en formacion con el. El foco de control se elige en Aviones."/>
+                                  ToolTip="Interceptar: ir a por otro avion (blanco) y mantenerse en formacion con el. El foco de control se elige en EN FOCO."/>
                     <ToggleButton x:Name="GraphicsTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE891;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
@@ -157,21 +157,87 @@
                                FontFamily="{StaticResource AICopilotFont}" FontSize="11"
                                Foreground="{StaticResource TextFaint}"/>
 
-                    <!-- Franja siempre visible: nave a la que van despegue / crucero / acciones. -->
-                    <Border DockPanel.Dock="Top" Margin="14,0,14,6" Padding="8,5"
+                    <!-- Desplegable EN FOCO: INLINE (sin Popup HWND). Los ComboBox /
+                         ToolTip de WPF son ventanas aparte; con X-Plane encima del
+                         shell quedan negros o tapan el hueco. Aqui la lista vive
+                         dentro del panel izquierdo. -->
+                    <Border x:Name="FocusPickerHost" DockPanel.Dock="Top" Margin="14,0,14,6"
                             Background="{StaticResource InputBg}"
                             BorderBrush="{StaticResource CyanText}" BorderThickness="1"
-                            ToolTip="GLOBAL = vista aerea y opciones de zona; un avion = despegue, crucero y acciones.">
-                        <DockPanel>
-                            <TextBlock DockPanel.Dock="Left" Text="EN FOCO" Margin="0,0,10,0"
-                                       FontFamily="{StaticResource AICopilotFont}" FontSize="10"
-                                       Foreground="{StaticResource CyanText}"
-                                       VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding FocusText}"
-                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
-                                       Foreground="{StaticResource CyanText}"
-                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                        </DockPanel>
+                            ToolTip="Elige GLOBAL (vista aerea / zona) o un avion (despegue, crucero, acciones).">
+                        <StackPanel>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="EN FOCO" Margin="8,0,8,0"
+                                           FontFamily="{StaticResource AICopilotFont}" FontSize="10"
+                                           Foreground="{StaticResource CyanText}"
+                                           VerticalAlignment="Center"/>
+                                <ToggleButton x:Name="FocusPickerToggle"
+                                              Style="{StaticResource FocusPickerToggle}"
+                                              IsChecked="{Binding FocusPickerOpen, Mode=TwoWay}"
+                                              ToolTip="GLOBAL = zona. LOCAL / IA = ordenes de vuelo y caja negra.">
+                                    <TextBlock Text="{Binding FocusText}"
+                                               FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
+                                               Foreground="{StaticResource CyanText}"
+                                               TextTrimming="CharacterEllipsis"/>
+                                </ToggleButton>
+                            </DockPanel>
+                            <Border x:Name="FocusPickerListHost"
+                                    BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,1,0,0"
+                                    Visibility="{Binding FocusPickerListVisibility}"
+                                    MaxHeight="220">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding AircraftEntries}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Button Click="OnFocusPickerItemClick"
+                                                        Cursor="Hand" HorizontalContentAlignment="Stretch"
+                                                        Background="Transparent" BorderThickness="0"
+                                                        Padding="10,6" Tag="{Binding}">
+                                                    <Button.Template>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="Row" Background="{TemplateBinding Background}"
+                                                                    Padding="{TemplateBinding Padding}">
+                                                                <DockPanel>
+                                                                    <Ellipse Width="7" Height="7" Margin="0,0,8,0"
+                                                                             VerticalAlignment="Center"
+                                                                             Fill="{Binding StatusBrush}"/>
+                                                                    <TextBlock Text="{Binding FocusLabel}"
+                                                                               FontFamily="{StaticResource AICopilotFont}"
+                                                                               FontSize="12.5"
+                                                                               TextTrimming="CharacterEllipsis"
+                                                                               VerticalAlignment="Center">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsFocused}" Value="True">
+                                                                                        <Setter Property="Foreground" Value="{StaticResource CyanText}"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </DockPanel>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Row" Property="Background"
+                                                                            Value="{StaticResource HoverBg}"/>
+                                                                </Trigger>
+                                                                <DataTrigger Binding="{Binding IsFocused}" Value="True">
+                                                                    <Setter TargetName="Row" Property="Background"
+                                                                            Value="{StaticResource HoverBg}"/>
+                                                                </DataTrigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Button.Template>
+                                                </Button>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
                     </Border>
 
                     <!-- Las vistas ocupan el mismo hueco; solo una Visible a la vez. -->
@@ -1202,7 +1268,7 @@
                                    FontFamily="{StaticResource AICopilotFont}" FontSize="11"
                                    Foreground="{StaticResource CyanText}"
                                    TextTrimming="CharacterEllipsis"
-                                   ToolTip="Telemetria del avion EN FOCO (se elige en Aviones)."/>
+                                   ToolTip="Telemetria del avion EN FOCO (desplegable EN FOCO arriba a la izquierda)."/>
                     </StackPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,4,14,14">
                         <StackPanel>

@@ -32,6 +32,11 @@ internal static class NativeMethods {
     public const uint SWP_FRAMECHANGED = 0x0020;
     public const uint SWP_ASYNCWINDOWPOS = 0x4000;
 
+    // Para tooltips / dropdowns WPF (HWND aparte): con el shell debajo de
+    // X-Plane sus Popups quedan tapados o negros; TOPMOST mientras duran.
+    public static readonly IntPtr HWND_TOPMOST = new(-1);
+    public static readonly IntPtr HWND_NOTOPMOST = new(-2);
+
     public const int SW_MINIMIZE = 6;
     public const int SW_RESTORE = 9;
 

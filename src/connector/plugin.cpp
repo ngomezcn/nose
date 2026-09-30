@@ -506,6 +506,7 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
 
 PLUGIN_API void XPluginStop() {
     XPLMUnregisterFlightLoopCallback(FlightLoopCallback, nullptr);
+    camera_follow::Shutdown();
 
     delete g_label;  g_label = nullptr;
     delete g_pipe;   g_pipe = nullptr;
