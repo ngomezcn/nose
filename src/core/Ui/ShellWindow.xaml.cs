@@ -584,8 +584,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     // --- Barra de herramientas ----------------------------------------------
 
     private void OnStartClick(object sender, RoutedEventArgs e) {
-        // Exclusion mutua con maniobras/intercept: vive en FlightDirector
-        // (misma fachada que usa la ControlApi del driver LLM).
+        // Exclusion mutua con maniobras/intercept: vive en FlightDirector.
         if (!_director.StartTakeoff(TakeoffStyles.Get(_styleId), out string error))
             Append($"Despegue: {error}.");
     }

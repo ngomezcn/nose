@@ -2,7 +2,6 @@ using System.Threading;
 using System.Windows;
 using AICopilotCore.Connector;
 using AICopilotCore.Domain;
-using AICopilotCore.Driver;
 
 namespace AICopilotCore.Ui;
 
@@ -12,8 +11,7 @@ namespace AICopilotCore.Ui;
 //     -> Datarefs        que datarefs nos importan (se definen y suscriben)
 //     -> AircraftControls como se toca el avion
 //     -> TakeoffSequence  la logica de despegue
-//     -> FlightDirector   exclusion mutua entre secuencias (UI + driver)
-//     -> ControlApi       API REST localhost (ASP.NET Core) para LLMs / scripts
+//     -> FlightDirector   exclusion mutua entre secuencias
 //     -> ShellWindow      lo que ve el usuario
 //
 // El detalle de timing que importa: TakeoffSequence.Update() se llama desde
@@ -38,7 +36,6 @@ public partial class App : Application
     private ManeuverSequence? _maneuvers;
     private InterceptSequence? _intercept;
     private FlightDirector? _director;
-    private ControlApi? _controlApi;
 
     private ShellWindow? _shell;
 
@@ -141,13 +138,6 @@ public partial class App : Application
         ShutdownMode = ShutdownMode.OnMainWindowClose;
         _shell.Show();
 
-        // API REST :17890 (solo 127.0.0.1) para LLMs / scripts. Si el
-        // puerto esta ocupado, lo dice en el log y la UI sigue sin ella.
-        _controlApi = new ControlApi(_director, _client);
-        _controlApi.StartAsync().ContinueWith(t => _shell.Append(t.IsFaulted
-            ? $"API REST NO arranco: {t.Exception!.GetBaseException().Message}"
-            : $"API REST en {ControlApi.Url}"));
-
         _client.Start();
     }
 
@@ -158,7 +148,6 @@ public partial class App : Application
         // es instantaneo y no depende de que el otro lado reaccione.
         if (_sequence?.IsRunning == true || _maneuvers?.IsRunning == true ||
             _intercept?.IsRunning == true) _controls?.ReleaseAllOverrides();
-        _controlApi?.Stop();
         _client?.Dispose();
         base.OnExit(e);
     }

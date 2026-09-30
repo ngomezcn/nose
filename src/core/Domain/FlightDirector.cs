@@ -4,8 +4,8 @@ namespace AICopilotCore.Domain;
 //
 // TakeoffSequence, ManeuverSequence e InterceptSequence comparten los mismos
 // overrides (AircraftControls): si dos corrieran a la vez se pisarian los
-// mandos. La UI y la ControlApi del driver LLM pasan por aqui para que la
-// exclusion mutua viva en un solo sitio, no duplicada en cada boton/endpoint.
+// mandos. La UI pasa por aqui para que la exclusion mutua viva en un solo
+// sitio, no duplicada en cada boton.
 //
 // Interceptacion desde tierra: StartIntercept encola el blanco, arranca
 // despegue combate (handoff a minima altura) y Tick() encadena la

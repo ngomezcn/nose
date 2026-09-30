@@ -12,7 +12,3 @@ Para inspeccionar telemetría / diagnosticar un vuelo o maniobra a partir
 del registro, usa
 [`.claude/skills/caja-negra/SKILL.md`](.claude/skills/caja-negra/SKILL.md)
 (“inspecciona la caja negra”, DataLog, temblores, G, intercept…).
-
-Para accionar la UI desde el agente (API REST local: status, despegar,
-interceptar, abortar), usa
-[`.claude/skills/aicopilot-driver/SKILL.md`](.claude/skills/aicopilot-driver/SKILL.md).

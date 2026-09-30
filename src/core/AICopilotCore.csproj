@@ -26,11 +26,6 @@
          de verdad importaba no depender de la cultura del usuario. -->
   </PropertyGroup>
 
-  <!-- ASP.NET Core (Kestrel) para la API REST del driver (Driver/ControlApi.cs). -->
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
-
   <ItemGroup>
     <Resource Include="Fonts\Rajdhani-SemiBold.ttf" />
   </ItemGroup>

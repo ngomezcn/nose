@@ -3,8 +3,8 @@
 Aplican siempre, las pida el usuario o no, en cualquier sesión de
 cualquier agente/herramienta que edite código bajo `src/` o
 `CMakeLists.txt` en este repo. (Claude Code: ver también `CLAUDE.md`,
-que solo remite aquí, y las skills `.claude/skills/xplane-sdk/`,
-`.claude/skills/caja-negra/` y `.claude/skills/aicopilot-driver/`.)
+que solo remite aquí, y las skills `.claude/skills/xplane-sdk/` y
+`.claude/skills/caja-negra/`.)
 
 ## 0. El repo son DOS proyectos, y la frontera entre ellos es dura
 
@@ -114,12 +114,3 @@ sigue la skill
 [`.claude/skills/caja-negra/SKILL.md`](.claude/skills/caja-negra/SKILL.md)
 antes de diagnosticar. El CSV está junto al exe desplegado
 (`…\plugins\AICopilot\win_x64\DataLog.csv`), no en el repo.
-
-## 5. Driver LLM ↔ UI (ControlApi)
-
-Para despegar / interceptar / abortar desde un agente sin clics, usa la
-skill
-[`.claude/skills/aicopilot-driver/SKILL.md`](.claude/skills/aicopilot-driver/SKILL.md)
-y el CLI `tools\aicopilot_driver.py`. El core expone una API REST
-(ASP.NET Core minimal API) en `http://127.0.0.1:17890`: `GET /status`,
-`POST /takeoff`, `POST /intercept`, `POST /abort`.
