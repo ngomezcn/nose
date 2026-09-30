@@ -1902,9 +1902,10 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     private const double MpsToKnots = 1.943844;
 
     // --- Popups flotantes vs X-Plane ------------------------------------------
-    // Tooltips y ComboBox abren un HWND aparte. Con EnsureZOrder el shell esta
-    // debajo de X-Plane, asi que esos Popups quedan negros o tapan el hueco.
-    // Mientras estan abiertos los subimos a TOPMOST; al cerrar, reapilamos.
+    // Tooltips y ComboBox abren un HWND aparte. Al crearse, Windows suele
+    // subir el shell (owner) por encima de X-Plane y el hueco se ve negro.
+    // Mitigacion: PopupGuard reapila el Z mientras el popup vive, y el HWND
+    // del tip se marca NOACTIVATE + TOPMOST para verse sin activar el shell.
 
     private static bool _floatingChromeHooked;
 
@@ -1919,8 +1920,6 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
                 new RoutedEventHandler(OnAnyToolTipClosed));
         }
         PreviewMouseDown += OnShellPreviewMouseDownCloseFocusPicker;
-        // Los pocos ComboBox del shell (p.ej. fuente de etiquetas): su dropdown
-        // es un Popup HWND; hay que elevarlo igual que los tooltips.
         GfxFontCombo.DropDownOpened += OnGfxFontComboDropDownOpened;
     }
 
@@ -1947,14 +1946,22 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     private static void OnAnyToolTipOpened(object sender, RoutedEventArgs e) {
         if (sender is not System.Windows.Controls.ToolTip tip) return;
         ShellWindow? shell = FindShellFor(tip.PlacementTarget as DependencyObject);
-        shell?._docker?.EnsureStacked();
+        if (shell is null) return;
+        shell._docker?.BeginPopupGuard();
         ElevateFloating(tip, topmost: true);
+        // El HWND del tip a veces aparece un tick despues de Opened.
+        shell.Dispatcher.BeginInvoke(() => {
+            ElevateFloating(tip, topmost: true);
+            shell._docker?.EnsureStacked();
+        }, DispatcherPriority.Loaded);
+        shell.Dispatcher.BeginInvoke(() => shell._docker?.EnsureStacked(),
+                                     DispatcherPriority.Input);
     }
 
     private static void OnAnyToolTipClosed(object sender, RoutedEventArgs e) {
         if (sender is not System.Windows.Controls.ToolTip tip) return;
         ElevateFloating(tip, topmost: false);
-        FindShellFor(tip.PlacementTarget as DependencyObject)?._docker?.EnsureStacked();
+        FindShellFor(tip.PlacementTarget as DependencyObject)?._docker?.EndPopupGuard();
     }
 
     private void OnGfxFontComboDropDownOpened(object? sender, EventArgs e) {
@@ -1962,13 +1969,17 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     }
 
     private void ElevateComboPopup(ComboBox cb) {
-        _docker?.EnsureStacked();
+        _docker?.BeginPopupGuard();
         cb.ApplyTemplate();
-        if (cb.Template.FindName("PART_Popup", cb) is not Popup popup) return;
+        if (cb.Template.FindName("PART_Popup", cb) is not Popup popup) {
+            _docker?.EndPopupGuard();
+            return;
+        }
 
         void ElevateChild() {
             if (popup.Child is Visual child)
                 ElevateFloating(child, topmost: true);
+            _docker?.EnsureStacked();
         }
         ElevateChild();
         cb.Dispatcher.BeginInvoke(ElevateChild, DispatcherPriority.Loaded);
@@ -1978,7 +1989,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             popup.Closed -= onClosed;
             if (popup.Child is Visual child)
                 ElevateFloating(child, topmost: false);
-            _docker?.EnsureStacked();
+            _docker?.EndPopupGuard();
         };
         popup.Closed += onClosed;
     }
@@ -1991,14 +2002,30 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         return null;
     }
 
-    private static void ElevateFloating(Visual visual, bool topmost) {
+    private static void ElevateFloating(Visual visual, bool topmost, int retriesLeft = 12) {
         void Apply() {
-            if (PresentationSource.FromVisual(visual) is not HwndSource src) return;
-            SetWindowPos(src.Handle,
+            if (PresentationSource.FromVisual(visual) is not HwndSource src) {
+                if (topmost && retriesLeft > 0) {
+                    visual.Dispatcher.BeginInvoke(
+                        () => ElevateFloating(visual, topmost, retriesLeft - 1),
+                        DispatcherPriority.Loaded);
+                }
+                return;
+            }
+
+            IntPtr hwnd = src.Handle;
+            if (topmost) {
+                long ex = (long)GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+                SetWindowLongPtr(hwnd, GWL_EXSTYLE,
+                    new IntPtr(ex | WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW));
+            }
+            SetWindowPos(hwnd,
                          topmost ? HWND_TOPMOST : HWND_NOTOPMOST,
                          0, 0, 0, 0,
-                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE |
+                         (topmost ? SWP_FRAMECHANGED : 0));
         }
+
         if (PresentationSource.FromVisual(visual) is null)
             visual.Dispatcher.BeginInvoke(Apply, DispatcherPriority.Loaded);
         else
