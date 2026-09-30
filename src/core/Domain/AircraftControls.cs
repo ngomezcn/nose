@@ -36,6 +36,22 @@ public sealed class AircraftControls
     private readonly SlewLimiter _rollSlew = new(3.5f);
     private readonly SlewLimiter _yawSlew = new(3.5f);
 
+    // Handles con hold puesto por ESTA instancia, en orden de creacion. Permite
+    // soltar solo lo propio (en orden inverso) sin el ReleaseAll global del
+    // connector, que tambien soltaria los holds cinematicos de las IAs.
+    private readonly List<DataHandle> _held = new();
+
+    private void Hold(DataHandle h, double value)
+    {
+        if (!_held.Contains(h)) _held.Add(h);
+        _c.Hold(h, value);
+    }
+
+    private void ReleaseTracked(DataHandle h)
+    {
+        if (_held.Remove(h)) _c.Release(h);
+    }
+
     private bool _throttleOverride;
     private bool _pitchOverride;
     private bool _rollOverride;
@@ -53,7 +69,7 @@ public sealed class AircraftControls
     public void EnableThrottleOverride()
     {
         if (_throttleOverride) return;
-        _c.Hold(_d.OverrideThrottles, 1);
+        Hold(_d.OverrideThrottles, 1);
         _throttleOverride = true;
         _throttleSlew.Reset(ThrottleReadback);
     }
@@ -65,8 +81,8 @@ public sealed class AircraftControls
     public void DisableThrottleOverride()
     {
         if (!_throttleOverride) return;
-        _c.Release(_d.EngineThrottleUse);
-        _c.Release(_d.OverrideThrottles);
+        ReleaseTracked(_d.EngineThrottleUse);
+        ReleaseTracked(_d.OverrideThrottles);
         _throttleOverride = false;
     }
 
@@ -76,7 +92,7 @@ public sealed class AircraftControls
         EnableThrottleOverride();
         _throttleSlew.MaxRate = _tuning.ThrottleSlewRate;
         float smoothed = _throttleSlew.Update(target, dt);
-        _c.Hold(_d.EngineThrottleUse, smoothed);
+        Hold(_d.EngineThrottleUse, smoothed);
 
         // Y la palanca de la cabina detras, para que se vea moverse. Va por
         // Set y no por Hold a proposito, aunque se escriba igual de a
@@ -132,7 +148,7 @@ public sealed class AircraftControls
     {
         EnableThrottleOverride();
         _throttleSlew.Reset(0f);
-        _c.Hold(_d.EngineThrottleUse, 0.0);
+        Hold(_d.EngineThrottleUse, 0.0);
         _c.Set(_d.CockpitThrottleRatio, 0.0);
 
         SetFlaps(1f);
@@ -159,7 +175,7 @@ public sealed class AircraftControls
     public void EnablePitchOverride()
     {
         if (_pitchOverride) return;
-        _c.Hold(_d.OverridePitch, 1);
+        Hold(_d.OverridePitch, 1);
         _pitchOverride = true;
         _pitchSlew.Reset(0f);
     }
@@ -167,15 +183,15 @@ public sealed class AircraftControls
     public void DisablePitchOverride()
     {
         if (!_pitchOverride) return;
-        _c.Release(_d.YokePitch);
-        _c.Release(_d.OverridePitch);
+        ReleaseTracked(_d.YokePitch);
+        ReleaseTracked(_d.OverridePitch);
         _pitchOverride = false;
     }
 
     public void SetPitchInput(float target, float dt)
     {
         _pitchSlew.MaxRate = _tuning.PitchSlewRate;
-        _c.Hold(_d.YokePitch, _pitchSlew.Update(target, dt));
+        Hold(_d.YokePitch, _pitchSlew.Update(target, dt));
     }
 
     // Valor realmente mantenido en el eje (post-rampa, lo ultimo que se
@@ -189,7 +205,7 @@ public sealed class AircraftControls
     public void EnableRollOverride()
     {
         if (_rollOverride) return;
-        _c.Hold(_d.OverrideRoll, 1);
+        Hold(_d.OverrideRoll, 1);
         _rollOverride = true;
         _rollSlew.Reset(0f);
     }
@@ -197,15 +213,15 @@ public sealed class AircraftControls
     public void DisableRollOverride()
     {
         if (!_rollOverride) return;
-        _c.Release(_d.YokeRoll);
-        _c.Release(_d.OverrideRoll);
+        ReleaseTracked(_d.YokeRoll);
+        ReleaseTracked(_d.OverrideRoll);
         _rollOverride = false;
     }
 
     public void SetRollInput(float target, float dt)
     {
         _rollSlew.MaxRate = _tuning.RollSlewRate;
-        _c.Hold(_d.YokeRoll, _rollSlew.Update(target, dt));
+        Hold(_d.YokeRoll, _rollSlew.Update(target, dt));
     }
 
     public float RollInputCmd => _rollSlew.Value;
@@ -215,7 +231,7 @@ public sealed class AircraftControls
     public void EnableYawOverride()
     {
         if (_yawOverride) return;
-        _c.Hold(_d.OverrideYaw, 1);
+        Hold(_d.OverrideYaw, 1);
         _yawOverride = true;
         _yawSlew.Reset(0f);
     }
@@ -223,28 +239,27 @@ public sealed class AircraftControls
     public void DisableYawOverride()
     {
         if (!_yawOverride) return;
-        _c.Release(_d.YokeHeading);
-        _c.Release(_d.OverrideYaw);
+        ReleaseTracked(_d.YokeHeading);
+        ReleaseTracked(_d.OverrideYaw);
         _yawOverride = false;
     }
 
     public void SetYawInput(float target, float dt)
     {
         _yawSlew.MaxRate = _tuning.YawSlewRate;
-        _c.Hold(_d.YokeHeading, _yawSlew.Update(target, dt));
+        Hold(_d.YokeHeading, _yawSlew.Update(target, dt));
     }
 
     public float YawInputCmd => _yawSlew.Value;
 
     // --- Soltarlo todo -----------------------------------------------------
-    // Va por el RELEASE_ALL del connector y no por los cuatro Disable* de
-    // arriba: asi se suelta tambien cualquier hold que se hubiera quedado
-    // suelto por el camino (un eje sin su override, por ejemplo), y el
-    // connector lo hace en orden inverso al de activacion, que es el orden
-    // seguro (ver Holds::ReleaseAll).
+    // Suelta SOLO los holds de esta instancia (ejes y overrides), en orden
+    // inverso al de creacion (ejes antes que su override). No usa el
+    // ReleaseAll global del connector: soltaria tambien los holds de las IAs.
     public void ReleaseAllOverrides()
     {
-        _c.ReleaseAll();
+        for (int i = _held.Count - 1; i >= 0; i--) _c.Release(_held[i]);
+        _held.Clear();
         _throttleOverride = _pitchOverride = _rollOverride = _yawOverride = false;
     }
 
@@ -254,6 +269,7 @@ public sealed class AircraftControls
     public void ForgetOverrideState()
     {
         _throttleOverride = _pitchOverride = _rollOverride = _yawOverride = false;
+        _held.Clear();
         // El connector arranca sin nada escrito, asi que el ultimo valor de
         // aerofrenos que creiamos puesto ya no es verdad: se fuerza a
         // reescribirlo en el proximo mando.

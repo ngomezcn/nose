@@ -4,7 +4,8 @@ namespace AICopilotCore.Domain;
 
 // Gestor de cajas negras por avion (XPLM 0 = ownship, 1..19 = IAs).
 // Cada DataLogger se crea bajo demanda; por defecto ninguno graba.
-// Empezar/Detener/Borrar de la UI actuan sobre el indice en foco; Refresh
+// Empezar/Detener/Borrar de la UI actuan sobre el indice en foco; con
+// foco GLOBAL actuan sobre todo el roster (varios a la vez). Refresh
 // alimenta todos los que tengan IsRecording.
 public sealed class FlightDataLogs
 {
@@ -31,6 +32,49 @@ public sealed class FlightDataLogs
                 if (log is { IsRecording: true })
                     yield return (i, log);
             }
+        }
+    }
+
+    public int RecordingCount
+    {
+        get
+        {
+            int n = 0;
+            for (int i = 0; i < _logs.Length; i++)
+            {
+                if (_logs[i] is { IsRecording: true })
+                    n++;
+            }
+            return n;
+        }
+    }
+
+    public bool AnyRecording => RecordingCount > 0;
+
+    // Empieza a grabar cada indice (idempotente por logger).
+    public void StartMany(IEnumerable<int> xplmIndices)
+    {
+        foreach (int idx in xplmIndices)
+        {
+            if (idx < 0 || idx >= MaxPlanes) continue;
+            For(idx).StartRecording();
+        }
+    }
+
+    // Detiene todos los que estan grabando (snapshot primero: IsRecording muda).
+    public void StopAllRecording()
+    {
+        for (int i = 0; i < _logs.Length; i++)
+            _logs[i]?.StopRecording();
+    }
+
+    // Vacia buffers + CSV de cada indice (idempotente si aun no existia).
+    public void ClearMany(IEnumerable<int> xplmIndices)
+    {
+        foreach (int idx in xplmIndices)
+        {
+            if (idx < 0 || idx >= MaxPlanes) continue;
+            For(idx).Clear();
         }
     }
 

@@ -1,24 +1,25 @@
 namespace AICopilotCore.Domain;
 
 // Ajustes de overlays 2D que dibuja el connector sobre la escena
-// (etiquetas, lineas, marcadores). Viven en el core y viajan al plugin
-// con Op.GraphicsConfig; el dibujo en si no puede estar aqui (OpenGL /
-// XPLM viven en el proceso de X-Plane).
+// (nombres, lineas, triangulo, marcadores). Viven en el core y viajan al
+// plugin con Op.GraphicsConfig; el dibujo en si no puede estar aqui
+// (OpenGL / XPLM viven en el proceso de X-Plane).
+//
+// Las etiquetas de texto no tienen toggle: cada avion manda su nombre
+// (casilla en Aviones); vacio = no se dibuja nada encima.
 public sealed class GraphicsSettings
 {
-    public const byte FlagOwnLabel = 1 << 0;
-    public const byte FlagOtherLabels = 1 << 1;
     public const byte FlagLines = 1 << 2;
     public const byte FlagMarkers = 1 << 3;
     public const byte FlagPath = 1 << 4;
+    public const byte FlagTriangle = 1 << 5;
 
-    public bool ShowOwnLabel { get; set; } = true;
-    public bool ShowOtherLabels { get; set; }
     public bool ShowLines { get; set; }
     public bool ShowMarkers { get; set; }
     public bool ShowPath { get; set; }
+    public bool ShowTriangle { get; set; }
 
-    // 0 = Basic (mas pequena), 1 = Proportional (la del label "Jev" actual).
+    // 0 = Basic (mas pequena), 1 = Proportional.
     private int _font = 1;
     public int Font
     {
@@ -54,44 +55,29 @@ public sealed class GraphicsSettings
         set => _scale = Math.Clamp(value, 0.5f, 4.0f);
     }
 
-    private string _labelText = "Jev";
-    public string LabelText
-    {
-        get => _labelText;
-        set
-        {
-            string t = (value ?? string.Empty).Trim();
-            if (t.Length > 32) t = t[..32];
-            _labelText = t.Length == 0 ? "Jev" : t;
-        }
-    }
-
     public byte Flags
     {
         get
         {
             byte f = 0;
-            if (ShowOwnLabel) f |= FlagOwnLabel;
-            if (ShowOtherLabels) f |= FlagOtherLabels;
             if (ShowLines) f |= FlagLines;
             if (ShowMarkers) f |= FlagMarkers;
             if (ShowPath) f |= FlagPath;
+            if (ShowTriangle) f |= FlagTriangle;
             return f;
         }
     }
 
     public void ResetToDefaults()
     {
-        ShowOwnLabel = true;
-        ShowOtherLabels = false;
         ShowLines = false;
         ShowMarkers = false;
         ShowPath = false;
+        ShowTriangle = false;
         Font = 1;
         ColorR = 1.0f;
         ColorG = 0.85f;
         ColorB = 0.1f;
         Scale = 1.0f;
-        LabelText = "Jev";
     }
 }

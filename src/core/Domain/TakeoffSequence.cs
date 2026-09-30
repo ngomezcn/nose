@@ -1,5 +1,6 @@
 using System.Globalization;
 using AICopilotCore.Connector;
+using AICopilotCore.Domain.Agents;
 
 namespace AICopilotCore.Domain;
 
@@ -36,8 +37,7 @@ public enum TakeoffPhase
 // en pausa, a camara lenta o con el frame rate bajo.
 public sealed class TakeoffSequence
 {
-    private readonly AircraftControls _controls;
-    private readonly Datarefs _d;
+    private readonly IAircraftBody _body;
 
     // Update() corre en el hilo de lectura del pipe (llega un TELEM, se
     // tickea la secuencia) y Start()/Abort() los llama el usuario desde el
@@ -77,10 +77,25 @@ public sealed class TakeoffSequence
     private bool _baroLogged;
     private bool _baroWarnedOutOfRange;
 
-    public TakeoffSequence(AircraftControls controls, Datarefs datarefs)
+    public TakeoffSequence(IAircraftBody body)
     {
-        _controls = controls;
-        _d = datarefs;
+        _body = body;
+    }
+
+    private bool _capsLogged;
+
+    // El body declara lo que no tiene; se explica una vez y se sigue
+    // (nada de abortar: la maniobra se adapta).
+    private void LogMissingCaps()
+    {
+        if (_capsLogged) return;
+        _capsLogged = true;
+        var c = _body.Caps;
+        if (!c.HasParkBrake) LogAction("Este avion no expone freno de parking: se despega sin soltarlo.");
+        if (!c.HasRetractableGear) LogAction("Este avion tiene tren fijo: no se gestiona el tren.");
+        if (!c.HasFlaps) LogAction("Este avion no expone flaps: se despega sin ellos.");
+        if (!c.HasBarometer) LogAction("Este avion no expone baro: no se ajusta el altimetro.");
+        if (!c.HasThrottleReadback) LogAction("Sin lectura real de gases: la orden de gases es la referencia.");
     }
 
     // Una linea corta cada vez que la secuencia toma una decision discreta
@@ -120,9 +135,10 @@ public sealed class TakeoffSequence
     {
         lock (_gate)
         {
+            _body.Sense();
             _style = style;
             _handoffAtTurnAltitude = handoffAtTurnAltitude;
-            _fieldAltFt = _d.AltFt.Float;
+            _fieldAltFt = _body.State.AltFt;
             VrKt = style.VrKt;
             RotatePitchDeg = style.RotatePitchDeg;
             TurnDeltaDeg = style.TurnDeltaDeg;
@@ -157,10 +173,10 @@ public sealed class TakeoffSequence
         // La rampa de objetivo de pitch arranca en la actitud actual (en
         // tierra, ~0deg) para que el primer HoldPitch no la vea saltar
         // desde un 0 "de fabrica" hasta ahi de golpe.
-        _pitchTargetRamp.Reset(_d.PitchDeg.Float);
+        _pitchTargetRamp.Reset(_body.State.PitchDeg);
         _baroLogged = false;
         _baroWarnedOutOfRange = false;
-        _baseHeadingDeg = _d.HeadingDeg.Float;
+        _baseHeadingDeg = _body.State.HeadingDeg;
         _holdHeadingDeg = _baseHeadingDeg;
 
         string handoffNote = _handoffAtTurnAltitude
@@ -171,12 +187,12 @@ public sealed class TakeoffSequence
                   $"subida={_style.ClimbIasKt:0} crucero={_style.CruiseIasKt:0} " +
                   handoffNote +
                   $"rumboPista={_baseHeadingDeg:0}deg | " +
-                  BlackBoxSnap.Of(FlightState.Capture(_d)));
+                  BlackBoxSnap.Of(_body.State));
 
         // El rumbo de pista se mantiene con el timon/rueda de morro desde
         // ya, con el avion aun parado, asi que ese eje se activa ahora.
-        _controls.EnableYawOverride();
-        _controls.EnableThrottleOverride();
+        _body.EnableYawOverride();
+        _body.EnableThrottleOverride();
 
         SetPhase(TakeoffPhase.Prep);
     }
@@ -187,8 +203,8 @@ public sealed class TakeoffSequence
         {
             LogAction(BlackBoxSnap.Join(
                 $"Fin: despegue abortado — fase era '{PhaseName(Phase)}'",
-                BlackBoxSnap.Of(FlightState.Capture(_d))));
-            _controls.ReleaseAllOverrides();
+                BlackBoxSnap.Of(_body.State)));
+            _body.ReleaseAllOverrides();
             _iasTarget = float.NaN;
             LastPitchTarget = float.NaN;
             LastBankTarget = float.NaN;
@@ -207,7 +223,7 @@ public sealed class TakeoffSequence
         {
             if (!IsRunning) return;
             LogAction("Conexion con el plugin perdida: secuencia cancelada.");
-            _controls.ForgetOverrideState();
+            _body.ForgetOverrideState();
             SetPhase(TakeoffPhase.Idle);
         }
     }
@@ -221,6 +237,7 @@ public sealed class TakeoffSequence
 
     private void UpdateLocked(float dt)
     {
+        _body.Sense();
         if (Phase is TakeoffPhase.Idle or TakeoffPhase.Done)
         {
             LastVsTarget = float.NaN;
@@ -233,7 +250,7 @@ public sealed class TakeoffSequence
         // de la fase y el SlewLimiter tiene que ver el mando cada frame para
         // llegar de verdad, no solo en la transicion.
         ApplySpeedThrottle(dt);
-        if (Phase >= TakeoffPhase.Climb && Phase <= TakeoffPhase.LevelOff)
+        if (_body.Caps.HasFlaps && Phase >= TakeoffPhase.Climb && Phase <= TakeoffPhase.LevelOff)
             UpdateFlapSchedule(dt);
 
         // El altimetro se reescribe TODOS los frames, igual que el throttle:
@@ -245,18 +262,25 @@ public sealed class TakeoffSequence
         // absurdas como -26000ft).
         if (Phase is TakeoffPhase.Prep or TakeoffPhase.ThrottleUp or TakeoffPhase.GroundRoll)
         {
-            SetBarometerToLocalQnh();
+            if (_body.Caps.HasBarometer) SetBarometerToLocalQnh();
         }
 
         switch (Phase)
         {
             case TakeoffPhase.Prep:
-                _controls.ReleaseParkingBrake();
-                LogAction("Freno de parking suelto");
-                _controls.SetGearDown(true);
-                _controls.SetFlaps(_style.TakeoffFlapRatio);
+                LogMissingCaps();
+                if (_body.Caps.HasParkBrake)
+                {
+                    _body.ReleaseParkingBrake();
+                    LogAction("Freno de parking suelto");
+                }
+                if (_body.Caps.HasRetractableGear) _body.SetGearDown(true);
                 LastFlapCmd = _style.TakeoffFlapRatio;
-                LogAction($"Flaps -> {_style.TakeoffFlapRatio * 100f:0}% (despegue)");
+                if (_body.Caps.HasFlaps)
+                {
+                    _body.SetFlaps(_style.TakeoffFlapRatio);
+                    LogAction($"Flaps -> {_style.TakeoffFlapRatio * 100f:0}% (despegue)");
+                }
                 HoldRunwayHeading(dt);
                 SetPhase(TakeoffPhase.ThrottleUp);
                 break;
@@ -267,8 +291,8 @@ public sealed class TakeoffSequence
                 // (leido del propio dataref que controlamos en exclusiva), no
                 // solo que hayamos "pedido" el 100%.
                 if (ConditionSustained(
-                        _controls.ThrottleReadback >= 0.9f ||
-                        _d.IasKt.Float >= _style.RollIasKt * 0.85f, dt))
+                        _body.ThrottleReadback >= 0.9f ||
+                        _body.State.IasKt >= _style.RollIasKt * 0.85f, dt))
                 {
                     SetPhase(TakeoffPhase.GroundRoll);
                 }
@@ -284,12 +308,12 @@ public sealed class TakeoffSequence
 
             case TakeoffPhase.GroundRoll:
                 HoldRunwayHeading(dt);
-                if (ConditionSustained(_d.IasKt.Float >= VrKt, dt))
+                if (ConditionSustained(_body.State.IasKt >= VrKt, dt))
                 {
-                    _controls.DisableYawOverride();
-                    _controls.EnablePitchOverride();
-                    _controls.EnableRollOverride();
-                    LogAction($"Rotando (IAS={_d.IasKt.Float:0}kt >= Vr={VrKt:0}kt)");
+                    _body.DisableYawOverride();
+                    _body.EnablePitchOverride();
+                    _body.EnableRollOverride();
+                    LogAction($"Rotando (IAS={_body.State.IasKt:0}kt >= Vr={VrKt:0}kt)");
                     SetPhase(TakeoffPhase.Rotate);
                 }
                 else
@@ -310,11 +334,11 @@ public sealed class TakeoffSequence
                 // espera a ganar altura: un piloto sube el tren nada mas
                 // confirmar el regimen de ascenso, no a 50ft.
                 if (ConditionSustained(
-                        _d.AglMeters.Float * MetersToFeet > _style.GearUpAglFt &&
-                        _d.VsFpm.Float > 100f, dt))
+                        _body.AglMeters * MetersToFeet > _style.GearUpAglFt &&
+                        _body.State.VsFpm > 100f, dt))
                 {
-                    _controls.SetGearDown(false);
-                    LogAction("Positive rate -> Tren arriba");
+                    if (_body.Caps.HasRetractableGear) _body.SetGearDown(false);
+                    LogAction(_body.Caps.HasRetractableGear ? "Positive rate -> Tren arriba" : "Positive rate (tren fijo)");
                     SetPhase(TakeoffPhase.Climb);
                 }
                 else
@@ -332,9 +356,9 @@ public sealed class TakeoffSequence
                 HoldHeading(_holdHeadingDeg, dt);
                 // Salir por velocidad (flaps ya pueden irse) o, en Emergencia,
                 // por estar lejos del suelo aunque la IAS objetivo siga baja.
-                bool speedClean = _d.IasKt.Float > _style.FlapRetract2Kt;
+                bool speedClean = _body.State.IasKt > _style.FlapRetract2Kt;
                 bool obstacleClear = _style.ObstacleClearAglFt > 0f &&
-                    _d.AglMeters.Float * MetersToFeet >= _style.ObstacleClearAglFt;
+                    _body.AglMeters * MetersToFeet >= _style.ObstacleClearAglFt;
                 if (ConditionSustained(speedClean || obstacleClear, dt))
                 {
                     SetPhase(TakeoffPhase.ClimbToTurnAltitude);
@@ -345,15 +369,15 @@ public sealed class TakeoffSequence
             case TakeoffPhase.ClimbToTurnAltitude:
                 HoldPitch(_style.EnroutePitchDeg, dt);
                 HoldHeading(_holdHeadingDeg, dt);
-                if (ConditionSustained(_d.AltFt.Float >= TurnAltFt, dt))
+                if (ConditionSustained(_body.State.AltFt >= TurnAltFt, dt))
                 {
                     if (_handoffAtTurnAltitude)
                     {
                         LogAction(BlackBoxSnap.Join(
                             $"Fin: despegue combate listo para interceptar — " +
-                            $"ALT={_d.AltFt.Float:0}ft IAS={_d.IasKt.Float:0}kt",
-                            BlackBoxSnap.Of(FlightState.Capture(_d))));
-                        _controls.ReleaseAllOverrides();
+                            $"ALT={_body.State.AltFt:0}ft IAS={_body.State.IasKt:0}kt",
+                            BlackBoxSnap.Of(_body.State)));
+                        _body.ReleaseAllOverrides();
                         SetPhase(TakeoffPhase.Done);
                         break;
                     }
@@ -367,7 +391,7 @@ public sealed class TakeoffSequence
             {
                 HoldPitch(_style.EnroutePitchDeg, dt);
                 HoldHeading(_holdHeadingDeg, dt);
-                float headingErr = Pid.NormalizeAngleDeg180(_holdHeadingDeg - _d.HeadingDeg.Float);
+                float headingErr = Pid.NormalizeAngleDeg180(_holdHeadingDeg - _body.State.HeadingDeg);
                 if (ConditionSustained(Math.Abs(headingErr) < _style.HeadingCaptureDeg, dt))
                 {
                     LogAction($"Rumbo capturado ({_holdHeadingDeg:0}deg)");
@@ -385,7 +409,7 @@ public sealed class TakeoffSequence
             case TakeoffPhase.ClimbToAltitude:
                 HoldPitch(_style.EnroutePitchDeg, dt);
                 HoldHeading(_holdHeadingDeg, dt);
-                if (ConditionSustained(_d.AltFt.Float >= TargetAltFt, dt))
+                if (ConditionSustained(_body.State.AltFt >= TargetAltFt, dt))
                 {
                     SetPhase(TakeoffPhase.LevelOff);
                 }
@@ -394,12 +418,12 @@ public sealed class TakeoffSequence
             case TakeoffPhase.LevelOff:
                 HoldPitch(_style.LevelPitchDeg, dt);
                 HoldHeading(_holdHeadingDeg, dt);
-                if (ConditionSustained(Math.Abs(_d.VsFpm.Float) < 300f, dt))
+                if (ConditionSustained(Math.Abs(_body.State.VsFpm) < 300f, dt))
                 {
                     LogAction(BlackBoxSnap.Join(
-                        $"Fin: despegue completado — ALT={_d.AltFt.Float:0}ft IAS={_d.IasKt.Float:0}kt",
-                        BlackBoxSnap.Of(FlightState.Capture(_d))));
-                    _controls.ReleaseAllOverrides();
+                        $"Fin: despegue completado — ALT={_body.State.AltFt:0}ft IAS={_body.State.IasKt:0}kt",
+                        BlackBoxSnap.Of(_body.State)));
+                    _body.ReleaseAllOverrides();
                     SetPhase(TakeoffPhase.Done);
                 }
                 break;
@@ -420,19 +444,19 @@ public sealed class TakeoffSequence
         {
             _iasTarget = float.NaN;
             LastThrottleCmd = 0f;
-            _controls.SetThrottle(0f, dt);
+            _body.SetThrottle(0f, dt);
             return;
         }
 
         if (float.IsNaN(_iasTarget) || Math.Abs(_iasTarget - target) > 0.5f)
         {
-            _speedPid.SeedTrim(_controls.ThrottleReadback);
+            _speedPid.SeedTrim(_body.ThrottleReadback);
             _iasTarget = target;
             LogAction($"IAS objetivo -> {target:0} kt ({PhaseName(Phase)})");
         }
 
-        LastThrottleCmd = _speedPid.Update(target - _d.IasKt.Float, dt);
-        _controls.SetThrottle(LastThrottleCmd, dt);
+        LastThrottleCmd = _speedPid.Update(target - _body.State.IasKt, dt);
+        _body.SetThrottle(LastThrottleCmd, dt);
     }
 
     private float IasTargetForPhase() => Phase switch
@@ -452,10 +476,10 @@ public sealed class TakeoffSequence
     // gastan las transiciones de fase.
     private void UpdateFlapSchedule(float dt)
     {
-        float ias = _d.IasKt.Float;
+        float ias = _body.State.IasKt;
         if (LastFlapCmd > 0.1f + 1e-3f && ias > _style.FlapRetract1Kt)
         {
-            _controls.SetFlaps(0.1f);
+            _body.SetFlaps(0.1f);
             LastFlapCmd = 0.1f;
             _flapTimer = 0f;
             LogAction($"Flaps -> 10% (IAS={ias:0}kt)");
@@ -465,7 +489,7 @@ public sealed class TakeoffSequence
         {
             _flapTimer += dt;
             if (_flapTimer < _style.ReactionDelaySeconds) return;
-            _controls.SetFlaps(0f);
+            _body.SetFlaps(0f);
             LastFlapCmd = 0f;
             LogAction($"Flaps -> 0% limpios (IAS={ias:0}kt)");
         }
@@ -480,12 +504,12 @@ public sealed class TakeoffSequence
         if (newPhase == Phase) return;
         string iasObj = float.IsNaN(_iasTarget) ? "--" : _iasTarget.ToString("0", CultureInfo.InvariantCulture);
         LogAction($"fase {PhaseName(Phase)} → {PhaseName(newPhase)} " +
-                  $"(IAS={_d.IasKt.Float:0}kt ALT={_d.AltFt.Float:0}ft " +
-                  $"AGL={_d.AglMeters.Float * MetersToFeet:0}ft " +
-                  $"pitch={_d.PitchDeg.Float:0.0} bank={_d.BankDeg.Float:0.0} " +
-                  $"hdg={_d.HeadingDeg.Float:0} ias_obj={iasObj} " +
+                  $"(IAS={_body.State.IasKt:0}kt ALT={_body.State.AltFt:0}ft " +
+                  $"AGL={_body.AglMeters * MetersToFeet:0}ft " +
+                  $"pitch={_body.State.PitchDeg:0.0} bank={_body.State.BankDeg:0.0} " +
+                  $"hdg={_body.State.HeadingDeg:0} ias_obj={iasObj} " +
                   $"thr_mando={LastThrottleCmd:0.00} " +
-                  $"thr_real={_controls.ThrottleReadback:0.00})");
+                  $"thr_real={_body.ThrottleReadback:0.00})");
         Phase = newPhase;
         _phaseElapsed = 0f;
         _watchdogWarned = false;
@@ -533,20 +557,20 @@ public sealed class TakeoffSequence
         _pitchTargetRamp.MaxRate = _style.PitchRampDegPerSec;
         float rampedTarget = _pitchTargetRamp.Update(targetDeg, dt);
         LastPitchTarget = rampedTarget;
-        float error = rampedTarget - _d.PitchDeg.Float;
-        _controls.SetPitchInput(_pitchPid.Update(error, dt), dt);
+        float error = rampedTarget - _body.State.PitchDeg;
+        _body.SetPitchInput(_pitchPid.Update(error, dt), dt);
     }
 
     // --- Cascada de rumbo en vuelo: error de rumbo -> bank objetivo ->
     //     error de bank -> yoke_roll_ratio (-1..1) -------------------------
     private void HoldHeading(float targetHeadingDeg, float dt)
     {
-        float headingErr = Pid.NormalizeAngleDeg180(targetHeadingDeg - _d.HeadingDeg.Float);
+        float headingErr = Pid.NormalizeAngleDeg180(targetHeadingDeg - _body.State.HeadingDeg);
         float maxBankDeg = _style.MaxBankDeg;
         float targetBankDeg = Math.Clamp(HeadingToBankGain * headingErr, -maxBankDeg, maxBankDeg);
         LastBankTarget = targetBankDeg;
-        float bankErr = targetBankDeg - _d.BankDeg.Float;
-        _controls.SetRollInput(_bankPid.Update(bankErr, dt), dt);
+        float bankErr = targetBankDeg - _body.State.BankDeg;
+        _body.SetRollInput(_bankPid.Update(bankErr, dt), dt);
     }
 
     // --- Mantener el eje de pista en tierra: PID directo de rumbo sobre el
@@ -555,8 +579,8 @@ public sealed class TakeoffSequence
     private void HoldRunwayHeading(float dt)
     {
         LastBankTarget = float.NaN;
-        float headingErr = Pid.NormalizeAngleDeg180(_baseHeadingDeg - _d.HeadingDeg.Float);
-        _controls.SetYawInput(_yawPid.Update(headingErr, dt), dt);
+        float headingErr = Pid.NormalizeAngleDeg180(_baseHeadingDeg - _body.State.HeadingDeg);
+        _body.SetYawInput(_yawPid.Update(headingErr, dt), dt);
     }
 
     // Ajusta la subescala del altimetro (piloto y copiloto) al QNH que la
@@ -566,7 +590,7 @@ public sealed class TakeoffSequence
     // de un preset manual.
     private void SetBarometerToLocalQnh()
     {
-        float qnhInHg = _d.QnhPas.Float / PascalsPerInHg;
+        float qnhInHg = _body.QnhInHg;
         if (qnhInHg < MinPlausibleQnhInHg || qnhInHg > MaxPlausibleQnhInHg)
         {
             if (!_baroWarnedOutOfRange)
@@ -583,7 +607,7 @@ public sealed class TakeoffSequence
         // cada frame desde aqui. Con Hold, ademas, "soltar" restauraria el
         // baro al valor viejo al terminar la secuencia, que es justo lo
         // contrario de lo que se quiere.
-        _controls.SetBarometer(qnhInHg);
+        _body.SetBarometer(qnhInHg);
         if (!_baroLogged)
         {
             LogAction($"Altimetro -> {qnhInHg.ToString("0.00", CultureInfo.InvariantCulture)} " +

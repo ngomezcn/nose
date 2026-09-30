@@ -13,7 +13,7 @@ namespace AICopilotCore.Connector;
 // como double sea cual sea el tipo real del dataref.
 public static class Protocol
 {
-    public const ushort Version = 9;
+    public const ushort Version = 13;
 
     // El lado C# usa el nombre corto: NamedPipeClientStream le pone el
     // \.\pipe\ delante solo.
@@ -39,7 +39,7 @@ public enum Op : byte
     Command = 0x09,
     ReleaseAll = 0x0A,
     Ping = 0x0B,
-    // Overlays 2D: ver Protocol.h (flags, font, rgb, scale, text).
+    // Overlays 2D: ver Protocol.h (flags, font, rgb, scale, str[20] nombres).
     GraphicsConfig = 0x0C,
     // Escenario fijo usuario+IA: ver Protocol.h (lat/lon/elev/hdg/spd + path).
     PlaceScenario = 0x0D,
@@ -83,4 +83,15 @@ public enum EventKind : byte
     OverridesReleased = 3,
     AircraftReloaded = 4,
     ScenarioReady = 5,
+    // Vista aerea: texto = "0".."19" (avion) o "-1" (libre / GLOBAL).
+    OverviewFocus = 6,
+    // X-Plane recoloco el origen de su marco local; el connector ya lo
+    // compensa. Texto: "dx=..;dy=..;dz=..;latRef=..;lonRef=..;total=..".
+    // Ver src/connector/OriginWatch.h (hipotesis del teletransporte de 80 km).
+    OriginShift = 7,
 }
+
+// Eje de posicion local que representa un dataref (gemelo de
+// proto::FrameAxis). El connector traslada estas entradas al marco estable
+// del core: suma el desplazamiento de origen al leer y lo resta al escribir.
+public enum FrameAxis : byte { None = 0, X = 1, Z = 2 }

@@ -44,7 +44,7 @@ namespace proto {
 // rechaza (y loguea) un HELLO con una version distinta en vez de
 // interpretar bytes con el layout equivocado, que es la clase de bug que
 // se manifiesta como "el avion hace cosas raras" en vez de como un error.
-constexpr uint16_t kVersion = 9;
+constexpr uint16_t kVersion = 13;
 
 constexpr const char* kPipeName = "\\\\.\\pipe\\AICopilot.v1";
 
@@ -56,6 +56,9 @@ constexpr uint32_t kHeartbeatTimeoutMs = 1000;
 enum class Op : uint8_t {
     // --- core -> connector ---
     Hello = 0x01,
+    // Payload: u16 id, u8 kind, i32 index, i32 count, u8 frame, str ruta.
+    //   frame: FrameAxis. Marca los datarefs de POSICION LOCAL (local_x/z,
+    //   planeN_x/z). Ver FrameAxis y DatarefRegistry::SetOriginOffset.
     Define = 0x02,
     Subscribe = 0x03,
     Unsubscribe = 0x04,
@@ -66,14 +69,14 @@ enum class Op : uint8_t {
     Command = 0x09,
     ReleaseAll = 0x0A,
     Ping = 0x0B,
-    // Overlays 2D del connector (etiquetas / lineas / marcadores / trayectoria).
+    // Overlays 2D del connector (etiquetas / lineas / triangulo / marcadores).
     // Payload:
-    //   u8  flags   bit0=ownLabel bit1=otherLabels bit2=lines
-    //               bit3=markers bit4=path
+    //   u8  flags   bit2=lines bit3=markers bit4=path bit5=triangle
+    //               (bit0/bit1 reservados; etiquetas van por nombre no vacio)
     //   u8  font    0=Basic 1=Proportional
-    //   f32 r,g,b   color 0..1
+    //   f32 r,g,b   color 0..1 (marcadores / trayectoria / texto)
     //   f32 scale   tamano relativo (marcador / grosor de linea)
-    //   str text    etiqueta (UTF-8, tipicamente ASCII corto)
+    //   str[20]     nombre por avion XPLM 0..19 (vacio = sin etiqueta)
     GraphicsConfig = 0x0C,
     // Coloca al usuario y una IA en posiciones fijas (escenario de prueba).
     // Los numeros los decide el core; aqui solo se aplican via SDK/datarefs.
@@ -81,6 +84,7 @@ enum class Op : uint8_t {
     //   f64 userLat, userLon, userElevMsl, userHdgTrue, userSpeedMps
     //   f64 aiLat, aiLon, aiElevMsl, aiHdgTrue, aiSpeedMps
     //   str aiAircraftRelPath  (relativo a la raiz de X-Plane; vacio = C172)
+    //   u8  aiOnGround         (1 = IA parada en tierra: tren fuera, gas 0)
     PlaceScenario = 0x0D,
     // Exclusive access a un avion IA (AcquirePlanes + DisableAIForPlane).
     // El core escribe posiciones via Hold; el connector solo otorga/suelta.
@@ -148,6 +152,27 @@ enum class EventKind : uint8_t {
     OverridesReleased = 3,  // el SafetyGuard solto todo; dice por que
     AircraftReloaded = 4,   // reinicio de situacion / avion recargado
     ScenarioReady = 5,      // PlaceScenario termino (usuario+IA colocados)
+    // Vista aerea: el usuario eligio un avion (texto = "0".."19") o volvio
+    // a libre (texto = "-1"). El core actualiza el foco UI sin mover camara.
+    OverviewFocus = 6,
+    // X-Plane recoloco el origen de sus coordenadas locales (lat_ref/lon_ref).
+    // El connector ya lo compensa (ver FrameAxis); esto es solo el aviso para
+    // el diagnostico. Texto: "dx=..;dy=..;dz=..;latRef=..;lonRef=..;total=..".
+    OriginShift = 7,
+};
+
+// Eje de posicion local que una entrada representa, o None. X-Plane mueve el
+// origen de su marco local "para mantener el avion cerca del origen"
+// (docs/xplane-sdk/guides/movingtheplane.md) y al hacerlo TODAS las
+// posiciones locales saltan de golpe. El core mantiene posiciones propias
+// (las IAs cinematicas se sostienen escribiendo local_x/z cada frame), asi
+// que un salto de origen lo veia como un teletransporte de 80 km. Para que
+// el core viva en un marco estable, el connector suma el desplazamiento
+// acumulado al LEER estas entradas y lo resta al ESCRIBIRLAS.
+enum class FrameAxis : uint8_t {
+    None = 0,
+    X = 1,
+    Z = 2,
 };
 
 // ---------------------------------------------------------------------------

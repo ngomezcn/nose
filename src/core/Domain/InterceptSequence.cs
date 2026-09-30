@@ -1,4 +1,5 @@
 using AICopilotCore.Connector;
+using AICopilotCore.Domain.Agents;
 
 namespace AICopilotCore.Domain;
 
@@ -77,9 +78,16 @@ public enum InterceptPhase
 //      lento, y es la unica solucion que no acaba en perdida.
 public sealed class InterceptSequence
 {
-    private readonly AircraftControls _controls;
-    private readonly Datarefs _d;
+    // Avion que INTERCEPTA (sensores + actuadores) y fuente de los blancos
+    // (cualquier indice XPLM 0..19). Cada instancia lleva su propio estado,
+    // plan y memoria del planner: no hay estaticos mutables compartidos.
+    private readonly IAircraftBody _body;
+    private readonly ITargetSource _targets;
+    private readonly InterceptRegistry? _registry;
     private readonly ControlTuning _tuning;
+    private readonly InterceptTrace _trace;
+    // Indice del blanco que tenemos suscrito a 60 Hz (-1 = ninguno).
+    private int _watchedIdx = -1;
 
     // Mismo candado y misma razon que en las otras dos secuencias: Start()/
     // Abort() los llama la UI y Update() el hilo de lectura del pipe.
@@ -105,11 +113,13 @@ public sealed class InterceptSequence
     private readonly TurnRateEstimator _turnEst = new();
     private readonly SlewLimiter _iasCmdRamp = new(IasCmdRateKtPerSec);
     private PlannerMemory? _plannerMem;
-    private readonly InterceptTrace _trace = new();
     private InterceptPlan? _plan;
     private float _planTimer = 99f;
     private float _phaseDwell;
     private float _trackFiltDeg = float.NaN;
+    // Red de seguridad del marco local: distancia plana al blanco del tick
+    // anterior, para detectar saltos imposibles (ver CheckRangeJump).
+    private double _prevFlatM = double.NaN;
 
     private int _targetIndex = -1;
     private string _targetLabel = "";
@@ -144,12 +154,19 @@ public sealed class InterceptSequence
     private float _slowWriteTimer;
     private bool _flapsAreOurs;
 
-    public InterceptSequence(AircraftControls controls, Datarefs datarefs, ControlTuning tuning)
+    // registry == null: sin control de intercepciones cruzadas.
+    public InterceptSequence(IAircraftBody body, ITargetSource targets, ControlTuning tuning,
+                             InterceptRegistry? registry = null)
     {
-        _controls = controls;
-        _d = datarefs;
+        _body = body;
+        _targets = targets;
         _tuning = tuning;
+        _registry = registry;
+        _trace = new InterceptTrace(body.XplmIndex);
     }
+
+    // Indice XPLM del avion que intercepta (0 = ownship).
+    public int OwnIndex => _body.XplmIndex;
 
     public event Action<string>? ActionLogged;
 
@@ -214,7 +231,7 @@ public sealed class InterceptSequence
     public bool NeedsOwnTakeoff()
     {
         lock (_gate)
-            return _d.OnGround.Bool || _d.IasKt.Float < MinOwnIasKt;
+            return _body.State.OnGround || _body.State.IasKt < MinOwnIasKt;
     }
 
     // Devuelve false y el motivo si la interceptacion no se puede pedir ahora
@@ -228,22 +245,34 @@ public sealed class InterceptSequence
     {
         lock (_gate)
         {
-            if (xplmIndex < 1 || xplmIndex > Datarefs.OtherPlaneSlots)
+            if (xplmIndex < 0 || xplmIndex > Datarefs.OtherPlaneSlots)
             {
-                refusal = "ese avion no esta en los 19 slots de IA de X-Plane";
+                refusal = "ese avion no esta en los 20 slots de X-Plane (0..19)";
                 return false;
             }
-            if (_d.OnGround.Bool)
+            if (xplmIndex == _body.XplmIndex)
             {
-                refusal = "tu avion esta en tierra: despega primero";
+                refusal = "un avion no puede interceptarse a si mismo";
                 return false;
             }
-            if (!afterOwnTakeoff && _d.IasKt.Float < MinOwnIasKt)
+            _body.Sense();
+            if (_body.State.OnGround)
+            {
+                refusal = _body.IsLocal
+                    ? "tu avion esta en tierra: despega primero"
+                    : $"{OwnName} esta en tierra: que despegue primero";
+                return false;
+            }
+            if (!afterOwnTakeoff && _body.State.IasKt < MinOwnIasKt)
             {
                 refusal = $"hace falta al menos {MinOwnIasKt:0} kt para maniobrar " +
-                          $"(vas a {_d.IasKt.Float:0} kt)";
+                          $"(vas a {_body.State.IasKt:0} kt)";
                 return false;
             }
+            if (_registry is not null &&
+                !_registry.TryRegister(_body.XplmIndex, xplmIndex, out refusal))
+                return false;
+            ReleaseWatch();
 
             _targetIndex = xplmIndex;
             _targetLabel = label;
@@ -253,13 +282,13 @@ public sealed class InterceptSequence
             _pitchPid.Reset();
             _bankPid.Reset();
             _vsPid.Reset();
-            _speedPid.SeedTrim(_controls.ThrottleReadback);
-            _pitchTargetRamp.Reset(_d.PitchDeg.Float);
-            _bankTargetRamp.Reset(_d.BankDeg.Float);
-            _flapRamp.Reset(_d.FlapHandle.Float);
-            _speedbrakeRamp.Reset(_d.SpeedbrakeHandle.Float);
-            _flapCmd = _d.FlapHandle.Float;
-            _speedbrakeCmd = _d.SpeedbrakeHandle.Float;
+            _speedPid.SeedTrim(_body.ThrottleReadback);
+            _pitchTargetRamp.Reset(_body.State.PitchDeg);
+            _bankTargetRamp.Reset(_body.State.BankDeg);
+            _flapRamp.Reset(_body.FlapRatio);
+            _speedbrakeRamp.Reset(_body.SpeedbrakeRatio);
+            _flapCmd = _body.FlapRatio;
+            _speedbrakeCmd = _body.SpeedbrakeRatio;
             _flapSent = _speedbrakeSent = float.NaN;
             _flapsAreOurs = false;
             _weaveSign = 1;
@@ -271,7 +300,7 @@ public sealed class InterceptSequence
             _planTimer = 99f;
             _phaseDwell = 0f;
             _trackFiltDeg = float.NaN;
-            _iasCmdRamp.Reset(_d.IasKt.Float);
+            _iasCmdRamp.Reset(_body.State.IasKt);
             _announced = false;
             _settledElapsed = 0f;
             _statusLogTimer = StatusLogSeconds;
@@ -279,15 +308,16 @@ public sealed class InterceptSequence
 
             // La posicion del blanco entra en un PID: con datos a 10 Hz el
             // avion persigue donde estaba, no donde esta.
-            _d.FocusOtherPlane(xplmIndex - 1);
+            _targets.Watch(xplmIndex);
+            _watchedIdx = xplmIndex;
 
-            _controls.EnablePitchOverride();
-            _controls.EnableRollOverride();
-            _controls.EnableThrottleOverride();
+            _body.EnablePitchOverride();
+            _body.EnableRollOverride();
+            _body.EnableThrottleOverride();
 
             SetPhase(InterceptPhase.Pursuit);
             InterceptStationDef def = InterceptCatalog.Get(station);
-            FlightState own = FlightState.Capture(_d);
+            FlightState own = _body.State;
             string prelude = afterOwnTakeoff
                 ? $"Inicio: interceptar {label} tras despegue combate — {def.Label}"
                 : $"Inicio: interceptar {label} — {def.Label}";
@@ -369,7 +399,7 @@ public sealed class InterceptSequence
         lock (_gate)
         {
             if (_phase == InterceptPhase.Idle) return;
-            FlightState own = FlightState.Capture(_d);
+            FlightState own = _body.State;
             LogAction(BlackBoxSnap.Join(
                 $"Fin: interceptacion abortada ({_targetLabel}) — control manual",
                 InterceptLiveExtras(),
@@ -379,9 +409,9 @@ public sealed class InterceptSequence
                 BlackBoxSnap.Of(own)));
             // El aerofreno si se recoge: es el unico de los dos que no
             // sostiene al avion, y dejarlo fuera solo cuesta velocidad.
-            _controls.SetSpeedbrake(0f);
-            _controls.ReleaseAllOverrides();
-            _d.FocusOtherPlane(-1);
+            _body.SetSpeedbrake(0f);
+            _body.ReleaseAllOverrides();
+            ReleaseTarget();
             ResetOutputs();
             _phase = InterceptPhase.Idle;
         }
@@ -394,14 +424,54 @@ public sealed class InterceptSequence
         lock (_gate)
         {
             if (_phase == InterceptPhase.Idle) return;
-            _controls.ForgetOverrideState();
+            _body.ForgetOverrideState();
             // El blanco vuelve al ritmo de pantalla. Con el pipe caido esto
             // solo apunta el divisor nuevo, que es justo lo que hace falta:
             // el cliente lo replica al reconectar.
-            _d.FocusOtherPlane(-1);
+            ReleaseTarget();
             ResetOutputs();
             _phase = InterceptPhase.Idle;
         }
+    }
+
+    // Suelta la suscripcion a 60 Hz del blanco (refcount en Datarefs).
+    private void ReleaseWatch()
+    {
+        if (_watchedIdx < 0) return;
+        _targets.Unwatch(_watchedIdx);
+        _watchedIdx = -1;
+    }
+
+    // Fin de mision (abortada, pipe caido): suelta watch, registro y traza.
+    private void ReleaseTarget()
+    {
+        ReleaseWatch();
+        _registry?.Unregister(_body.XplmIndex);
+        _trace.Dispose();
+    }
+
+    private string OwnName => _body.XplmIndex == 0 ? "Local (idx 0)" : $"IA {_body.XplmIndex}";
+
+    // Si la distancia plana al blanco cambia en un tick mas de lo que permiten
+    // las velocidades de los dos, una de las dos posiciones cambio de marco o
+    // se teletransporto; no es fisica. El connector compensa los saltos de
+    // origen de X-Plane (connector/OriginWatch.h), asi que esto no deberia
+    // saltar nunca: si salta, la hipotesis del origen no lo explica y hacen
+    // falta ESTAS posiciones para saber quien se movio.
+    private void CheckRangeJump(double flatM, float dt, double ownX, double ownZ,
+                                double ownGsMps, in TargetSnapshot t)
+    {
+        double prev = _prevFlatM;
+        _prevFlatM = flatM;
+        if (double.IsNaN(prev) || dt <= 0f) return;
+
+        double allowed = 1000.0 + 3.0 * (ownGsMps + t.GroundSpeedMps) * Math.Max(dt, 0.1);
+        if (Math.Abs(flatM - prev) <= allowed) return;
+
+        LogAction($"AVISO: salto de rango imposible {prev:0} -> {flatM:0} m en {dt:0.00} s " +
+                  $"(permitido {allowed:0}). propio x={ownX:0} z={ownZ:0} v={ownGsMps:0} m/s; " +
+                  $"blanco x={t.X:0} z={t.Z:0} v={t.GroundSpeedMps:0} m/s. " +
+                  "Sin 'origen local desplazado' antes, no fue un salto de origen de X-Plane.");
     }
 
     private void ResetOutputs()
@@ -414,6 +484,7 @@ public sealed class InterceptSequence
         RangeM = SeparationM = ClosureKt = AlongM = CrossM = VerticalM = double.NaN;
         TargetSpeedKt = double.NaN;
         LastDesiredTrack = LastTrackErr = float.NaN;
+        _prevFlatM = double.NaN;
         TelemetryText = "";
         _plan = null;
         TargetState = TargetAirState.Unknown;
@@ -440,24 +511,24 @@ public sealed class InterceptSequence
         _planTimer += dt;
         _phaseDwell += dt;
 
-        FlightState st = FlightState.Capture(_d);
+        _body.Sense();
+        FlightState st = _body.State;
         // Un frame sin telemetria util no se "arregla" mandando un mando
         // calculado con NaN: se deja en pie lo del frame anterior, que los
         // holds del connector siguen manteniendo.
         if (!st.IsUsable) return;
-        if (!_d.LocalX.HasValue || !_d.LocalY.HasValue || !_d.LocalZ.HasValue) return;
+        if (!_body.TryGetKinematics(out Kinematics ownK)) return;
 
-        double ownX = _d.LocalX.Value, ownY = _d.LocalY.Value, ownZ = _d.LocalZ.Value;
-        double ownVx = _d.LocalVx.Value, ownVz = _d.LocalVz.Value;
-        double ownVy = st.VsFpm / TargetSnapshot.MpsToFpm;
+        double ownX = ownK.X, ownY = ownK.Y, ownZ = ownK.Z;
+        double ownVx = ownK.Vx, ownVz = ownK.Vz;
+        double ownVy = ownK.Vy;
         double ownGsMps = Math.Sqrt(ownVx * ownVx + ownVz * ownVz);
         double ownGsKt = ownGsMps * TargetSnapshot.MpsToKnots;
         float ownTrack = ownGsMps < 5.0
             ? st.HeadingDeg
             : Pid.NormalizeAngleDeg360((float)(Math.Atan2(ownVx, -ownVz) * F14Aero.Rad2Deg));
 
-        TargetSnapshot t = TargetSnapshot.Capture(_d, _targetIndex);
-        if (!t.Valid)
+        if (!_targets.TryCapture(_targetIndex, out TargetSnapshot t) || !t.Valid)
         {
             if (_phase != InterceptPhase.Lost)
             {
@@ -478,8 +549,9 @@ public sealed class InterceptSequence
         // local menos nuestra AGL. Solo vale si el blanco esta cerca -- a
         // 100 km puede haber una sierra de por medio -- asi que de lejos el
         // clasificador se queda con la velocidad, que no depende del relieve.
-        double terrainY = ownY - _d.AglMeters.Value;
+        double terrainY = ownY - (double)_body.AglMeters;
         double flatM = Math.Sqrt((t.X - ownX) * (t.X - ownX) + (t.Z - ownZ) * (t.Z - ownZ));
+        CheckRangeJump(flatM, dt, ownX, ownZ, ownGsMps, t);
         TargetState = t.Classify(terrainY, flatM < TerrainReferenceRangeM);
         TargetSpeedKt = t.GroundSpeedKt;
 
@@ -643,7 +715,7 @@ public sealed class InterceptSequence
         float bankTarget = _bankTargetRamp.Update(bankRaw, dt);
         LastBankTarget = bankTarget;
         _bankPid.GainScale = AttitudeGainScale(st);
-        _controls.SetRollInput(_bankPid.Update(bankTarget - st.BankDeg, dt, st.RollRateDegPerSec), dt);
+        _body.SetRollInput(_bankPid.Update(bankTarget - st.BankDeg, dt, st.RollRateDegPerSec), dt);
 
         // --- 3. Vertical ------------------------------------------------------
         float vsCmd = (float)(plan.DesiredVsMps * TargetSnapshot.MpsToFpm);
@@ -688,7 +760,7 @@ public sealed class InterceptSequence
         LastIasTarget = iasCmd;
         float throttle = _speedPid.Update(iasCmd - st.IasKt, dt);
         LastThrottleCmd = throttle;
-        _controls.SetThrottle(throttle, dt);
+        _body.SetThrottle(throttle, dt);
         FlushSlowControls();
 
         TelemetryText = string.Create(System.Globalization.CultureInfo.InvariantCulture,
@@ -885,7 +957,7 @@ public sealed class InterceptSequence
         float pitchTarget = _pitchTargetRamp.Update(pitchRaw, dt);
         LastPitchTarget = pitchTarget;
         _pitchPid.GainScale = AttitudeGainScale(st);
-        _controls.SetPitchInput(_pitchPid.Update(pitchTarget - st.PitchDeg, dt, st.PitchRateDegPerSec), dt);
+        _body.SetPitchInput(_pitchPid.Update(pitchTarget - st.PitchDeg, dt, st.PitchRateDegPerSec), dt);
     }
 
     // Que hacer mientras no hay nada que perseguir. No se sueltan los
@@ -904,7 +976,7 @@ public sealed class InterceptSequence
         float bankTarget = _bankTargetRamp.Update(orbitBankDeg, dt);
         LastBankTarget = bankTarget;
         _bankPid.GainScale = AttitudeGainScale(st);
-        _controls.SetRollInput(_bankPid.Update(bankTarget - st.BankDeg, dt, st.RollRateDegPerSec), dt);
+        _body.SetRollInput(_bankPid.Update(bankTarget - st.BankDeg, dt, st.RollRateDegPerSec), dt);
 
         LastVsTarget = 0f;
         ApplyPitchForVerticalSpeed(st, 0f, dt);
@@ -914,7 +986,7 @@ public sealed class InterceptSequence
                                   MathF.Min(_tuning.MaxTargetIasKt, st.VneKt * VneMarginFactor));
         LastIasTarget = iasCmd;
         LastThrottleCmd = _speedPid.Update(iasCmd - st.IasKt, dt);
-        _controls.SetThrottle(LastThrottleCmd, dt);
+        _body.SetThrottle(LastThrottleCmd, dt);
 
         // Limpio mientras se espera: ni flaps ni aerofrenos fuera.
         _flapRamp.MaxRate = FlapRatePerSec;
@@ -969,13 +1041,13 @@ public sealed class InterceptSequence
 
         if (periodic || float.IsNaN(_flapSent) || MathF.Abs(_flapCmd - _flapSent) > 0.01f)
         {
-            _controls.SetFlaps(_flapCmd);
+            _body.SetFlaps(_flapCmd);
             _flapSent = _flapCmd;
         }
         if (periodic || float.IsNaN(_speedbrakeSent) ||
             MathF.Abs(_speedbrakeCmd - _speedbrakeSent) > 0.01f)
         {
-            _controls.SetSpeedbrake(_speedbrakeCmd);
+            _body.SetSpeedbrake(_speedbrakeCmd);
             _speedbrakeSent = _speedbrakeCmd;
         }
     }
@@ -1018,14 +1090,14 @@ public sealed class InterceptSequence
         // El autothrottle cambia de regimen con la fase (de "todo a fondo" a
         // "copia esta velocidad"): sin resembrar, el integral que acumulo
         // persiguiendo 600 kt tarda en soltar y el avion se pasa de largo.
-        _speedPid.SeedTrim(_controls.ThrottleReadback);
+        _speedPid.SeedTrim(_body.ThrottleReadback);
 
         // Marca en caja negra: el Idle→Pursuit del Start ya lo cuenta el
         // "Inicio: interceptar...", no hace falta duplicarlo.
         if (from == InterceptPhase.Idle && phase == InterceptPhase.Pursuit) return;
 
         (float maxBank, float maxVs, double maxLead) = PhaseLimits(phase);
-        FlightState own = FlightState.Capture(_d);
+        FlightState own = _body.State;
         LogAction(BlackBoxSnap.Join(
             $"Fase: {_targetLabel} {PhaseName(from)} → {PhaseName(phase)}",
             reason,

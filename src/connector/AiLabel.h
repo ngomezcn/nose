@@ -1,9 +1,12 @@
-// AiLabel.h — overlays 2D sobre aviones (etiqueta, lineas, marcador, trayectoria).
+// AiLabel.h — overlays 2D sobre aviones (nombre, lineas, triangulo, marcador).
 //
 // Coach marks en fase xplm_Phase_Window: proyecta local_x/y/z (usuario) y
 // sim/multiplayer/position/planeN_* (IAs) a pantalla. La config llega por
-// Op.GraphicsConfig desde el core; sin mensaje se dibuja el default
-// (etiqueta "Jev" amarilla sobre el avion local).
+// Op.GraphicsConfig desde el core; sin mensaje no se dibuja nada.
+//
+// Etiquetas: un nombre por avion (XPLM 0..19); vacio = no se dibuja.
+// Lineas: distancia 3D (cyan). Triangulo: cateto horizontal (naranja) +
+// vertical/altitud (verde) respecto al ownship.
 //
 // Ver docs/xplane-sdk/guides/plugin-guidance-for-opengl-drawing.md
 // ("Use a 2-d Callback for Coach Marks").
@@ -14,6 +17,8 @@
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
 #include "XPLMPlanes.h"
+
+#include "CameraFollow.h"
 
 #include <algorithm>
 #include <cmath>
@@ -32,7 +37,8 @@
 
 class AiLabel {
 public:
-    static constexpr int kMaxAi = 19;  // plane1..plane19
+    static constexpr int kMaxAi = 19;       // plane1..plane19
+    static constexpr int kMaxPlanes = 20;   // XPLM 0..19
 
     void Init() {
         mLocalX = XPLMFindDataRef("sim/flightmodel/position/local_x");
@@ -81,32 +87,35 @@ public:
                                     0 /* after */, this);
     }
 
-    // flags: bit0 ownLabel, bit1 otherLabels, bit2 lines, bit3 markers,
-    //        bit4 path (prediccion de trayectoria).
+    // flags: bit2 lines, bit3 markers, bit4 path, bit5 triangle.
+    // labels[0..19]: nombre por avion; vacio = sin etiqueta.
     void ApplyConfig(uint8_t flags, uint8_t font,
                      float r, float g, float b, float scale,
-                     const std::string& text) {
+                     const std::string labels[kMaxPlanes]) {
         mFlags = flags;
         mFont = (font == 0) ? xplmFont_Basic : xplmFont_Proportional;
         mColor[0] = Clamp01(r);
         mColor[1] = Clamp01(g);
         mColor[2] = Clamp01(b);
         mScale = std::clamp(scale, 0.5f, 4.0f);
-        if (text.empty()) {
-            std::strncpy(mText, "Jev", sizeof(mText) - 1);
-        } else {
-            std::strncpy(mText, text.c_str(), sizeof(mText) - 1);
+        for (int i = 0; i < kMaxPlanes; ++i) {
+            const std::string& src = labels[i];
+            if (src.empty()) {
+                mLabels[i][0] = '\0';
+                mLabelLens[i] = 0;
+                continue;
+            }
+            std::strncpy(mLabels[i], src.c_str(), sizeof(mLabels[i]) - 1);
+            mLabels[i][sizeof(mLabels[i]) - 1] = '\0';
+            mLabelLens[i] = static_cast<int>(std::strlen(mLabels[i]));
         }
-        mText[sizeof(mText) - 1] = '\0';
-        mTextLen = static_cast<int>(std::strlen(mText));
     }
 
 private:
-    static constexpr uint8_t kFlagOwnLabel = 1 << 0;
-    static constexpr uint8_t kFlagOtherLabels = 1 << 1;
     static constexpr uint8_t kFlagLines = 1 << 2;
     static constexpr uint8_t kFlagMarkers = 1 << 3;
     static constexpr uint8_t kFlagPath = 1 << 4;
+    static constexpr uint8_t kFlagTriangle = 1 << 5;
     static constexpr double kLabelHeightMeters = 3.5;
     // Horizonte base de la prediccion (segundos). Se alarga/acorta con la
     // aceleracion longitudinal, no con la velocidad.
@@ -114,6 +123,11 @@ private:
     static constexpr int kPathSegments = 20;
     // Origen del trazo: CG desplazado hacia adelante (direccion de v) 2.5 m.
     static constexpr float kPathStartForwardMeters = 2.5f;
+
+    // Colores fijos de geometria (distintos entre si y del color de UI).
+    static constexpr float kColDist[3]  = {0.20f, 0.85f, 1.00f}; // cyan: linea recta
+    static constexpr float kColHoriz[3] = {1.00f, 0.60f, 0.15f}; // naranja: Δ horizontal
+    static constexpr float kColVert[3]  = {0.40f, 1.00f, 0.45f}; // verde: Δ altitud (Y)
 
     static int DrawCallback(XPLMDrawingPhase, int, void* refcon) {
         static_cast<AiLabel*>(refcon)->Draw();
@@ -124,6 +138,13 @@ private:
         if (v < 0.0f) return 0.0f;
         if (v > 1.0f) return 1.0f;
         return v;
+    }
+
+    bool AnyLabelSet() const {
+        for (int i = 0; i < kMaxPlanes; ++i) {
+            if (mLabelLens[i] > 0) return true;
+        }
+        return false;
     }
 
     // Proyecta aunque quede fuera de pantalla (para lineas al borde).
@@ -200,9 +221,10 @@ private:
             !mViewport) {
             return;
         }
-        const bool any = (mFlags & (kFlagOwnLabel | kFlagOtherLabels |
-                                    kFlagLines | kFlagMarkers | kFlagPath)) != 0;
-        if (!any) return;
+        const bool anyGeom = (mFlags & (kFlagLines | kFlagMarkers | kFlagPath |
+                                        kFlagTriangle)) != 0;
+        const bool anyLbl = AnyLabelSet();
+        if (!anyGeom && !anyLbl) return;
 
         float world[16];
         float proj[16];
@@ -259,42 +281,63 @@ private:
             }
         }
 
-        const bool wantGeom = (mFlags & (kFlagLines | kFlagMarkers | kFlagPath)) != 0;
+        const bool wantGeom = (mFlags & (kFlagLines | kFlagMarkers | kFlagPath |
+                                         kFlagTriangle)) != 0;
         if (wantGeom) {
             XPLMSetGraphicsState(0 /*fog*/, 0 /*tex*/, 0 /*light*/,
                                  0 /*alpha test*/, 1 /*blend*/,
                                  0 /*depth test*/, 0 /*depth write*/);
-            glColor4f(mColor[0], mColor[1], mColor[2], 0.9f);
-            glLineWidth(std::clamp(1.0f * mScale, 1.0f, 4.0f));
+            const float lineW = std::clamp(1.0f * mScale, 1.0f, 4.0f);
+            glLineWidth(lineW);
 
-            if ((mFlags & kFlagLines) && ownCgOk) {
+            if ((mFlags & (kFlagLines | kFlagTriangle)) && ownCgOk) {
                 for (int i = 1; i < active; ++i) {
                     const AiPt& p = ai[i - 1];
                     if (!p.cgOk) continue;
-                    float x0 = ownCgSx, y0 = ownCgSy, x1 = p.cgSx, y1 = p.cgSy;
-                    if (!ClipLine(x0, y0, x1, y1, vpL, vpB, vpR, vpT)) continue;
-                    glBegin(GL_LINES);
-                    glVertex2f(x0, y0);
-                    glVertex2f(x1, y1);
-                    glEnd();
 
-                    // Distancia 3D real; texto en el punto medio del trazo visible.
                     const double dx = p.x - ownX;
                     const double dy = p.y - ownY;
                     const double dz = p.z - ownZ;
-                    const float distM = static_cast<float>(
+                    const float dist3d = static_cast<float>(
                         std::sqrt(dx * dx + dy * dy + dz * dz));
-                    const float midSx = (x0 + x1) * 0.5f;
-                    const float midSy = (y0 + y1) * 0.5f;
-                    DrawDistanceLabel(midSx, midSy, distM);
+                    const float distHoriz = static_cast<float>(
+                        std::sqrt(dx * dx + dz * dz));
+                    const float distVert = static_cast<float>(dy);
+
+                    // Esquina del rectangulo: misma pos. horizontal que la IA,
+                    // misma altitud que el ownship → catetos Δhoriz / ΔY.
+                    const double cx = p.x;
+                    const double cy = ownY;
+                    const double cz = p.z;
+                    float cornerSx = 0, cornerSy = 0;
+                    const bool cornerOk = ProjectSoft(cx, cy, cz, world, proj,
+                                                      viewport, cornerSx, cornerSy);
+
+                    if (mFlags & kFlagLines) {
+                        DrawColoredSegment(ownCgSx, ownCgSy, p.cgSx, p.cgSy,
+                                           vpL, vpB, vpR, vpT, kColDist, dist3d,
+                                           /*signedLabel=*/false);
+                    }
+
+                    if ((mFlags & kFlagTriangle) && cornerOk) {
+                        DrawColoredSegment(ownCgSx, ownCgSy, cornerSx, cornerSy,
+                                           vpL, vpB, vpR, vpT, kColHoriz, distHoriz,
+                                           /*signedLabel=*/false,
+                                           kTriangleHorizMinMeters);
+                        DrawColoredSegment(cornerSx, cornerSy, p.cgSx, p.cgSy,
+                                           vpL, vpB, vpR, vpT, kColVert, distVert,
+                                           /*signedLabel=*/true,
+                                           kTriangleVertMinMeters);
+                    }
                 }
             }
 
             if (mFlags & kFlagMarkers) {
                 const float half = 10.0f * mScale;
+                const int hi = camera_follow::OverviewTrackIndex();
                 if (ownCgOk && ownCgSx >= vpL - 40 && ownCgSx <= vpR + 40 &&
                     ownCgSy >= vpB - 40 && ownCgSy <= vpT + 40) {
-                    DrawDiamond(ownCgSx, ownCgSy, half);
+                    DrawDiamond(ownCgSx, ownCgSy, half, hi == 0, lineW);
                 }
                 for (int i = 1; i < active; ++i) {
                     const AiPt& p = ai[i - 1];
@@ -303,11 +346,14 @@ private:
                         p.cgSy < vpB - 40 || p.cgSy > vpT + 40) {
                         continue;
                     }
-                    DrawDiamond(p.cgSx, p.cgSy, half);
+                    DrawDiamond(p.cgSx, p.cgSy, half, hi == i, lineW);
                 }
+                glLineWidth(lineW);
+                glColor4f(mColor[0], mColor[1], mColor[2], 0.9f);
             }
 
             if (mFlags & kFlagPath) {
+                glColor4f(mColor[0], mColor[1], mColor[2], 0.9f);
                 if (mVx && mVy && mVz) {
                     const float vx = XPLMGetDataf(mVx);
                     const float vy = XPLMGetDataf(mVy);
@@ -335,15 +381,34 @@ private:
             glLineWidth(1.0f);
         }
 
-        if ((mFlags & kFlagOwnLabel) && ownLblOk) {
-            DrawLabel(ownLblSx, ownLblSy);
+        if (mLabelLens[0] > 0 && ownLblOk)
+            DrawPlaneLabel(0, ownLblSx, ownLblSy);
+        for (int i = 1; i < active; ++i) {
+            if (mLabelLens[i] <= 0) continue;
+            const AiPt& p = ai[i - 1];
+            if (p.lblOk) DrawPlaneLabel(i, p.lblSx, p.lblSy);
         }
-        if (mFlags & kFlagOtherLabels) {
-            for (int i = 1; i < active; ++i) {
-                const AiPt& p = ai[i - 1];
-                if (p.lblOk) DrawLabel(p.lblSx, p.lblSy);
-            }
-        }
+    }
+
+    // Por debajo de estos umbrales no se dibuja el cateto (linea + etiqueta).
+    static constexpr float kTriangleHorizMinMeters = 1000.0f;
+    static constexpr float kTriangleVertMinMeters = 150.0f;
+
+    void DrawColoredSegment(float sx0, float sy0, float sx1, float sy1,
+                            float vpL, float vpB, float vpR, float vpT,
+                            const float color[3], float meters,
+                            bool signedLabel, float minSegmentMeters = 0.0f) {
+        if (std::fabs(meters) < minSegmentMeters) return;
+        float x0 = sx0, y0 = sy0, x1 = sx1, y1 = sy1;
+        if (!ClipLine(x0, y0, x1, y1, vpL, vpB, vpR, vpT)) return;
+        glColor4f(color[0], color[1], color[2], 0.95f);
+        glBegin(GL_LINES);
+        glVertex2f(x0, y0);
+        glVertex2f(x1, y1);
+        glEnd();
+        const float midSx = (x0 + x1) * 0.5f;
+        const float midSy = (y0 + y1) * 0.5f;
+        DrawDistanceLabel(midSx, midSy, meters, color, signedLabel);
     }
 
     // Integra p' = v, v' = a durante un horizonte en segundos y dibuja la
@@ -407,22 +472,40 @@ private:
         glEnd();
     }
 
-    void DrawDistanceLabel(float screenX, float screenY, float distMeters) {
-        char buf[32];
-        if (distMeters < 10000.0f) {
-            std::snprintf(buf, sizeof(buf), "%.0f m", distMeters);
+    void DrawDistanceLabel(float screenX, float screenY, float meters,
+                           const float color[3], bool signedLabel) {
+        char buf[40];
+        if (signedLabel) {
+            const char* sign = meters >= 0.0f ? "+" : "";
+            const float absM = std::fabs(meters);
+            if (absM < 10000.0f)
+                std::snprintf(buf, sizeof(buf), "%s%.0f m", sign, meters);
+            else
+                std::snprintf(buf, sizeof(buf), "%s%.1f km", sign, meters * 0.001f);
         } else {
-            std::snprintf(buf, sizeof(buf), "%.1f km", distMeters * 0.001f);
+            const float absM = std::fabs(meters);
+            if (absM < 10000.0f)
+                std::snprintf(buf, sizeof(buf), "%.0f m", absM);
+            else
+                std::snprintf(buf, sizeof(buf), "%.1f km", absM * 0.001f);
         }
         const int len = static_cast<int>(std::strlen(buf));
         const float width = XPLMMeasureString(mFont, buf, len);
         const int x0 = static_cast<int>(screenX - width * 0.5f);
-        // Un poco por encima del trazo para que no lo tape la linea.
         const int y0 = static_cast<int>(screenY + 4.0f * mScale);
-        XPLMDrawString(mColor, x0, y0, buf, nullptr, mFont);
+        float drawColor[3] = {color[0], color[1], color[2]};
+        XPLMDrawString(drawColor, x0, y0, buf, nullptr, mFont);
     }
 
-    void DrawDiamond(float cx, float cy, float half) const {
+    void DrawDiamond(float cx, float cy, float half, bool selected,
+                     float baseLineW) const {
+        if (selected) {
+            glColor4f(0.15f, 0.95f, 0.25f, 1.0f);
+            glLineWidth(std::clamp(baseLineW * 1.6f, 2.0f, 5.0f));
+        } else {
+            glColor4f(mColor[0], mColor[1], mColor[2], 0.9f);
+            glLineWidth(baseLineW);
+        }
         glBegin(GL_LINE_LOOP);
         glVertex2f(cx, cy + half);
         glVertex2f(cx + half, cy);
@@ -431,15 +514,18 @@ private:
         glEnd();
     }
 
-    void DrawLabel(float screenX, float screenY) {
+    void DrawPlaneLabel(int planeIndex, float screenX, float screenY) {
+        char* text = mLabels[planeIndex];
+        const int len = mLabelLens[planeIndex];
+        if (len <= 0) return;
         const int passes = mScale >= 2.0f ? 3 : (mScale >= 1.4f ? 2 : 1);
-        float width = XPLMMeasureString(mFont, mText, mTextLen);
+        float width = XPLMMeasureString(mFont, text, len);
         int x0 = static_cast<int>(screenX - width * 0.5f);
         int y0 = static_cast<int>(screenY);
         for (int p = 0; p < passes; ++p) {
             int dx = (p == 1) ? 1 : 0;
             int dy = (p == 2) ? 1 : 0;
-            XPLMDrawString(mColor, x0 + dx, y0 + dy, mText, nullptr, mFont);
+            XPLMDrawString(mColor, x0 + dx, y0 + dy, text, nullptr, mFont);
         }
     }
 
@@ -451,12 +537,12 @@ private:
         outW = m[3] * x + m[7] * y + m[11] * z + m[15] * w;
     }
 
-    uint8_t mFlags = kFlagOwnLabel;
+    uint8_t mFlags = 0;
     XPLMFontID mFont = xplmFont_Proportional;
     float mColor[3] = {1.0f, 0.85f, 0.1f};
     float mScale = 1.0f;
-    char mText[33] = "Jev";
-    int mTextLen = 3;
+    char mLabels[kMaxPlanes][33]{};
+    int mLabelLens[kMaxPlanes]{};
 
     XPLMDataRef mLocalX = nullptr;
     XPLMDataRef mLocalY = nullptr;

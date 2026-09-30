@@ -1,4 +1,5 @@
 using AICopilotCore.Connector;
+using AICopilotCore.Domain.Agents;
 
 namespace AICopilotCore.Domain;
 
@@ -9,7 +10,7 @@ namespace AICopilotCore.Domain;
 public sealed class CruisePilot
 {
     private readonly ManeuverSequence _maneuvers;
-    private readonly Datarefs _d;
+    private readonly IAircraftBody _body;
     private readonly object _gate = new();
     private readonly Random _rng = new();
 
@@ -21,10 +22,17 @@ public sealed class CruisePilot
     private float _turnStartHdgDeg;
     private float _turnDeltaTargetDeg;
 
-    public CruisePilot(ManeuverSequence maneuvers, Datarefs datarefs)
+    public CruisePilot(ManeuverSequence maneuvers, IAircraftBody body)
     {
         _maneuvers = maneuvers;
-        _d = datarefs;
+        _body = body;
+    }
+
+    // Sense() para no leer un State viejo (el body puente de la ruta no lo refresca nadie mas).
+    private float CurrentHeadingDeg()
+    {
+        _body.Sense();
+        return _body.State.HeadingDeg;
     }
 
     public event Action<string>? ActionLogged;
@@ -91,7 +99,7 @@ public sealed class CruisePilot
             if (_turning)
             {
                 float turned = MathF.Abs(Pid.NormalizeAngleDeg180(
-                    _d.HeadingDeg.Float - _turnStartHdgDeg));
+                    CurrentHeadingDeg() - _turnStartHdgDeg));
                 if (turned >= _turnDeltaTargetDeg)
                 {
                     _turning = false;
@@ -109,7 +117,7 @@ public sealed class CruisePilot
 
             bool left = _rng.Next(2) == 0;
             _turnDeltaTargetDeg = RandRange(_mode.TurnDeltaMinDeg, _mode.TurnDeltaMaxDeg);
-            _turnStartHdgDeg = _d.HeadingDeg.Float;
+            _turnStartHdgDeg = CurrentHeadingDeg();
             _turning = true;
             ManeuverKind kind = left ? _mode.TurnLeft : _mode.TurnRight;
             _maneuvers.Start(kind);

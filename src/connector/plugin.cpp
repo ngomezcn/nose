@@ -43,6 +43,7 @@
 #include "DatarefRegistry.h"
 #include "Holds.h"
 #include "Logger.h"
+#include "OriginWatch.h"
 #include "PipeServer.h"
 #include "Protocol.h"
 #include "SafetyGuard.h"
@@ -66,6 +67,7 @@ AiLabel* g_label = nullptr;
 
 uint32_t g_frame = 0;
 uint32_t g_lastSession = 0;
+OriginWatch g_origin;
 std::string g_pluginDir;
 
 // Ruta (con barra final) de la carpeta donde vive este .xpl. Se usa para
@@ -87,12 +89,19 @@ void SendEvent(proto::EventKind kind, const std::string& text) {
     g_pipe->Send(w.Take(), false);
 }
 
+void NotifyOverviewFocus(int xplmIndex) {
+    SendEvent(proto::EventKind::OverviewFocus, std::to_string(xplmIndex));
+}
+
 // Suelta todo y avisa al core. Se usa desde los mensajes de X-Plane
 // (choque, aeropuerto nuevo, avion recargado) y desde XPluginDisable.
 void ReleaseEverything(const char* reason, bool notifyCore) {
     camera_follow::Stop();
     ai_control::Release();
-    scenario::CancelPending();
+    // OJO: no cancela la colocacion pendiente de PlaceScenario. AIRPORT_LOADED
+    // y PLANE_LOADED (que llegan justo despues de teletransportar al usuario)
+    // llaman aqui, y cancelarla dejaba a la IA sin colocar. Se cancela solo al
+    // desactivar, en un crash y al empezar otro PlaceScenario.
     if (!g_guard || !g_holds || !g_registry) return;
     g_guard->ReleaseAll(reason, *g_holds, *g_registry);
     if (notifyCore) {
@@ -147,11 +156,13 @@ void HandleMessage(const uint8_t* data, size_t size) {
             uint8_t kind = r.U8();
             int32_t index = r.I32();
             int32_t count = r.I32();
+            uint8_t frame = r.U8();
             std::string name = r.Str();
             if (!r.Ok()) return;
 
             DatarefRegistry::Entry* e = g_registry->Define(
-                id, static_cast<proto::EntryKind>(kind), name, index, count);
+                id, static_cast<proto::EntryKind>(kind), name, index, count,
+                static_cast<proto::FrameAxis>(frame));
 
             proto::Writer w(proto::Op::DefineAck);
             w.U16(id);
@@ -278,9 +289,11 @@ void HandleMessage(const uint8_t* data, size_t size) {
             float cg = r.F32();
             float cb = r.F32();
             float scale = r.F32();
-            std::string text = r.Str();
+            std::string labels[AiLabel::kMaxPlanes];
+            for (int i = 0; i < AiLabel::kMaxPlanes; ++i)
+                labels[i] = r.Str();
             if (!r.Ok()) return;
-            if (g_label) g_label->ApplyConfig(flags, font, cr, cg, cb, scale, text);
+            if (g_label) g_label->ApplyConfig(flags, font, cr, cg, cb, scale, labels);
             break;
         }
 
@@ -296,15 +309,17 @@ void HandleMessage(const uint8_t* data, size_t size) {
             float aiHdg = static_cast<float>(r.F64());
             float aiSpd = static_cast<float>(r.F64());
             std::string aiPath = r.Str();
+            bool aiOnGround = r.U8() != 0;
             if (!r.Ok()) return;
 
             // Suelta overrides propios antes de teletransportar: si no, el
             // avion llega a la pista con holds viejos pegados.
+            scenario::CancelPending();
             ReleaseEverything("PlaceScenario", false);
             scenario::Begin(userLat, userLon, userElev, userHdg, userSpd,
-                            aiLat, aiLon, aiElev, aiHdg, aiSpd, aiPath);
+                            aiLat, aiLon, aiElev, aiHdg, aiSpd, aiPath, aiOnGround);
             SendEvent(proto::EventKind::Info,
-                      "Reset simulacion: usuario colocado; IA en cuanto cargue el escenario.");
+                      "Inicio de simulacion: usuario colocado; IA en cuanto cargue el escenario.");
             break;
         }
 
@@ -314,7 +329,13 @@ void HandleMessage(const uint8_t* data, size_t size) {
             if (!r.Ok()) return;
 
             if (action == 0) {
-                ai_control::Release();
+                // planeIndex 0 = soltar todo; 1..19 = solo ese avion.
+                if (planeIndex != 0 && !ai_control::IsValid(planeIndex)) {
+                    SendEvent(proto::EventKind::Warning,
+                              "AiControl: Release rechazo (planeIndex fuera de 0..19).");
+                    break;
+                }
+                ai_control::Release(planeIndex);
                 SendEvent(proto::EventKind::Info, "AiControl: Release ok.");
                 break;
             }
@@ -435,6 +456,17 @@ float FlightLoopCallback(float dt, float, int, void*) {
         g_registry->Clear();
         g_frame = 0;
         g_guard->NoteConnected();
+        // El marco estable del core nace aqui: offset 0 y ancla nueva.
+        g_origin.Reset(*g_registry);
+    }
+
+    // 1b. ¿X-Plane movio el origen local? Antes de aplicar holds y leer
+    //     telemetria, para que este mismo frame ya salga en el marco estable.
+    {
+        std::string originText;
+        if (g_origin.Update(*g_registry, originText)) {
+            SendEvent(proto::EventKind::OriginShift, originText);
+        }
     }
 
     // 2. Seguridad primero: si el core murio o se quedo mudo, soltar antes
@@ -500,6 +532,8 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     g_label = new AiLabel();
     g_label->Init();
 
+    camera_follow::SetOverviewFocusNotify(&NotifyOverviewFocus);
+
     XPLMRegisterFlightLoopCallback(FlightLoopCallback, -1.0f, nullptr);
     return 1;
 }
@@ -549,6 +583,7 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID, int inMessage, void* inParam
     // pueden mover el avion, porque X-Plane sigue pensando que un plugin
     // tiene el control exclusivo de ese eje.
     if (inMessage == XPLM_MSG_PLANE_CRASHED || inMessage == XPLM_MSG_AIRPORT_LOADED) {
+        if (inMessage == XPLM_MSG_PLANE_CRASHED) scenario::CancelPending();
         ReleaseEverything("reinicio de situacion en X-Plane", true);
         if (inMessage == XPLM_MSG_AIRPORT_LOADED) scenario::OnAirportLoaded();
         return;

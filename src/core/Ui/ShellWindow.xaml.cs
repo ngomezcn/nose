@@ -13,6 +13,7 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using AICopilotCore.Connector;
 using AICopilotCore.Domain;
+using AICopilotCore.Domain.Agents;
 using static AICopilotCore.Ui.NativeMethods;
 
 namespace AICopilotCore.Ui;
@@ -38,10 +39,6 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
     private readonly ConnectorClient _client;
     private readonly Datarefs _d;
-    private readonly AircraftControls _controls;
-    private readonly TakeoffSequence _sequence;
-    private readonly ManeuverSequence _maneuvers;
-    private readonly InterceptSequence _intercept;
     private readonly ControlTuning _tuning;
     private readonly FlightDirector _director;
     private readonly GraphicsSettings _graphics = new();
@@ -60,25 +57,38 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     private bool _switchingViewportTab;
     private bool _blackBoxViewportActive;
 
+    // Chrome segun foco GLOBAL vs avion: SyncFocusChrome solo reaplica cuando
+    // cambia. El panel de telemetria se deja siempre montado (vacio en GLOBAL)
+    // para no mover el hueco de X-Plane al cambiar de foco.
+    private bool? _focusChromeIsGlobal;
+
     public ObservableCollection<string> Logs { get; } = new();
 
     // Aviones de la partida: el local (indice 0) y las IAs que reporte el
     // connector (Op.Planes). La coleccion la rellena RefreshAircraftList.
     public ObservableCollection<AircraftListEntry> AircraftEntries { get; } = new();
 
-    // Blancos posibles de una interceptacion: solo las IAs (el avion local
-    // no se puede interceptar a si mismo). Objetos estables: RefreshIntercept-
+    // Blancos posibles de una interceptacion: cualquier avion de la partida
+    // salvo el interceptor (el que esta en foco), local incluido. Objetos estables: RefreshIntercept-
     // Targets los actualiza en sitio en vez de recrearlos, porque recrearlos
     // le quitaria la seleccion al usuario diez veces por segundo.
     public ObservableCollection<InterceptTargetEntry> InterceptTargets { get; } = new();
 
     public string BuildText { get; } = $"build {BuildInfo.BuildNumber}";
 
-    // Caja negra del avion EN FOCO. Con foco GLOBAL no tiene sentido grabar:
-    // For() clamppea indices invalidos, pero la UI deshabilita Empezar.
+    // Caja negra del avion EN FOCO. Con foco GLOBAL Empezar/Detener/Borrar
+    // actuan sobre todo el roster; la lista CSV / graficos muestran LOCAL
+    // como vista representativa (cada avion escribe su propio fichero).
     private DataLogger FocusedDataLog =>
         _dataLogs.For(_director.IsGlobalFocus ? 0 : _director.FocusedXplmIndex);
     public ObservableCollection<string> DataLogSamples => FocusedDataLog.Samples;
+
+    // true = Empezar se pulso en GLOBAL: se mantiene grabando el roster
+    // completo (incluye IAs que aparezcan despues) hasta Detener en GLOBAL.
+    private bool _globalDataLogRecording;
+
+    // IAs con Watch extra por estar grabando (refcount aparte del foco).
+    private readonly HashSet<int> _dataLogWatchIndices = new();
 
     private string _dataLogFilePathText = "";
     public string DataLogFilePathText {
@@ -86,18 +96,12 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         private set => Set(ref _dataLogFilePathText, value);
     }
 
-    public ShellWindow(ConnectorClient client, Datarefs datarefs, AircraftControls controls,
-                       TakeoffSequence sequence, ManeuverSequence maneuvers,
-                       InterceptSequence intercept, ControlTuning tuning,
+    public ShellWindow(ConnectorClient client, Datarefs datarefs, ControlTuning tuning,
                        FlightDirector director) {
         // Asignar deps antes de DataContext: DataLogSamples / FocusedDataLog
         // leen FocusedXplmIndex del director al enlazar la lista CSV.
         _client = client;
         _d = datarefs;
-        _controls = controls;
-        _sequence = sequence;
-        _maneuvers = maneuvers;
-        _intercept = intercept;
         _tuning = tuning;
         _director = director;
 
@@ -120,14 +124,13 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         _refreshTimer.Tick += (_, _) => Refresh();
         _refreshTimer.Start();
 
-        // Arranca en Aviones (seleccion global de foco); el XAML ya deja
-        // AircraftTab marcado y las otras vistas collapsadas, pero
-        // ApplyLeftView deja el titulo y las visibilidades consistentes.
-        ApplyLeftView(LeftPanelView.Aircraft);
+        // Foco por defecto = GLOBAL: SyncFocusChrome deja solo Graficos y
+        // oculta telemetria / pestanas de avion. RefreshAircraftList llama
+        // UpdateFocusText → SyncFocusChrome.
         RefreshAircraftList();
-        // Foco por defecto = GLOBAL: selecciona la fila de zona.
         if (AircraftEntries.Count > 0 && AircraftEntries[0].IsGlobal)
             SelectedAircraft = AircraftEntries[0];
+        SyncFocusChrome(force: true);
         RefreshInterceptTargets();
 
         // La vista de graficos vive en el host del viewport (hermano del
@@ -189,7 +192,8 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     // deja la misma marca en la caja negra del avion indicado (columna Nota)
     // SOLO si ese logger esta grabando. markBlackBox=true (acciones de vuelo)
     // tambien pinta la linea vertical en los graficos. blackBoxIndex: 0 =
-    // ownship (takeoff/maneuver/intercept); 1..19 = IA (AiStraightHold).
+    // ownship; 1..19 = IA. En el log de pantalla las lineas de una IA llevan
+    // el prefijo [etiqueta]; en el CSV van tal cual (marcas Inicio:/Fin:/Fase:).
     //
     // BeginInvoke (no Invoke): Start/Abort se llaman con el candado de la
     // secuencia cogido. Un Invoke sincrono aqui puede engancharse con el
@@ -197,11 +201,34 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     // colgada al pedir un despegue.
     public void Append(string line, bool markBlackBox = false, int blackBoxIndex = 0) {
         Dispatcher.BeginInvoke(() => {
-            Logs.Add($"{DateTime.Now:HH:mm:ss}  {line}");
+            Logs.Add($"{DateTime.Now:HH:mm:ss}  {ScreenPrefix(blackBoxIndex, line)}{line}");
             while (Logs.Count > MaxLogLines) Logs.RemoveAt(0);
             if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[^1]);
             _dataLogs.For(blackBoxIndex).RecordEvent(line, chartMarker: markBlackBox);
         });
+    }
+
+    // El connector avisa de que X-Plane movio el origen de su marco local
+    // (ya compensado). Queda en el log y en cada caja negra que graba.
+    public void NoteOriginShift(string detail) {
+        string line = $"AVISO: origen local desplazado por X-Plane y compensado ({detail})";
+        Dispatcher.BeginInvoke(() => {
+            Logs.Add($"{DateTime.Now:HH:mm:ss}  {line}");
+            while (Logs.Count > MaxLogLines) Logs.RemoveAt(0);
+            if (LogList.Items.Count > 0) LogList.ScrollIntoView(LogList.Items[^1]);
+            foreach (var (_, logger) in _dataLogs.Recording)
+                logger.RecordEvent(line, chartMarker: true);
+        });
+    }
+
+    // Prefijo de avion solo para el log de pantalla (nunca para el CSV).
+    private string ScreenPrefix(int xplmIndex, string line) {
+        if (xplmIndex < 1) return "";
+        string label = _director.World.TryGet(xplmIndex)?.Label ?? AircraftWorld.DefaultLabel(xplmIndex);
+        if (line.StartsWith(label, StringComparison.Ordinal) ||
+            line.StartsWith($"IA {xplmIndex}", StringComparison.Ordinal))
+            return "";
+        return $"[{label}] ";
     }
 
     // --- Telemetria generica: objetivo a la izquierda, real a la derecha ---
@@ -309,7 +336,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     }
 
     private string _interceptEmptyHint =
-        "No hay ninguna IA en la partida todavia. Anade aviones de IA en X-Plane " +
+        "No hay otro avion al que interceptar. Anade aviones de IA en X-Plane " +
         "(Flight Configuration > AI Aircraft) y apareceran aqui.";
     public string InterceptEmptyHint {
         get => _interceptEmptyHint;
@@ -693,17 +720,26 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     }
 
     private void OnAbortClick(object sender, RoutedEventArgs e) {
-        // Con foco en IA suelta solo su hold; con foco local, despegue/maniobra/intercept.
+        // Aborta el avion en foco (todas sus secuencias); con GLOBAL, todos.
         _director.AbortFocused();
         Append($"Abortar / manual: {_director.FocusedLabel}.");
     }
 
-    private void OnResetSimClick(object sender, RoutedEventArgs e) {
-        if (!_director.ResetSimulation(out string error)) {
-            Append($"Reset simulacion: {error}.");
+    // Un solo handler para los botones de inicio de simulacion: el Tag lleva
+    // el nombre del SimStart (ver XAML).
+    private void OnSimStartClick(object sender, RoutedEventArgs e) {
+        if (sender is not Button { Tag: string tag } ||
+            !Enum.TryParse(tag, out SimStart start)) return;
+        SimStartPlan plan = SimScenarios.Get(start);
+        if (!_director.IsGlobalFocus) {
+            Append($"{plan.Name}: solo disponible con foco GLOBAL.");
             return;
         }
-        Append($"Reset simulacion: {SimScenario.Label}.");
+        if (!_director.StartSimulation(start, out string error)) {
+            Append($"{plan.Name}: {error}.");
+            return;
+        }
+        Append($"{plan.Name}: {plan.Label}.");
     }
 
     // Un solo handler para los ~25 botones del catalogo de acciones: cada
@@ -739,56 +775,107 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         FocusPickerOpen = false;
     }
 
-    private void ApplyFocus(AircraftListEntry ac) {
-        _director.SetFocus(ac.XplmIndex, ac.Name);
+    // Indice de la IA cuya telemetria se pide a ritmo de frame por estar en
+    // foco (-1 = ninguna). Watch/Unwatch son con refcount: no pisan a la
+    // interceptacion de otro avion que observe la misma IA.
+    private int _watchedFocusIdx = -1;
+
+    private void UpdateFocusWatch(int newIdx) {
+        int wanted = newIdx >= 1 ? newIdx : -1;
+        if (wanted == _watchedFocusIdx) return;
+        if (_watchedFocusIdx >= 1) _director.World.Unwatch(_watchedFocusIdx);
+        _watchedFocusIdx = wanted;
+        if (wanted >= 1) _director.World.Watch(wanted);
+    }
+
+    // Cambiar el foco SOLO cambia a quien van las ordenes y que refleja la UI:
+    // no aborta ni toca a ningun avion (cada uno sigue con su ruta / maniobra /
+    // intercept). keepCamera=true: solo foco UI (la camara overview ya la
+    // mueve el connector con pick/paneo).
+    private void ApplyFocus(AircraftListEntry ac, bool keepCamera = false) {
+        _director.SetFocus(ac.XplmIndex, ac.DisplayName);
+        UpdateFocusWatch(ac.XplmIndex);
+        _lastInterceptRefusal = "";
 
         if (ac.IsGlobal) {
-            // Vista de zona: enmarcar todas las naves.
-            // Ritmo de telemetria Other*: conserva AiHold/Intercept si siguen.
-            if (_director.AiHold.IsRunning)
-                _d.FocusOtherPlane(_director.AiHold.XplmIndex - 1);
-            else if (!_intercept.IsRunning)
-                _d.FocusOtherPlane(-1);
-
-            ApplyGlobalFocusPresentation();
+            if (!keepCamera)
+                ApplyGlobalFocusPresentation();
             UpdateFocusText();
             RefreshAircraftList();
-            Append("Foco: GLOBAL · vista aerea de la zona.");
+            Append(keepCamera
+                ? "Foco: GLOBAL · vista libre."
+                : "Foco: GLOBAL · vista aerea. Clic sobre un avion lo sigue; arrastre izquierdo panea relativo al centro entre naves; rueda hace zoom; arrastre derecho orbita (tambien por debajo); doble clic reencuadra.");
             return;
         }
 
-        // Ritmo de telemetria Other*: la IA en foco a ~60 Hz para el panel
-        // derecho; al volver al local, conserva el slot de AiHold/Intercept
-        // si sigue activo.
-        if (ac.XplmIndex >= 1)
-            _d.FocusOtherPlane(ac.XplmIndex - 1);
-        else if (_director.AiHold.IsRunning)
-            _d.FocusOtherPlane(_director.AiHold.XplmIndex - 1);
-        else if (!_intercept.IsRunning)
-            _d.FocusOtherPlane(-1);
-
-        // Camara automatica al cambiar de foco: chase en IA, soltar en local
-        // (el ownship usa la vista nativa de X-Plane).
-        if (_client.IsConnected) {
+        if (!keepCamera && _client.IsConnected) {
+            // Camara automatica al cambiar de foco desde la UI: chase en IA,
+            // soltar en local (el ownship usa la vista nativa de X-Plane).
             if (ac.XplmIndex >= 1)
                 _client.FollowCamera(ac.XplmIndex);
             else
                 _client.ReleaseCamera();
         }
 
+        // El selector de puesto refleja el del avion enfocado si intercepta.
+        AgentView? view = _director.FocusedView;
+        if (view is { InterceptRunning: true } or { InterceptPending: true })
+            SetStationUi(view.InterceptStation);
+
         UpdateFocusText();
         RefreshAircraftList();
         string role = ac.XplmIndex == 0 ? "LOCAL" : "IA";
-        Append($"Foco: {role} · {ac.Name}.");
+        Append(keepCamera
+            ? $"Foco: {role} · {ac.DisplayName} (seguimiento aereo)."
+            : $"Foco: {role} · {ac.DisplayName}.");
     }
 
-    // Activa marcadores + lineas y pide la vista aerea al connector.
-    // (Las etiquetas de texto son por avion; no se fuerzan aqui.)
+    // Evento OverviewFocus del connector: el usuario eligio un avion (o libre)
+    // en la vista aerea. Actualiza el foco UI sin tocar la camara.
+    public void ApplyOverviewFocusFromConnector(int xplmIndex) {
+        if (!Dispatcher.CheckAccess()) {
+            Dispatcher.BeginInvoke(() => ApplyOverviewFocusFromConnector(xplmIndex));
+            return;
+        }
+
+        if (xplmIndex < 0) {
+            AircraftListEntry? global = null;
+            foreach (AircraftListEntry e in AircraftEntries) {
+                if (e.IsGlobal) { global = e; break; }
+            }
+            if (global is null) {
+                global = new AircraftListEntry {
+                    IsGlobal = true,
+                    Name = "Global",
+                    XplmIndex = FlightDirector.GlobalFocusIndex,
+                    RoleLabel = "ZONA",
+                };
+            }
+            SelectedAircraft = global;
+            ApplyFocus(global, keepCamera: true);
+            return;
+        }
+
+        AircraftListEntry? ac = null;
+        foreach (AircraftListEntry e in AircraftEntries) {
+            if (!e.IsGlobal && e.XplmIndex == xplmIndex) { ac = e; break; }
+        }
+        if (ac is null) {
+            Append($"Vista aerea: avion idx {xplmIndex} no esta en la lista.");
+            return;
+        }
+        SelectedAircraft = ac;
+        ApplyFocus(ac, keepCamera: true);
+    }
+
+    // Activa marcadores + lineas + triangulo y pide la vista aerea al connector.
+    // (Los nombres overlay son por avion en Aviones; no se fuerzan aqui.)
     // Los toggles de Graficos se sincronizan para que la UI refleje lo dibujado.
     private void ApplyGlobalFocusPresentation() {
         bool changed = false;
         if (!_graphics.ShowMarkers) { _graphics.ShowMarkers = true; changed = true; }
         if (!_graphics.ShowLines) { _graphics.ShowLines = true; changed = true; }
+        if (!_graphics.ShowTriangle) { _graphics.ShowTriangle = true; changed = true; }
         if (changed) {
             SyncGraphicsUiFromModel();
             ApplyGraphicsConfig();
@@ -805,7 +892,13 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
     // Tras PlaceScenario / ReleaseEverything la camara se suelta: si el foco
     // sigue en GLOBAL, vuelve a pedir la vista aerea.
+    // Se llama desde el hilo del pipe (ScenarioReady): toca UI, asi que salta
+    // al hilo de UI.
     public void ResumeGlobalCameraIfFocused() {
+        if (!Dispatcher.CheckAccess()) {
+            Dispatcher.BeginInvoke(ResumeGlobalCameraIfFocused);
+            return;
+        }
         if (_director.IsGlobalFocus)
             ApplyGlobalFocusPresentation();
     }
@@ -824,7 +917,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             return;
         }
         _client.FollowCamera(ac.XplmIndex);
-        Append($"Camara: siguiendo IA · {ac.Name} (idx {ac.XplmIndex}).");
+        Append($"Camara: siguiendo IA · {ac.DisplayName} (idx {ac.XplmIndex}).");
     }
 
     private void OnReleaseCameraClick(object sender, RoutedEventArgs e) {
@@ -851,6 +944,22 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         if (sender is not System.Windows.Controls.Primitives.ToggleButton { IsChecked: true, Tag: string tag }) return;
         if (!Enum.TryParse(tag, out InterceptStation id)) return;
 
+        SetStationUi(id);
+
+        // Con la interceptacion del avion en foco en marcha (o pendiente de
+        // despegue) el cambio de boton mueve el puesto de formacion; no hace
+        // falta abortar y volver a pedir.
+        AircraftAgent? a = _director.Focused;
+        if (a is not null && (a.Intercept.IsRunning || a.IsInterceptPending)) {
+            if (_director.ChangeInterceptStation(id, out string err))
+                Append($"Interceptar: puesto → {InterceptCatalog.Get(id).Label}.");
+            else if (!string.IsNullOrEmpty(err))
+                Append($"Interceptar: no se pudo cambiar de puesto — {err}.");
+        }
+    }
+
+    // Marca el boton de puesto sin disparar ChangeInterceptStation.
+    private void SetStationUi(InterceptStation id) {
         _switchingStation = true;
         try {
             StationTailHigh.IsChecked = id == InterceptStation.TailHigh;
@@ -861,22 +970,20 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             _stationId = id;
             OnPropertyChanged(nameof(InterceptStationSummary));
             OnPropertyChanged(nameof(InterceptStationSpec));
-
-            // Con la interceptacion en marcha (o pendiente de despegue) el
-            // cambio de boton mueve el puesto de formacion; no hace falta
-            // abortar y volver a pedir.
-            if (_intercept.IsRunning || _director.IsInterceptPending) {
-                if (_director.ChangeInterceptStation(id, out string err))
-                    Append($"Interceptar: puesto → {InterceptCatalog.Get(id).Label}.");
-                else if (!string.IsNullOrEmpty(err))
-                    Append($"Interceptar: no se pudo cambiar de puesto — {err}.");
-            }
         } finally {
             _switchingStation = false;
         }
     }
 
+    // Ultimo motivo de rechazo al pedir una interceptacion (InterceptRegistry:
+    // mutua, ciclo, a si mismo...). Se muestra en el panel Interceptar.
+    private string _lastInterceptRefusal = "";
+
     private void OnInterceptStartClick(object sender, RoutedEventArgs e) {
+        if (_director.IsGlobalFocus) {
+            Append("Interceptar: elige primero el avion interceptor (foco).");
+            return;
+        }
         if (SelectedInterceptTarget is not InterceptTargetEntry target) {
             Append("Interceptar: elige primero a que avion de la lista.");
             return;
@@ -886,15 +993,21 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             return;
         }
 
-        if (!_director.StartIntercept(target.XplmIndex, _stationId, target.Name, out string refusal))
-            Append($"Interceptar {target.Name}: no se puede ahora mismo -- {refusal}.");
+        if (!_director.StartIntercept(target.XplmIndex, _stationId, target.Name, out string refusal)) {
+            _lastInterceptRefusal = refusal;
+            Append($"Interceptar {target.Name} ({_director.FocusedLabel}): no se puede ahora mismo -- {refusal}");
+        } else {
+            _lastInterceptRefusal = "";
+        }
     }
 
     private void OnInterceptAbortClick(object sender, RoutedEventArgs e) {
-        if (!_intercept.IsRunning && !_director.IsInterceptPending) {
-            Append("Interceptar: no hay ninguna interceptacion en marcha.");
+        AircraftAgent? a = _director.Focused;
+        if (a is null || (!a.Intercept.IsRunning && !a.IsInterceptPending)) {
+            Append("Interceptar: el avion en foco no tiene ninguna interceptacion en marcha.");
             return;
         }
+        _lastInterceptRefusal = "";
         _director.AbortInterceptMission();
     }
 
@@ -970,20 +1083,19 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             (byte)_graphics.Font,
             _graphics.ColorR, _graphics.ColorG, _graphics.ColorB,
             _graphics.Scale,
-            _graphics.LabelText);
+            _director.World.SnapshotOverlayLabels());
     }
 
     private bool _syncingGraphicsUi;
+    private int _editingAircraftNameIndex = int.MinValue;
 
     private void SyncGraphicsUiFromModel() {
         _syncingGraphicsUi = true;
         try {
-            GfxOwnLabelToggle.IsChecked = _graphics.ShowOwnLabel;
-            GfxOtherLabelsToggle.IsChecked = _graphics.ShowOtherLabels;
             GfxLinesToggle.IsChecked = _graphics.ShowLines;
+            GfxTriangleToggle.IsChecked = _graphics.ShowTriangle;
             GfxMarkersToggle.IsChecked = _graphics.ShowMarkers;
             GfxPathToggle.IsChecked = _graphics.ShowPath;
-            GfxLabelTextBox.Text = _graphics.LabelText;
             GfxFontCombo.SelectedIndex = _graphics.Font;
             GfxColorR.Text = ((int)Math.Round(_graphics.ColorR * 255f)).ToString(CultureInfo.InvariantCulture);
             GfxColorG.Text = ((int)Math.Round(_graphics.ColorG * 255f)).ToString(CultureInfo.InvariantCulture);
@@ -995,12 +1107,10 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     }
 
     private void ReadGraphicsUiIntoModel() {
-        _graphics.ShowOwnLabel = GfxOwnLabelToggle.IsChecked == true;
-        _graphics.ShowOtherLabels = GfxOtherLabelsToggle.IsChecked == true;
         _graphics.ShowLines = GfxLinesToggle.IsChecked == true;
+        _graphics.ShowTriangle = GfxTriangleToggle.IsChecked == true;
         _graphics.ShowMarkers = GfxMarkersToggle.IsChecked == true;
         _graphics.ShowPath = GfxPathToggle.IsChecked == true;
-        _graphics.LabelText = GfxLabelTextBox.Text ?? string.Empty;
         _graphics.Font = GfxFontCombo.SelectedIndex <= 0 ? 0 : 1;
 
         if (byte.TryParse(GfxColorR.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out byte r))
@@ -1039,42 +1149,152 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         Append("Graficos: valores restablecidos.");
     }
 
+    private void OnAircraftNameGotFocus(object sender, KeyboardFocusChangedEventArgs e) {
+        if (sender is TextBox { DataContext: AircraftListEntry ac } && !ac.IsGlobal)
+            _editingAircraftNameIndex = ac.XplmIndex;
+    }
+
+    private void OnAircraftNameLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e) {
+        _editingAircraftNameIndex = int.MinValue;
+    }
+
+    private void OnAircraftNameKeyDown(object sender, KeyEventArgs e) {
+        if (e.Key != Key.Enter) return;
+        if (sender is TextBox tb) {
+            CommitAircraftName(tb);
+            tb.MoveFocus(new TraversalRequest(FocusNavigationDirection.Next));
+        }
+        e.Handled = true;
+    }
+
+    private void OnAircraftNameLostFocus(object sender, RoutedEventArgs e) {
+        if (sender is TextBox tb) CommitAircraftName(tb);
+    }
+
+    private void CommitAircraftName(TextBox tb) {
+        if (tb.DataContext is not AircraftListEntry ac || ac.IsGlobal) return;
+        // Fuerza el binding LostFocus por si Enter llego antes.
+        tb.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
+        string name = (ac.Name ?? string.Empty).Trim();
+        if (name.Length > 32) name = name[..32];
+        if (!string.Equals(ac.Name, name, StringComparison.Ordinal))
+            ac.Name = name;
+        _director.World.SetLabel(ac.XplmIndex, name);
+        if (_director.FocusedXplmIndex == ac.XplmIndex)
+            _director.SetFocus(ac.XplmIndex, ac.DisplayName);
+        ApplyGraphicsConfig();
+        UpdateFocusText();
+    }
+
     private void OnClearLogClick(object sender, RoutedEventArgs e) => Logs.Clear();
 
     private void OnStartDataLogClick(object sender, RoutedEventArgs e) {
         if (_director.IsGlobalFocus) {
-            Append("Caja negra: elige un avion (no GLOBAL).");
-            return;
+            _globalDataLogRecording = true;
+            EnsureGlobalRosterRecording();
+            int n = _dataLogs.RecordingCount;
+            Append(n <= 1
+                ? "Caja negra GLOBAL: grabando el roster (1 nave)."
+                : $"Caja negra GLOBAL: grabando el roster ({n} naves).");
+        } else {
+            FocusedDataLog.StartRecording();
+            SyncDataLogWatches();
         }
-        FocusedDataLog.StartRecording();
         UpdateDataLogRecordingUi();
         RefreshFocusedBlackBoxCharts();
     }
 
     private void OnClearDataLogClick(object sender, RoutedEventArgs e) {
         if (_director.IsGlobalFocus) {
-            Append("Caja negra: elige un avion (no GLOBAL).");
-            return;
+            _globalDataLogRecording = false;
+            int[] roster = RosterXplmIndices().ToArray();
+            _dataLogs.ClearMany(roster);
+            SyncDataLogWatches();
+            Append(roster.Length <= 1
+                ? "Caja negra GLOBAL: borrado el log del roster."
+                : $"Caja negra GLOBAL: borrados los logs de {roster.Length} naves.");
+        } else {
+            FocusedDataLog.Clear();
+            SyncDataLogWatches();
         }
-        FocusedDataLog.Clear();
         UpdateDataLogRecordingUi();
         RefreshFocusedBlackBoxCharts();
     }
 
     private void OnStopDataLogClick(object sender, RoutedEventArgs e) {
-        FocusedDataLog.StopRecording();
+        if (_director.IsGlobalFocus) {
+            _globalDataLogRecording = false;
+            int n = _dataLogs.RecordingCount;
+            _dataLogs.StopAllRecording();
+            SyncDataLogWatches();
+            Append(n <= 1
+                ? "Caja negra GLOBAL: grabacion detenida."
+                : $"Caja negra GLOBAL: detenidas {n} grabaciones.");
+        } else {
+            FocusedDataLog.StopRecording();
+            SyncDataLogWatches();
+        }
         UpdateDataLogRecordingUi();
         RefreshFocusedBlackBoxCharts();
+    }
+
+    // Indices XPLM del roster actual (Op.Planes). Sin listado aun: solo LOCAL.
+    private IEnumerable<int> RosterXplmIndices() {
+        SimPlane[] planes = _client.Planes;
+        if (planes.Length == 0) {
+            yield return 0;
+            yield break;
+        }
+        foreach (SimPlane p in planes)
+            yield return p.Index;
+    }
+
+    // Con modo GLOBAL activo: arranca (o mantiene) grabacion de todo el roster.
+    private void EnsureGlobalRosterRecording() {
+        _dataLogs.StartMany(RosterXplmIndices());
+        SyncDataLogWatches();
+    }
+
+    // Watch a ritmo de frame para cada IA que este grabando (refcount aparte
+    // del foco). Al dejar de grabar se suelta.
+    private void SyncDataLogWatches() {
+        var wanted = new HashSet<int>();
+        foreach ((int idx, _) in _dataLogs.Recording) {
+            if (idx >= 1) wanted.Add(idx);
+        }
+        foreach (int idx in _dataLogWatchIndices.ToArray()) {
+            if (wanted.Contains(idx)) continue;
+            _dataLogWatchIndices.Remove(idx);
+            _director.World.Unwatch(idx);
+        }
+        foreach (int idx in wanted) {
+            if (!_dataLogWatchIndices.Add(idx)) continue;
+            _director.World.Watch(idx);
+        }
     }
 
     private void UpdateDataLogRecordingUi() {
         DataLogger log = FocusedDataLog;
         bool global = _director.IsGlobalFocus;
-        bool rec = log.IsRecording;
-        DataLogStartBtn.IsEnabled = !global && !rec;
-        DataLogStopBtn.IsEnabled = !global && rec;
+        if (global) {
+            // Empezar queda activo hasta que el modo GLOBAL este grabando el
+            // roster entero (permite "ampliar" si solo habia una nave a mano).
+            DataLogStartBtn.IsEnabled = !_globalDataLogRecording;
+            DataLogStopBtn.IsEnabled = _dataLogs.AnyRecording;
+        } else {
+            bool rec = log.IsRecording;
+            DataLogStartBtn.IsEnabled = !rec;
+            DataLogStopBtn.IsEnabled = rec;
+        }
         DataLogStatusText = FormatDataLogStatus(log, connected: _client.IsConnected);
-        DataLogFilePathText = global ? "(elige un avion para grabar)" : log.LogFilePath;
+        DataLogFilePathText = global ? FormatGlobalDataLogPaths() : log.LogFilePath;
+    }
+
+    private string FormatGlobalDataLogPaths() {
+        var names = new List<string>();
+        foreach (int idx in RosterXplmIndices())
+            names.Add(idx == 0 ? "DataLog.csv" : $"DataLog.plane{idx}.csv");
+        return names.Count == 0 ? "(sin naves)" : string.Join(" + ", names);
     }
 
     private static string DataLogRoleLabel(int xplmIndex) =>
@@ -1083,13 +1303,19 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         : $"IA {xplmIndex}";
 
     private string FormatDataLogStatus(DataLogger log, bool connected) {
-        if (_director.IsGlobalFocus)
-            return "GLOBAL · elige un avion para grabar caja negra";
+        if (_director.IsGlobalFocus) {
+            int n = Math.Max(1, _client.Planes.Length);
+            int rec = _dataLogs.RecordingCount;
+            string state = !connected ? "sin conexion"
+                         : rec > 0 ? $"grabando {rec}/{n}"
+                         : "detenido";
+            return $"GLOBAL · {n} nave(s) · {state}";
+        }
         string role = DataLogRoleLabel(_director.FocusedXplmIndex);
-        string state = !connected ? "sin conexion"
-                     : log.IsRecording ? "grabando"
-                     : "detenido";
-        return $"{role} · {log.Count} muestras · {state}";
+        string planeState = !connected ? "sin conexion"
+                          : log.IsRecording ? "grabando"
+                          : "detenido";
+        return $"{role} · {log.Count} muestras · {planeState}";
     }
 
     private void RebindFocusedDataLogUi(bool force = false) {
@@ -1124,14 +1350,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         if (sender is not System.Windows.Controls.Primitives.ToggleButton { IsChecked: true } tab) return;
 
         ViewportTab view = tab == ViewportBlackBoxTab ? ViewportTab.BlackBox : ViewportTab.XPlane;
-        _switchingViewportTab = true;
-        try {
-            ViewportXPlaneTab.IsChecked = view == ViewportTab.XPlane;
-            ViewportBlackBoxTab.IsChecked = view == ViewportTab.BlackBox;
-            ApplyViewportTab(view);
-        } finally {
-            _switchingViewportTab = false;
-        }
+        SelectViewportTab(view);
     }
 
     private void ApplyViewportTab(ViewportTab view) {
@@ -1188,20 +1407,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
                           : tab == XPlaneTab ? LeftPanelView.XPlane
                           : LeftPanelView.Aircraft;
 
-        _switchingLeftView = true;
-        try {
-            AircraftTab.IsChecked = view == LeftPanelView.Aircraft;
-            TakeoffTab.IsChecked = view == LeftPanelView.Takeoff;
-            ActionsTab.IsChecked = view == LeftPanelView.Actions;
-            InterceptTab.IsChecked = view == LeftPanelView.Intercept;
-            GraphicsTab.IsChecked = view == LeftPanelView.Graphics;
-            DataLogTab.IsChecked = view == LeftPanelView.DataLog;
-            ConfigTab.IsChecked = view == LeftPanelView.Config;
-            XPlaneTab.IsChecked = view == LeftPanelView.XPlane;
-            ApplyLeftView(view);
-        } finally {
-            _switchingLeftView = false;
-        }
+        SelectLeftView(view);
     }
 
     private void ApplyLeftView(LeftPanelView view) {
@@ -1278,14 +1484,13 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
             AircraftListEntry entry = AircraftEntries[listIdx];
             entry.RoleLabel = local ? "LOCAL" : "IA";
-            entry.Name = haveRoster ? PlaneDisplayName(planes[i]) : "Tu avion";
+            entry.DefaultName = haveRoster ? PlaneDisplayName(planes[i]) : "Tu avion";
+            // No pisar el Name mientras el usuario escribe; al crear la fila
+            // parte del overlay guardado (vacio = casilla vacia).
+            if (_editingAircraftNameIndex != xplmIndex)
+                entry.Name = _director.World.GetOverlayLabel(xplmIndex);
             entry.IsFocused = entry.XplmIndex == _director.FocusedXplmIndex;
-            if (local) {
-                entry.Detail = LocalAircraftDetail();
-                entry.StatusBrush = LocalAircraftStatus();
-            } else {
-                FillOtherAircraft(entry, entry.XplmIndex);
-            }
+            FillAircraftEntry(entry, _director.World.Get(xplmIndex));
         }
 
         // Solo GLOBAL + local cuenta como "sin otras IAs".
@@ -1310,7 +1515,9 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         int n = Math.Max(1, _client.Planes.Length);
         string gfx = (_graphics.ShowMarkers ? "rombos" : "sin rombos")
                    + " · "
-                   + (_graphics.ShowLines ? "lineas" : "sin lineas");
+                   + (_graphics.ShowLines ? "lineas" : "sin lineas")
+                   + " · "
+                   + (_graphics.ShowTriangle ? "triangulo" : "sin triangulo");
         return _client.IsConnected
             ? $"{n} nave(s) · vista aerea\nOverlays: {gfx}"
             : "Sin conexion con el plugin";
@@ -1323,56 +1530,83 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             string role = _director.FocusedXplmIndex == 0 ? "LOCAL" : "IA";
             FocusText = $"{role} · {_director.FocusedLabel}";
         }
+        SyncFocusChrome();
         RebindFocusedDataLogUi();
     }
 
-    private string LocalAircraftDetail() {
-        string phase = TakeoffSequence.PhaseName(_sequence.Phase);
-        string action = _maneuvers.IsRunning ? _maneuvers.PhaseText : "en espera";
-        return _client.IsConnected
-            ? $"IAS {_d.IasKt.Float:0} kt · ALT {_d.AltFt.Float:0} ft\n" +
-              $"Fase: {phase}\nAccion: {action}"
-            : "Sin conexion con el plugin";
+    // GLOBAL: Graficos + Caja negra (grabacion de todo el roster). Un avion:
+    // restaura el resto de secciones de la barra de actividad. El panel
+    // derecho de telemetria no se colapsa (queda vacio via FillGlobalTelemetry)
+    // para no resizear el docker de XP.
+    private void SyncFocusChrome(bool force = false) {
+        bool global = _director.IsGlobalFocus;
+        if (!force && _focusChromeIsGlobal == global) return;
+        _focusChromeIsGlobal = global;
+
+        Visibility planeTabs = global ? Visibility.Collapsed : Visibility.Visible;
+        AircraftTab.Visibility = planeTabs;
+        TakeoffTab.Visibility = planeTabs;
+        ActionsTab.Visibility = planeTabs;
+        InterceptTab.Visibility = planeTabs;
+        ConfigTab.Visibility = planeTabs;
+        XPlaneTab.Visibility = planeTabs;
+        GraphicsTab.Visibility = Visibility.Visible;
+        DataLogTab.Visibility = Visibility.Visible;
+        ViewportBlackBoxTab.Visibility = Visibility.Visible;
+        SimStartSection.Visibility = global ? Visibility.Visible : Visibility.Collapsed;
+
+        if (global) {
+            // Al entrar en GLOBAL: Graficos por defecto, salvo que ya estuvieras
+            // en Caja negra (se mantiene para seguir mirando la grabacion).
+            if (DataLogView.Visibility != Visibility.Visible)
+                SelectLeftView(LeftPanelView.Graphics);
+        }
     }
 
-    private Brush LocalAircraftStatus() =>
-        !_client.IsConnected ? Brushes.Gray
-        : _maneuvers.IsRunning || _sequence.IsRunning ? Brushes.LimeGreen
-        : Brushes.Orange;
+    private void SelectLeftView(LeftPanelView view) {
+        _switchingLeftView = true;
+        try {
+            AircraftTab.IsChecked = view == LeftPanelView.Aircraft;
+            TakeoffTab.IsChecked = view == LeftPanelView.Takeoff;
+            ActionsTab.IsChecked = view == LeftPanelView.Actions;
+            InterceptTab.IsChecked = view == LeftPanelView.Intercept;
+            GraphicsTab.IsChecked = view == LeftPanelView.Graphics;
+            DataLogTab.IsChecked = view == LeftPanelView.DataLog;
+            ConfigTab.IsChecked = view == LeftPanelView.Config;
+            XPlaneTab.IsChecked = view == LeftPanelView.XPlane;
+            ApplyLeftView(view);
+        } finally {
+            _switchingLeftView = false;
+        }
+    }
 
-    // XPLM index 1 -> OtherElevMeters[0] (plane1). No hay IAS de las IAs
-    // en los datarefs de multiplayer: la velocidad que se puede leer es
-    // la del vector horizontal, y la cota es elevacion MSL, no altitud
-    // indicada.
-    private void FillOtherAircraft(AircraftListEntry entry, int xplmIndex) {
-        int slot = xplmIndex - 1;
+    private void SelectViewportTab(ViewportTab view) {
+        _switchingViewportTab = true;
+        try {
+            ViewportXPlaneTab.IsChecked = view == ViewportTab.XPlane;
+            ViewportBlackBoxTab.IsChecked = view == ViewportTab.BlackBox;
+            ApplyViewportTab(view);
+        } finally {
+            _switchingViewportTab = false;
+        }
+    }
+
+    // Fila del listado de cualquier avion: lo que su cuerpo sabe de si mismo
+    // (NaN -> "—") y lo que hace segun su propio AgentView.
+    private void FillAircraftEntry(AircraftListEntry entry, AircraftAgent agent) {
         if (!_client.IsConnected) {
             entry.Detail = "Sin conexion con el plugin";
             entry.StatusBrush = Brushes.Gray;
             return;
         }
-        if (slot < 0 || slot >= Datarefs.OtherPlaneSlots) {
-            entry.Detail = "Sin posicion (fuera de los 19 slots de IA)";
-            entry.StatusBrush = Brushes.Orange;
-            return;
-        }
-
-        DataHandle el = _d.OtherElevMeters[slot];
-        DataHandle hdg = _d.OtherHeadingDeg[slot];
-        DataHandle vx = _d.OtherVelX[slot];
-        DataHandle vz = _d.OtherVelZ[slot];
-        if (!el.HasValue || !hdg.HasValue || !vx.HasValue || !vz.HasValue) {
-            entry.Detail = "Esperando posicion";
-            entry.StatusBrush = Brushes.Orange;
-            return;
-        }
-
-        double gsKt = Math.Sqrt(vx.Value * vx.Value + vz.Value * vz.Value) * MpsToKnots;
-        double mslFt = el.Value * MetersToFeet;
-        double hdgDeg = hdg.Value % 360.0;
-        if (hdgDeg < 0) hdgDeg += 360.0;
-        entry.Detail = $"GS {gsKt:0} kt · MSL {mslFt:0} ft\nHDG {(int)Math.Round(hdgDeg):000}";
-        entry.StatusBrush = Brushes.LimeGreen;
+        FlightState st = agent.Body.State;
+        AgentView view = agent.View();
+        string acf = string.IsNullOrEmpty(entry.DefaultName) ? "" : $"{entry.DefaultName}\n";
+        entry.Detail =
+            acf +
+            $"IAS {Fmt(st.IasKt, "0")} kt · ALT {Fmt(st.AltFt, "0")} ft\n" +
+            $"Fase: {view.SequenceText}\nModo: {view.ModeText}";
+        entry.StatusBrush = view.IsBusy ? Brushes.LimeGreen : Brushes.Orange;
     }
 
     // El .acf a veces se llama "SR22" y la carpeta "Cirrus SR22". La carpeta
@@ -1397,32 +1631,35 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         return string.IsNullOrWhiteSpace(file) ? $"IA {plane.Index}" : file;
     }
 
-    // Lista de blancos posibles: solo las IAs (indice >= 1). La coleccion se
+    // Lista de blancos posibles: todos los aviones de la partida menos el
+    // interceptor (el avion en foco), local incluido. La coleccion se
     // reconstruye unicamente cuando cambia el reparto de indices; el resto de
     // refrescos actualiza los campos EN SITIO, porque recrear las filas diez
     // veces por segundo le quitaria la seleccion al usuario mientras la hace.
     private void RefreshInterceptTargets() {
         SimPlane[] planes = _client.Planes;
+        int interceptor = _director.FocusedXplmIndex;
 
-        int wanted = 0;
-        foreach (SimPlane p in planes) if (p.Index >= 1) wanted++;
+        var roster = new List<(int Index, string Name)>();
+        if (planes.Length == 0) {
+            roster.Add((0, "Local"));
+        } else {
+            foreach (SimPlane p in planes)
+                roster.Add((p.Index, p.Index == 0 ? "Local" : PlaneDisplayName(p)));
+        }
+        roster.RemoveAll(r => r.Index == interceptor);
 
-        bool sameRoster = InterceptTargets.Count == wanted;
+        bool sameRoster = InterceptTargets.Count == roster.Count;
         if (sameRoster) {
-            int i = 0;
-            foreach (SimPlane p in planes) {
-                if (p.Index < 1) continue;
-                if (InterceptTargets[i].XplmIndex != p.Index) { sameRoster = false; break; }
-                i++;
+            for (int i = 0; i < roster.Count; i++) {
+                if (InterceptTargets[i].XplmIndex != roster[i].Index) { sameRoster = false; break; }
             }
         }
         if (!sameRoster) {
             int keep = SelectedInterceptTarget?.XplmIndex ?? -1;
             InterceptTargets.Clear();
-            foreach (SimPlane p in planes) {
-                if (p.Index < 1) continue;
-                InterceptTargets.Add(new InterceptTargetEntry { XplmIndex = p.Index });
-            }
+            foreach ((int index, _) in roster)
+                InterceptTargets.Add(new InterceptTargetEntry { XplmIndex = index });
             SelectedInterceptTarget =
                 InterceptTargets.FirstOrDefault(t => t.XplmIndex == keep)
                 ?? InterceptTargets.FirstOrDefault();
@@ -1431,28 +1668,28 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         InterceptEmptyVisibility = InterceptTargets.Count == 0
             ? Visibility.Visible : Visibility.Collapsed;
 
-        bool haveOwn = _client.IsConnected && _d.LocalX.HasValue && _d.LocalY.HasValue &&
-                       _d.LocalZ.HasValue;
-        double ownX = _d.LocalX.Value, ownY = _d.LocalY.Value, ownZ = _d.LocalZ.Value;
-        double terrainY = ownY - _d.AglMeters.Value;
+        // Posicion del interceptor (avion en foco) para distancia y "en tierra".
+        AircraftAgent? me = _director.Focused;
+        Kinematics ownK = default;
+        bool haveOwn = _client.IsConnected && me is not null && me.Body.TryGetKinematics(out ownK);
+        float aglM = me?.Body.AglMeters ?? float.NaN;
+        bool terrainKnown = !float.IsNaN(aglM);
+        double terrainY = haveOwn && terrainKnown ? ownK.Y - aglM : 0.0;
 
-        int idx = 0;
-        foreach (SimPlane p in planes) {
-            if (p.Index < 1) continue;
-            InterceptTargetEntry entry = InterceptTargets[idx++];
-            entry.Name = PlaneDisplayName(p);
+        for (int i = 0; i < roster.Count; i++) {
+            InterceptTargetEntry entry = InterceptTargets[i];
+            entry.Name = roster[i].Name;
 
-            TargetSnapshot snap = TargetSnapshot.Capture(_d, p.Index);
-            if (!haveOwn || !snap.Valid) {
+            if (!haveOwn || !_director.World.TryCapture(entry.XplmIndex, out TargetSnapshot snap)) {
                 entry.StateLabel = "SIN DATOS";
                 entry.Detail = _client.IsConnected ? "Esperando posicion" : "Sin conexion con el plugin";
                 entry.StatusBrush = Brushes.Gray;
                 continue;
             }
 
-            double dx = snap.X - ownX, dz = snap.Z - ownZ;
+            double dx = snap.X - ownK.X, dz = snap.Z - ownK.Z;
             double flatM = Math.Sqrt(dx * dx + dz * dz);
-            TargetAirState air = snap.Classify(terrainY, flatM < 40000.0);
+            TargetAirState air = snap.Classify(terrainY, terrainKnown && flatM < 40000.0);
 
             entry.StateLabel = air switch {
                 TargetAirState.OnGround => "EN TIERRA",
@@ -1470,23 +1707,34 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         }
     }
 
-    // Lo que se lee DESPUES de pulsar Interceptar: en que fase va, cuanto
-    // falta y que esta haciendo con los mandos lentos. Se pinta en mono para
-    // que las cifras no bailen de un refresco a otro.
+    // Lo que se lee DESPUES de pulsar Interceptar, del avion en foco (su
+    // propio AgentView / InterceptSequence): fase, cuanto falta y mandos.
+    // Se pinta en mono para que las cifras no bailen de un refresco a otro.
     private void RefreshInterceptStatus() {
-        bool pending = _director.IsInterceptPending;
-        bool running = _intercept.IsRunning;
-        bool includeOwnTakeoff = pending || _intercept.DidOwnTakeoff;
+        AircraftAgent? agent = _director.Focused;
+        if (agent is null) {
+            InterceptSequenceText = "En espera";
+            InterceptChecklistText = "";
+            InterceptStatusText = "Elige un avion (foco) para que intercepte.";
+            return;
+        }
+
+        AgentView view = agent.View();
+        InterceptSequence icpt = agent.Intercept;
+        bool pending = view.InterceptPending;
+        bool running = view.InterceptRunning;
+        bool includeOwnTakeoff = pending || icpt.DidOwnTakeoff;
 
         if (pending) {
             InterceptSequenceText =
-                $"Despegue combate · {TakeoffSequence.PhaseName(_sequence.Phase)} → {_director.PendingInterceptLabel}";
+                $"Despegue combate · {TakeoffSequence.PhaseName(view.TakeoffPhase)} → {view.InterceptTargetLabel}";
             InterceptChecklistText = InterceptSequence.BuildChecklistLine(
                 InterceptPhase.OwnTakeoff, includeOwnTakeoff: true, ownTakeoffActive: true);
             InterceptStatusText =
+                $"{view.Label} intercepta a {view.InterceptTargetLabel}.\n" +
                 $"Preludio: despegue combate hasta +{TakeoffStyles.CombatIntercept.TurnHeightFt:0} ft AGL.\n" +
-                $"Luego giro hacia {_director.PendingInterceptLabel} e interceptacion.\n" +
-                $"Fase despegue: {TakeoffSequence.PhaseName(_sequence.Phase)}";
+                $"Luego giro hacia {view.InterceptTargetLabel} e interceptacion.\n" +
+                $"Fase despegue: {TakeoffSequence.PhaseName(view.TakeoffPhase)}";
             return;
         }
 
@@ -1494,412 +1742,48 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             InterceptSequenceText = "En espera";
             InterceptChecklistText = InterceptSequence.BuildChecklistLine(
                 InterceptPhase.Idle, includeOwnTakeoff: false);
-            InterceptStatusText = _client.IsConnected
-                ? "Sin interceptacion activa.\nElige un avion, una posicion y pulsa Interceptar.\n" +
+            string idle = _client.IsConnected
+                ? $"{view.Label} no intercepta a nadie.\nElige un blanco, una posicion y pulsa Interceptar.\n" +
                   "En tierra: despega en combate solo y encadena la persecucion."
                 : "Sin conexion con el plugin.";
+            InterceptStatusText = _lastInterceptRefusal.Length > 0
+                ? idle + "\nRechazada: " + _lastInterceptRefusal
+                : idle;
             return;
         }
 
-        InterceptSequenceText = _intercept.PhaseText;
+        InterceptSequenceText = icpt.PhaseText;
         InterceptChecklistText = InterceptSequence.BuildChecklistLine(
-            _intercept.Phase, includeOwnTakeoff, ownTakeoffActive: false);
+            icpt.Phase, includeOwnTakeoff, ownTakeoffActive: false);
 
-        string range = double.IsNaN(_intercept.RangeM)
-            ? "--"
-            : $"{_intercept.RangeM:0} m ({_intercept.RangeM * TargetSnapshot.MetersToNm:0.00} NM)";
-        string closure = double.IsNaN(_intercept.ClosureKt) ? "--" : $"{_intercept.ClosureKt:+0;-0;0} kt";
+        string range = double.IsNaN(icpt.RangeM)
+            ? Dash
+            : $"{icpt.RangeM:0} m ({icpt.RangeM * TargetSnapshot.MetersToNm:0.00} NM)";
+        string closure = double.IsNaN(icpt.ClosureKt) ? Dash : $"{icpt.ClosureKt:+0;-0;0} kt";
 
         var sb = new System.Text.StringBuilder();
-        sb.Append("Blanco  ").Append(_intercept.TargetLabel).Append(" (")
-          .Append(TargetSnapshot.StateName(_intercept.TargetState)).AppendLine(")");
-        sb.Append("Fase    ").AppendLine(InterceptSequence.PhaseName(_intercept.Phase));
+        sb.Append(view.Label).Append(" intercepta a ").AppendLine(icpt.TargetLabel);
+        sb.Append("Blanco  ").Append(icpt.TargetLabel).Append(" (")
+          .Append(TargetSnapshot.StateName(icpt.TargetState)).AppendLine(")");
+        sb.Append("Fase    ").AppendLine(InterceptSequence.PhaseName(icpt.Phase));
         sb.Append("Al pto. ").AppendLine(range);
-        if (!double.IsNaN(_intercept.SeparationM))
-            sb.Append("Avion   ").Append($"{_intercept.SeparationM:0}").AppendLine(" m de separacion");
+        if (!double.IsNaN(icpt.SeparationM))
+            sb.Append("Avion   ").Append($"{icpt.SeparationM:0}").AppendLine(" m de separacion");
         sb.Append("Cierre  ").AppendLine(closure);
-        if (!double.IsNaN(_intercept.AlongM))
+        if (!double.IsNaN(icpt.AlongM))
             sb.Append("Error   ")
-              .Append($"long {_intercept.AlongM:+0;-0;0} · lat {_intercept.CrossM:+0;-0;0} · vert {_intercept.VerticalM:+0;-0;0} m")
+              .Append($"long {icpt.AlongM:+0;-0;0} · lat {icpt.CrossM:+0;-0;0} · vert {icpt.VerticalM:+0;-0;0} m")
               .AppendLine();
-        if (!double.IsNaN(_intercept.TargetSpeedKt))
-            sb.Append("Su vel. ").Append($"{_intercept.TargetSpeedKt:0}").AppendLine(" kt de suelo");
-        if (_intercept.IsRepositioning)
+        if (!double.IsNaN(icpt.TargetSpeedKt))
+            sb.Append("Su vel. ").Append($"{icpt.TargetSpeedKt:0}").AppendLine(" kt de suelo");
+        if (icpt.IsRepositioning)
             sb.AppendLine("Puesto  en transicion (un poco mas lento que el blanco)");
         sb.Append("Mandos  ")
-          .Append($"flaps {_intercept.LastFlapCmd * 100f:0}% · aerofreno {_intercept.LastSpeedbrakeCmd * 100f:0}%");
-        if (_intercept.Weaving)
+          .Append($"flaps {icpt.LastFlapCmd * 100f:0}% · aerofreno {icpt.LastSpeedbrakeCmd * 100f:0}%");
+        if (icpt.Weaving)
             sb.AppendLine().Append("Serpenteando: el blanco vuela mas despacio de lo que este avion puede.");
         InterceptStatusText = sb.ToString();
     }
-
-    // --- Refresco -------------------------------------------------------------
-
-    private void Refresh() {
-        bool connected = _client.IsConnected;
-        ConnectionStatus = connected
-            ? $"Conectado a {_client.PluginVersion}"
-            : "Sin conexion con el plugin";
-        ConnectionDotColor = connected ? Brushes.LimeGreen : Brushes.Gray;
-
-        bool maneuverActive = _maneuvers.IsRunning;
-        bool takeoffActive = _sequence.IsRunning;
-        bool cruiseActive = _director.Cruise.IsRunning;
-        bool routeCruisePending = _director.IsRouteCruisePending;
-        bool interceptActive = _intercept.IsRunning;
-        bool interceptPending = _director.IsInterceptPending;
-
-        if (takeoffActive || routeCruisePending)
-            SequenceText = routeCruisePending
-                ? $"{_sequence.StyleName} · {TakeoffSequence.PhaseName(_sequence.Phase)} → {_director.Cruise.Mode.Name}"
-                : $"{_sequence.StyleName} · {TakeoffSequence.PhaseName(_sequence.Phase)}";
-        else if (cruiseActive)
-            SequenceText = _director.Cruise.PhaseText;
-        else
-            SequenceText = "En espera";
-        ChecklistText = TakeoffSequence.BuildChecklistLine(_sequence.Phase);
-
-        // Una sola fuente de objetivos ownship: la maniobra si hay una, si no
-        // el despegue/intercept. En manual todo objetivo es NaN ("--").
-        float pitchObj = interceptActive ? _intercept.LastPitchTarget
-                      : maneuverActive ? _maneuvers.LastPitchTarget
-                      : takeoffActive ? _sequence.LastPitchTarget : float.NaN;
-        float bankObj = interceptActive ? _intercept.LastBankTarget
-                     : maneuverActive ? _maneuvers.LastBankTarget
-                     : takeoffActive ? _sequence.LastBankTarget : float.NaN;
-        float iasObj = interceptActive ? _intercept.LastIasTarget
-                    : maneuverActive ? _maneuvers.LastIasTarget
-                    : takeoffActive ? _sequence.LastIasTarget : float.NaN;
-        float vsObj = interceptActive ? _intercept.LastVsTarget
-                   : maneuverActive ? _maneuvers.LastVsTarget
-                   : takeoffActive ? _sequence.LastVsTarget : float.NaN;
-        float altObj = takeoffActive ? _sequence.LastAltTarget : float.NaN;
-        float hdgObj = takeoffActive ? _sequence.HeadingTargetDeg
-                     : interceptActive ? _intercept.LastDesiredTrack : float.NaN;
-        float thrCmd = interceptActive ? _intercept.LastThrottleCmd
-                    : maneuverActive ? _maneuvers.LastThrottleCmd
-                    : takeoffActive ? _sequence.LastThrottleCmd : float.NaN;
-        float flapObj = interceptActive ? _intercept.LastFlapCmd * 100f
-                     : takeoffActive ? _sequence.LastFlapCmd * 100f : float.NaN;
-
-        float iasKt = _d.IasKt.Float;
-        float altFt = _d.AltFt.Float;
-        float aglFt = _d.AglMeters.Float * MetersToFeet;
-        float vsFpm = _d.VsFpm.Float;
-        float pitchReal = _d.PitchDeg.Float;
-        float bankReal = _d.BankDeg.Float;
-        float headingReal = _d.HeadingDeg.Float;
-        float gNormal = _d.GNormal.Float;
-        float throttleReal = _d.EngineThrottleUse.Float * 100f;
-        float flapsReal = _d.FlapHandle.Float * 100f;
-
-        int focus = _director.FocusedXplmIndex;
-        if (focus < 0)
-            FillGlobalTelemetry(connected);
-        else if (focus >= 1)
-            FillFocusedOtherTelemetry(focus);
-        else
-            FillOwnshipTelemetry(
-                maneuverActive, takeoffActive, interceptActive, interceptPending,
-                pitchObj, bankObj, iasObj, vsObj, altObj, hdgObj, thrCmd, flapObj,
-                iasKt, altFt, aglFt, vsFpm, pitchReal, bankReal, headingReal,
-                gNormal, throttleReal, flapsReal);
-
-        // Caja negra por avion: alimenta TODOS los loggers con IsRecording.
-        // Ownship usa telemetria completa; IAs solo Other* (GS≈IAS, ALT MSL,
-        // actitud; G/mandos/AoA/AGL NaN — telemetria IA reducida).
-        if (connected) {
-            foreach ((int xplmIndex, DataLogger log) in _dataLogs.Recording) {
-                if (xplmIndex == 0)
-                    RecordOwnshipSample(log, takeoffActive, maneuverActive,
-                                        interceptActive, interceptPending,
-                                        pitchObj, bankObj, hdgObj, thrCmd, flapObj,
-                                        iasKt, altFt, aglFt, vsFpm,
-                                        pitchReal, bankReal, headingReal, gNormal,
-                                        throttleReal, flapsReal);
-                else
-                    RecordOtherPlaneSample(log, xplmIndex);
-            }
-        }
-
-        DataLogger focused = FocusedDataLog;
-        DataLogStatusText = FormatDataLogStatus(focused, connected);
-        RefreshFocusedBlackBoxCharts();
-
-        RefreshManeuverButtons();
-        // Listado + IsFocused siempre: la franja EN FOCO es global y el roster
-        // puede cambiar con el A330 del reset aunque no estes en Aviones.
-        RefreshAircraftList();
-        if (InterceptView.Visibility == Visibility.Visible) {
-            RefreshInterceptTargets();
-            RefreshInterceptStatus();
-        }
-    }
-
-    // Panel derecho con foco GLOBAL: resumen de zona, sin objetivos de vuelo.
-    private void FillGlobalTelemetry(bool connected)
-    {
-        int n = Math.Max(1, _client.Planes.Length);
-        ModeText = "Vista global";
-        FlightText =
-            $"Naves en escena: {n}\n" +
-            (connected
-                ? $"Local IAS {_d.IasKt.Float:0} kt · ALT {_d.AltFt.Float:0} ft"
-                : "Sin conexion");
-        AttitudeText =
-            "Camara aerea sobre la zona.\n" +
-            "Rombos y lineas: pestana Graficos\n" +
-            "(se activan al poner foco GLOBAL).";
-        ControlsText =
-            "Opciones de zona:\n" +
-            "· Reset simulacion (LEBL)\n" +
-            "· Graficos / etiquetas / rombos\n" +
-            "Elige un avion para ordenes de vuelo.";
-    }
-
-    // Panel derecho con foco en ownship (indice 0): telemetria completa +
-    // objetivos de takeoff/maniobra/intercept.
-    private void FillOwnshipTelemetry(
-        bool maneuverActive, bool takeoffActive,
-        bool interceptActive, bool interceptPending,
-        float pitchObj, float bankObj, float iasObj, float vsObj,
-        float altObj, float hdgObj, float thrCmd, float flapObj,
-        float iasKt, float altFt, float aglFt, float vsFpm,
-        float pitchReal, float bankReal, float headingReal,
-        float gNormal, float throttleReal, float flapsReal)
-    {
-        ModeText = interceptActive ? _intercept.PhaseText
-                 : interceptPending ? "Interceptar · Despegue combate"
-                 : takeoffActive ? (_director.IsRouteCruisePending
-                     ? $"Ruta · {_sequence.StyleName} → {_director.Cruise.Mode.Name}"
-                     : $"Ruta · {_sequence.StyleName}")
-                 : _director.Cruise.IsRunning ? $"Ruta · {_director.Cruise.PhaseText}"
-                 : maneuverActive ? _maneuvers.PhaseText
-                 : "Manual";
-
-        float thrShown = float.IsNaN(thrCmd) ? float.NaN : thrCmd * 100f;
-        FlightText =
-            Head("obj") + "\n" +
-            Row("IAS", iasObj, iasKt, "0", "kt") + "\n" +
-            Row("V/S", vsObj, vsFpm, "0", "fpm") + "\n" +
-            Row("ALT", altObj, altFt, "0", "ft") + "\n" +
-            Row("AGL", float.NaN, aglFt, "0", "ft");
-        AttitudeText =
-            Head("obj") + "\n" +
-            Row("Pitch", pitchObj, pitchReal, "0.0", "deg") + "\n" +
-            Row("Bank", bankObj, bankReal, "0.0", "deg") + "\n" +
-            Row("Rumbo", hdgObj, headingReal, "0", "deg") + "\n" +
-            Row("G", maneuverActive ? _maneuvers.LastGCommand : float.NaN, gNormal, "0.0", "g") + "\n" +
-            Row("AoA", float.NaN, _d.AoaDeg.Float, "0.0", "deg");
-        string gearObj = takeoffActive ? (_sequence.GearDownCommanded ? "abajo" : "arriba") : "--";
-        string gearReal = _d.GearHandleDown.Bool ? "abajo" : "arriba";
-        ControlsText =
-            Head("mando") + "\n" +
-            Row("Gas", thrShown, throttleReal, "0", "%") + "\n" +
-            Row("Flaps", flapObj, flapsReal, "0", "%") + "\n" +
-            RowText("Tren", gearObj, gearReal, "") + "\n" +
-            Row("Freno", float.NaN, _d.ParkBrakeReadback.Float * 100f, "0", "%") + "\n" +
-            Row("QNH", float.NaN, _d.BarometerPilot.Float, "0.00", "inHg");
-    }
-
-    // Panel derecho con foco en IA (indice >= 1): telemetria Other* reducida.
-    // Objetivos solo si AiHold corre sobre esa misma nave (pitch 2 / bank 0;
-    // rumbo del hold no se expone → "--").
-    private void FillFocusedOtherTelemetry(int xplmIndex)
-    {
-        int slot = xplmIndex - 1;
-        bool holdOnFocus = AiHoldRunningOn(xplmIndex);
-        ModeText = holdOnFocus
-            ? "IA · Crucero cinematico"
-            : "IA · sin control AICopilot";
-
-        float pitchObj = holdOnFocus ? 2f : float.NaN;
-        float bankObj = holdOnFocus ? 0f : float.NaN;
-
-        float iasKt = float.NaN, altFt = float.NaN, vsFpm = float.NaN;
-        float pitchReal = float.NaN, bankReal = float.NaN, headingReal = float.NaN;
-
-        if (slot >= 0 && slot < Datarefs.OtherPlaneSlots) {
-            DataHandle el = _d.OtherElevMeters[slot];
-            DataHandle hdg = _d.OtherHeadingDeg[slot];
-            DataHandle pitch = _d.OtherPitchDeg[slot];
-            DataHandle bank = _d.OtherBankDeg[slot];
-            DataHandle vx = _d.OtherVelX[slot];
-            DataHandle vz = _d.OtherVelZ[slot];
-            DataHandle vy = _d.OtherVelY[slot];
-
-            if (vx.HasValue && vz.HasValue)
-                iasKt = (float)(Math.Sqrt(vx.Value * vx.Value + vz.Value * vz.Value) * MpsToKnots);
-            if (el.HasValue)
-                altFt = (float)(el.Value * MetersToFeet);
-            if (vy.HasValue)
-                vsFpm = (float)(vy.Value * MetersToFeet * 60.0);
-            if (pitch.HasValue) pitchReal = (float)pitch.Value;
-            if (bank.HasValue) bankReal = (float)bank.Value;
-            if (hdg.HasValue) headingReal = (float)hdg.Value;
-        }
-
-        FlightText =
-            Head("obj") + "\n" +
-            Row("IAS", float.NaN, iasKt, "0", "kt") + "\n" +
-            Row("V/S", float.NaN, vsFpm, "0", "fpm") + "\n" +
-            Row("ALT", float.NaN, altFt, "0", "ft") + "\n" +
-            Row("AGL", float.NaN, float.NaN, "0", "ft");
-        AttitudeText =
-            Head("obj") + "\n" +
-            Row("Pitch", pitchObj, pitchReal, "0.0", "deg") + "\n" +
-            Row("Bank", bankObj, bankReal, "0.0", "deg") + "\n" +
-            Row("Rumbo", float.NaN, headingReal, "0", "deg") + "\n" +
-            Row("G", float.NaN, float.NaN, "0.0", "g") + "\n" +
-            Row("AoA", float.NaN, float.NaN, "0.0", "deg");
-        ControlsText =
-            Head("mando") + "\n" +
-            Row("Gas", float.NaN, float.NaN, "0", "%") + "\n" +
-            Row("Flaps", float.NaN, float.NaN, "0", "%") + "\n" +
-            RowText("Tren", "--", "--", "") + "\n" +
-            Row("Freno", float.NaN, float.NaN, "0", "%") + "\n" +
-            Row("QNH", float.NaN, float.NaN, "0.00", "inHg");
-    }
-
-    private void RecordOwnshipSample(
-        DataLogger log,
-        bool takeoffActive, bool maneuverActive,
-        bool interceptActive, bool interceptPending,
-        float pitchObj, float bankObj, float hdgObj, float thrCmd, float flapObj,
-        float iasKt, float altFt, float aglFt, float vsFpm,
-        float pitchReal, float bankReal, float headingReal, float gNormal,
-        float throttleReal, float flapsReal)
-    {
-        string phase = takeoffActive ? TakeoffSequence.PhaseName(_sequence.Phase) : "-";
-        string action = interceptActive ? _intercept.PhaseText
-                      : interceptPending ? "Interceptar · Despegue combate"
-                      : takeoffActive ? "Ruta · Despegue"
-                      : _director.Cruise.IsRunning ? $"Ruta · {_director.Cruise.Mode.Name}"
-                      : maneuverActive ? _maneuvers.PhaseText
-                      : "-";
-        log.Record(
-            phase: phase,
-            action: action,
-            iasKt: iasKt, altFt: altFt, aglFt: aglFt, vsFpm: vsFpm,
-            pitchTargetDeg: pitchObj, pitchRealDeg: pitchReal,
-            bankTargetDeg: bankObj, bankRealDeg: bankReal,
-            headingTargetDeg: hdgObj, headingRealDeg: headingReal,
-            gNormal: gNormal,
-            throttleTarget01: float.IsNaN(thrCmd) ? float.NaN : thrCmd,
-            throttleReal01: throttleReal / 100f,
-            flapsTarget01: float.IsNaN(flapObj) ? float.NaN : flapObj / 100f,
-            flapsReal01: flapsReal / 100f,
-            pitchCmd: _controls.PitchInputCmd, rollCmd: _controls.RollInputCmd,
-            yawCmd: _controls.YawInputCmd,
-            gCommand: maneuverActive ? _maneuvers.LastGCommand : float.NaN,
-            gPredicted: maneuverActive ? _maneuvers.PredictedG : float.NaN,
-            aoaDeg: _d.AoaDeg.Float,
-            speedbrake01: maneuverActive ? _maneuvers.LastSpeedbrakeCmd
-                        : interceptActive ? _intercept.LastSpeedbrakeCmd
-                        : _d.SpeedbrakeHandle.Float,
-            weightLb: _d.TotalWeightKg.Float * 2.20462f, mach: _d.Mach.Float,
-            pitchRateDps: _d.PitchRateDegPerSec.Float,
-            rollRateDps: _d.RollRateDegPerSec.Float,
-            adaptation: maneuverActive ? _maneuvers.AdaptationText
-                      : interceptActive ? _intercept.TelemetryText : "",
-            protection: maneuverActive ? _maneuvers.ProtectionText : "");
-    }
-
-    // Telemetria IA reducida: multiplayer no expone IAS/G/mandos/AoA.
-    // IAS_kt = GS horizontal (aprox); ALT = elevacion MSL; AGL/G/mandos NaN.
-    private void RecordOtherPlaneSample(DataLogger log, int xplmIndex)
-    {
-        int slot = xplmIndex - 1;
-        if (slot < 0 || slot >= Datarefs.OtherPlaneSlots) return;
-
-        DataHandle el = _d.OtherElevMeters[slot];
-        DataHandle hdg = _d.OtherHeadingDeg[slot];
-        DataHandle pitch = _d.OtherPitchDeg[slot];
-        DataHandle bank = _d.OtherBankDeg[slot];
-        DataHandle vx = _d.OtherVelX[slot];
-        DataHandle vz = _d.OtherVelZ[slot];
-        DataHandle vy = _d.OtherVelY[slot];
-        if (!el.HasValue || !hdg.HasValue || !pitch.HasValue || !bank.HasValue ||
-            !vx.HasValue || !vz.HasValue)
-            return;
-
-        float gsKt = (float)(Math.Sqrt(vx.Value * vx.Value + vz.Value * vz.Value) * MpsToKnots);
-        float altFt = (float)(el.Value * MetersToFeet);
-        float vsFpm = vy.HasValue
-            ? (float)(vy.Value * MetersToFeet * 60.0)
-            : float.NaN;
-        float headingReal = (float)hdg.Value;
-        float pitchReal = (float)pitch.Value;
-        float bankReal = (float)bank.Value;
-
-        string action = AiHoldRunningOn(xplmIndex) ? "Recto/nivelado" : "-";
-        log.Record(
-            phase: "-",
-            action: action,
-            iasKt: gsKt, altFt: altFt, aglFt: float.NaN, vsFpm: vsFpm,
-            pitchTargetDeg: float.NaN, pitchRealDeg: pitchReal,
-            bankTargetDeg: float.NaN, bankRealDeg: bankReal,
-            headingTargetDeg: float.NaN, headingRealDeg: headingReal,
-            gNormal: float.NaN,
-            throttleTarget01: float.NaN, throttleReal01: float.NaN,
-            flapsTarget01: float.NaN, flapsReal01: float.NaN,
-            pitchCmd: float.NaN, rollCmd: float.NaN, yawCmd: float.NaN,
-            gCommand: float.NaN, gPredicted: float.NaN, aoaDeg: float.NaN,
-            speedbrake01: float.NaN,
-            weightLb: float.NaN, mach: float.NaN,
-            pitchRateDps: float.NaN, rollRateDps: float.NaN,
-            adaptation: "", protection: "");
-    }
-
-    // Texto de accion en CSV IA: FlightDirector ya expone el hold.
-    private bool AiHoldRunningOn(int xplmIndex) =>
-        _director.AiHold.IsRunning && _director.AiHold.XplmIndex == xplmIndex;
-
-    // Marca cada boton de accion con lo que va a pasar si se pulsa: normal si
-    // la maniobra sale tal cual, en cursiva y con el motivo en el tooltip si va
-    // a salir adaptada, y deshabilitado solo cuando no existe ninguna version
-    // segura de ella aqui y ahora.
-    //
-    // Antes esto solo apagaba el boton cuando la IAS/AGL se salian de un rango
-    // fijo -- y ni siquiera ponia el motivo que su propio comentario prometia.
-    // Apagar el boton era la forma barata de evitar que la maniobra saliera
-    // mal; ahora la maniobra no sale mal, sale adaptada, asi que lo unico que
-    // hace falta es contarlo.
-    private void RefreshManeuverButtons() {
-        foreach (Button btn in ActionsStack.Children.OfType<Button>()) {
-            if (btn.Tag is not string tag || !Enum.TryParse(tag, out ManeuverKind kind)) continue;
-
-            var (level, text) = _maneuvers.Preview(kind);
-            btn.IsEnabled = level != AdaptationLevel.Impossible;
-            btn.FontStyle = level == AdaptationLevel.Adapted ? FontStyles.Italic : FontStyles.Normal;
-
-            // El tooltip se reasigna solo si cambio: a 10 Hz, reescribirlo
-            // siempre cerraria y reabriria el popup mientras se lee.
-            string tip = level switch {
-                AdaptationLevel.Impossible => text.Length > 0 ? $"No es posible: {text}." : "",
-                AdaptationLevel.Adapted => text.Length > 0 ? $"Se ejecutara adaptada: {text}." : "",
-                _ => "",
-            };
-            string? current = btn.ToolTip as string;
-            if (tip.Length == 0) { if (current is not null) btn.ToolTip = null; }
-            else if (current != tip) btn.ToolTip = tip;
-        }
-    }
-
-    private static string Head(string left) => $"{"",-6}{left,7}  {"real",7}";
-
-    private static string Row(string name, float obj, float real, string fmt, string unit)
-    {
-        string o = float.IsNaN(obj) ? "--" : obj.ToString(fmt);
-        string r = float.IsNaN(real) ? "--" : real.ToString(fmt);
-        return $"{name,-6}{o,7}  {r,7}  {unit}";
-    }
-
-    private static string RowText(string name, string obj, string real, string unit) =>
-        $"{name,-6}{obj,7}  {real,7}  {unit}";
-
-    private const float MetersToFeet = 3.28084f;
-    private const double MpsToKnots = 1.943844;
 
     // --- Popups flotantes vs X-Plane ------------------------------------------
     // Tooltips y ComboBox abren un HWND aparte. Al crearse, Windows suele
@@ -2054,7 +1938,23 @@ public sealed class AircraftListEntry : INotifyPropertyChanged {
 
     // Texto del desplegable EN FOCO ("GLOBAL · zona", "LOCAL · F-14"...).
     public string FocusLabel =>
-        IsGlobal ? "GLOBAL · zona" : $"{RoleLabel} · {Name}";
+        IsGlobal ? "GLOBAL · zona" : $"{RoleLabel} · {DisplayName}";
+
+    // Nombre mostrado en foco / logs: casilla si hay texto, si no el del .acf.
+    public string DisplayName =>
+        string.IsNullOrWhiteSpace(_name) ? (string.IsNullOrEmpty(_defaultName) ? RoleLabel : _defaultName) : _name;
+
+    private string _defaultName = "";
+    public string DefaultName {
+        get => _defaultName;
+        set {
+            if (_defaultName == value) return;
+            _defaultName = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DefaultName)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DisplayName)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FocusLabel)));
+        }
+    }
 
     private string _name = "";
     public string Name {
@@ -2063,6 +1963,7 @@ public sealed class AircraftListEntry : INotifyPropertyChanged {
             if (_name == value) return;
             _name = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Name)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DisplayName)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FocusLabel)));
         }
     }
@@ -2074,6 +1975,7 @@ public sealed class AircraftListEntry : INotifyPropertyChanged {
             if (_roleLabel == value) return;
             _roleLabel = value;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(RoleLabel)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(DisplayName)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FocusLabel)));
         }
     }
@@ -2116,7 +2018,7 @@ public sealed class AircraftListEntry : INotifyPropertyChanged {
 public sealed class InterceptTargetEntry : INotifyPropertyChanged {
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    // Indice de X-Plane: 1..19 (el 0 es el avion del usuario y no es un blanco).
+    // Indice de X-Plane: 0 (avion local) o 1..19 (IA); nunca el interceptor.
     public int XplmIndex { get; init; }
 
     private string _name = "";

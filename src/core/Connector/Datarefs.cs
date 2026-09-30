@@ -66,13 +66,18 @@ public sealed class Datarefs
         // proposito: los datarefs de posicion de las IAs estan en el MISMO
         // marco, asi que restar dos posiciones da directamente metros al
         // este / arriba / al norte, sin trigonometria esferica ni errores de
-        // proyeccion. Y la Y local, restada entre los dos aviones, da la
+        // proyeccion. OJO: X-Plane puede mover el origen de este marco en
+        // pleno vuelo; el connector lo compensa (frame: X/Z, ver
+        // connector/OriginWatch.h), asi que aqui el marco es estable. Y la Y local, restada entre los dos aviones, da la
         // separacion vertical real sin tener que fiarse de dos altimetros.
-        LocalX = c.Define("sim/flightmodel/position/local_x");
+        LocalX = c.Define("sim/flightmodel/position/local_x", frame: FrameAxis.X);
         LocalY = c.Define("sim/flightmodel/position/local_y");
-        LocalZ = c.Define("sim/flightmodel/position/local_z");
+        LocalZ = c.Define("sim/flightmodel/position/local_z", frame: FrameAxis.Z);
         LocalVx = c.Define("sim/flightmodel/position/local_vx");
         LocalVz = c.Define("sim/flightmodel/position/local_vz");
+        LocalVy = c.Define("sim/flightmodel/position/local_vy");
+        // Elevacion MSL en metros (mismo significado que plane_N_el de las IAs).
+        ElevMeters = c.Define("sim/flightmodel/position/elevation");
 
         // En tierra no aplican las leyes de altura/G: rodando, la AGL es 0 y
         // la G normal es la del tren, no la del ala.
@@ -152,7 +157,8 @@ public sealed class Datarefs
                                          GNormal, EngineThrottleUse,
                                          AoaDeg, Mach, PitchRateDegPerSec,
                                          RollRateDegPerSec,
-                                         LocalX, LocalY, LocalZ, LocalVx, LocalVz })
+                                         LocalX, LocalY, LocalZ, LocalVx, LocalVz,
+                                         LocalVy, ElevMeters })
         {
             c.Subscribe(h, 1);
         }
@@ -205,9 +211,9 @@ public sealed class Datarefs
             OtherBankDeg[i] = c.Define(prefix + "phi");
             OtherVelX[i] = c.Define(prefix + "v_x");
             OtherVelZ[i] = c.Define(prefix + "v_z");
-            OtherLocalX[i] = c.Define(prefix + "x");
+            OtherLocalX[i] = c.Define(prefix + "x", frame: FrameAxis.X);
             OtherLocalY[i] = c.Define(prefix + "y");
-            OtherLocalZ[i] = c.Define(prefix + "z");
+            OtherLocalZ[i] = c.Define(prefix + "z", frame: FrameAxis.Z);
             OtherVelY[i] = c.Define(prefix + "v_y");
             // gear_deploy es float[10] (una entrada por tren): con la primera
             // basta para saber si lo lleva fuera.
@@ -249,15 +255,33 @@ public sealed class Datarefs
         if (slot < 0) slot = -1;
         if (slot == _focusedSlot) return;
 
-        if (_focusedSlot >= 0)
-            foreach (DataHandle h in OtherPlaneHandles(_focusedSlot)) _c.Subscribe(h, OtherPlaneIdleDivisor);
+        if (_focusedSlot >= 0) UnwatchPlane(_focusedSlot);
         _focusedSlot = slot;
-        if (slot >= 0)
-            foreach (DataHandle h in OtherPlaneHandles(slot)) _c.Subscribe(h, 1);
+        if (slot >= 0) WatchPlane(slot);
     }
 
     private int _focusedSlot = -1;
     public int FocusedOtherPlane => _focusedSlot;
+
+    // Conjunto de IAs a 60 Hz con refcount: cada Watch suma, cada Unwatch
+    // resta; la IA vuelve al ritmo de pantalla cuando el contador llega a 0.
+    private readonly int[] _watchCount = new int[OtherPlaneSlots];
+
+    public void WatchPlane(int slot)
+    {
+        if (slot < 0 || slot >= OtherPlaneSlots) return;
+        if (_watchCount[slot]++ == 0)
+            foreach (DataHandle h in OtherPlaneHandles(slot)) _c.Subscribe(h, 1);
+    }
+
+    public void UnwatchPlane(int slot)
+    {
+        if (slot < 0 || slot >= OtherPlaneSlots || _watchCount[slot] == 0) return;
+        if (--_watchCount[slot] == 0)
+            foreach (DataHandle h in OtherPlaneHandles(slot)) _c.Subscribe(h, OtherPlaneIdleDivisor);
+    }
+
+    public bool IsWatched(int slot) => slot >= 0 && slot < OtherPlaneSlots && _watchCount[slot] > 0;
 
     // Ritmo de las IAs cuando solo se estan pintando en pantalla: uno de cada
     // 6 frames (~10 Hz a 60 fps), igual que el resto de la telemetria de UI.
@@ -288,6 +312,8 @@ public sealed class Datarefs
     public DataHandle LocalZ { get; }
     public DataHandle LocalVx { get; }
     public DataHandle LocalVz { get; }
+    public DataHandle LocalVy { get; }
+    public DataHandle ElevMeters { get; }
 
     public DataHandle FlapHandle { get; }
     public DataHandle SpeedbrakeHandle { get; }

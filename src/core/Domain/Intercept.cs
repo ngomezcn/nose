@@ -146,8 +146,26 @@ public readonly record struct TargetSnapshot(
 
     // XPLM numera al usuario como 0 y las IAs desde 1; los arrays de
     // Datarefs.Other* empiezan en plane1, o sea en el indice 0.
+    // Kinematics (ownship o cualquier body) -> foto del blanco con su indice.
+    public static TargetSnapshot FromKinematics(int xplmIndex, in Agents.Kinematics k) =>
+        new(Valid: true, XplmIndex: xplmIndex,
+            X: k.X, Y: k.Y, Z: k.Z, Vx: k.Vx, Vy: k.Vy, Vz: k.Vz,
+            HeadingDeg: Pid.NormalizeAngleDeg360(k.HeadingDeg),
+            GearRatio: k.GearRatio, ElevationM: k.ElevationM);
+
+    // Cualquier indice XPLM 0..19: 0 = ownship (local_*), 1..19 = IA.
     public static TargetSnapshot Capture(Datarefs d, int xplmIndex)
     {
+        if (xplmIndex == 0)
+        {
+            if (!d.LocalX.HasValue || !d.LocalY.HasValue || !d.LocalZ.HasValue) return default;
+            FlightState own = FlightState.Capture(d);
+            return FromKinematics(0, new Agents.Kinematics(
+                d.LocalX.Value, d.LocalY.Value, d.LocalZ.Value,
+                d.LocalVx.Value, own.VsFpm / MpsToFpm, d.LocalVz.Value,
+                own.HeadingDeg, d.GearHandleDown.Float, own.AltFt / MetersToFeet));
+        }
+
         int slot = xplmIndex - 1;
         if (slot < 0 || slot >= Datarefs.OtherPlaneSlots) return default;
 

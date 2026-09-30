@@ -2,6 +2,7 @@ using System.Threading;
 using System.Windows;
 using AICopilotCore.Connector;
 using AICopilotCore.Domain;
+using AICopilotCore.Domain.Agents;
 
 namespace AICopilotCore.Ui;
 
@@ -9,12 +10,12 @@ namespace AICopilotCore.Ui;
 //
 //   ConnectorClient  -- el pipe con el plugin
 //     -> Datarefs        que datarefs nos importan (se definen y suscriben)
-//     -> AircraftControls como se toca el avion
-//     -> TakeoffSequence  la logica de despegue
-//     -> FlightDirector   exclusion mutua entre secuencias
+//     -> AircraftControls como se toca el avion local
+//     -> AircraftWorld    todos los aviones (0..19), cada uno con su agente
+//     -> FlightDirector   el foco: a quien van las ordenes de la UI
 //     -> ShellWindow      lo que ve el usuario
 //
-// El detalle de timing que importa: TakeoffSequence.Update() se llama desde
+// El detalle de timing que importa: AircraftWorld.Tick() se llama desde
 // TelemetryReceived, o sea desde el hilo de lectura del pipe y al ritmo de
 // los frames del simulador, NO desde un DispatcherTimer de la UI. Asi los
 // PID corren sincronizados con el sim, y una UI atascada (redibujando, o el
@@ -32,12 +33,9 @@ public partial class App : Application
     private Datarefs? _datarefs;
     private ControlTuning? _tuning;
     private AircraftControls? _controls;
-    private TakeoffSequence? _sequence;
-    private ManeuverSequence? _maneuvers;
-    private InterceptSequence? _intercept;
-    private AiStraightHold? _aiHold;
-    private CruisePilot? _cruise;
+    private AircraftWorld? _world;
     private FlightDirector? _director;
+    private bool _autoStartDone;
 
     private ShellWindow? _shell;
 
@@ -63,98 +61,100 @@ public partial class App : Application
         // El despegue no los usa: su perfil lo elige un TakeoffStyle.
         _tuning = new ControlTuning();
         _controls = new AircraftControls(_client, _datarefs, _tuning);
-        _sequence = new TakeoffSequence(_controls, _datarefs);
-        _maneuvers = new ManeuverSequence(_controls, _datarefs, _tuning);
-        // La tercera secuencia: ir a por otro avion de la partida y quedarse
-        // en formacion con el. Comparte overrides con las otras dos, asi que
-        // el director corta la que este en marcha antes de arrancar cualquiera.
-        _intercept = new InterceptSequence(_controls, _datarefs, _tuning);
-        // Hold cinematico de una IA (recto y nivelado). Corre en paralelo
-        // con las secuencias del ownship: no usa AircraftControls.
-        _aiHold = new AiStraightHold(_client, _datarefs);
-        _cruise = new CruisePilot(_maneuvers, _datarefs);
-        _director = new FlightDirector(_sequence, _maneuvers, _intercept, _cruise,
-                                       _aiHold, _client);
+
+        // Todos los aviones (0 = ownship, 1..19 = IAs, creados bajo demanda)
+        // viven en el mundo; cada uno lleva sus propias secuencias y sigue
+        // a lo suyo aunque cambie el foco. El director solo lleva el foco.
+        _world = new AircraftWorld(_client, _datarefs, _controls, _tuning);
+        _director = new FlightDirector(_world);
+        _world.Get(0);   // el avion local existe desde el arranque
 
         // Una sola ventana: el shell lleva dentro los paneles que antes eran
         // dos overlays flotantes (telemetria y log) y, en el hueco central,
         // la ventana de X-Plane.
-        _shell = new ShellWindow(_client, _datarefs, _controls, _sequence, _maneuvers,
-                                 _intercept, _tuning, _director);
+        _shell = new ShellWindow(_client, _datarefs, _tuning, _director);
 
-        _sequence.ActionLogged += line => _shell.Append(line, markBlackBox: true);
-        _maneuvers.ActionLogged += line => _shell.Append(line, markBlackBox: true);
-        _intercept.ActionLogged += line => _shell.Append(line, markBlackBox: true);
-        // Marcas del hold van a la caja negra de esa IA (no al ownship).
-        _aiHold.ActionLogged += line => {
-            int idx = _aiHold.XplmIndex;
-            _shell.Append(line, markBlackBox: true, blackBoxIndex: idx >= 1 ? idx : 0);
-        };
+        // Acciones de cada avion a su propia caja negra (idx = avion del agente).
+        _world.ActionLogged += (idx, line) =>
+            _shell.Append(line, markBlackBox: true, blackBoxIndex: idx);
         _client.ConnectorEvent += (kind, text) => {
+            if (kind == EventKind.OverviewFocus) {
+                if (int.TryParse(text, out int idx))
+                    _shell.ApplyOverviewFocusFromConnector(idx);
+                return;
+            }
+
+            if (kind == EventKind.OriginShift) {
+                // X-Plane movio el origen local y el connector ya lo compenso:
+                // dejar constancia en el log y en TODAS las cajas negras
+                // activas (hipotesis del teletransporte de 80 km).
+                _shell.NoteOriginShift(text);
+                return;
+            }
+
             _shell.Append(kind == EventKind.Info ? text : $"[{kind}] {text}");
             // X-Plane resetea sim/joystick/eq_pfc_yoke a 0 al recargar el
             // avion del usuario, asi que el toggle de "Ocultar recuadro
             // yoke" (ShellWindow) se tiene que reaplicar aqui.
             if (kind == EventKind.AircraftReloaded) _shell.ApplyMouseYokeBoxState();
 
+            // El plugin solto AiControl y holds por su cuenta: los agentes
+            // olvidan lo que creian tener (antes de reaplicar idle, abajo).
+            if (kind == EventKind.OverridesReleased || kind == EventKind.AircraftReloaded)
+                _world.OnConnectorReleased();
+
             // Tras PlaceScenario el aeropuerto/avion se recargan y pisan
-            // mandos: reaplicamos idle en cada AircraftReloaded pendiente y
-            // cerramos el pendiente al llegar ScenarioReady. Luego, si el
-            // reset pidio crucero de IA, arrancamos el A330 en recto/nivelado.
-            if (_director.PendingGroundIdle &&
-                (kind == EventKind.AircraftReloaded || kind == EventKind.ScenarioReady))
+            // mandos: si el ownship arranca en tierra, reaplicamos idle en
+            // cada AircraftReloaded pendiente y cerramos el pendiente al
+            // llegar ScenarioReady. Ahi mismo se dan las ordenes iniciales
+            // del inicio elegido (ruta del A330, interceptacion del caza),
+            // sin tocar el foco.
+            bool scenarioReady = kind == EventKind.ScenarioReady;
+            if (_world.PendingGroundIdle &&
+                (kind == EventKind.AircraftReloaded || scenarioReady))
             {
-                _controls.ApplyGroundIdle();
-                if (kind == EventKind.ScenarioReady)
+                _world.Get(0).Body.ApplyGroundIdle();
+                if (scenarioReady)
                 {
-                    _director.ClearPendingGroundIdle();
+                    _world.ClearPendingGroundIdle();
                     _shell.Append("Idle de suelo: gases abajo, flaps abajo, freno puesto, tren abajo.");
-                    if (_director.PendingAiCruise && _director.TryStartPendingAiCruise())
-                        _shell.Append("Airbus: vuelo recto y nivelado");
-                    _shell.ResumeGlobalCameraIfFocused();
                 }
             }
-            else if (kind == EventKind.ScenarioReady)
+            if (scenarioReady)
             {
+                foreach (string line in _world.CompletePendingStart())
+                    _shell.Append(line);
                 _shell.ResumeGlobalCameraIfFocused();
             }
         };
 
         // El connector arranca cada sesion sin holds ni ids, asi que las
-        // banderas de "ya tengo el override puesto" que lleva
-        // AircraftControls dejan de ser verdad al reconectar.
+        // banderas de "ya tengo el override puesto" que llevan los cuerpos
+        // dejan de ser verdad al reconectar.
         _client.SessionReady += () => {
-            _controls.ForgetOverrideState();
+            _world.OnConnectorReleased();
             _shell.ApplyMouseYokeBoxState();
             _shell.ApplyGraphicsConfig();
-            // Tras recargar el addon (o reconectar el core) partimos siempre
-            // del mismo escenario de prueba: LEBL 24L + IA a ~15 km.
-            if (_director.ResetSimulation(out string resetErr))
-                _shell.Append($"Reset simulacion (auto): {SimScenario.Label}.");
-            else
-                _shell.Append($"Reset simulacion (auto): {resetErr}.");
+            // Al lanzar el core (build nuevo) la primera conexion arranca
+            // siempre en "Inicio en pista: dos aviones". Las reconexiones
+            // posteriores (recarga del addon) no recolocan nada.
+            if (!_autoStartDone)
+            {
+                _autoStartDone = true;
+                SimStart first = SimStart.RunwayPair;
+                string name = SimScenarios.Get(first).Name;
+                if (_director.StartSimulation(first, out string startErr))
+                    _shell.Append($"{name} (auto al lanzar).");
+                else
+                    _shell.Append($"{name} (auto al lanzar): {startErr}.");
+            }
         };
-        _client.Disconnected += () => {
-            _sequence.OnConnectionLost();
-            _maneuvers.OnConnectionLost();
-            _intercept.OnConnectionLost();
-            _aiHold.OnConnectionLost();
-        };
+        _client.Disconnected += () => _world.OnConnectionLost();
 
         // El lazo de control: un tick por frame de simulador, con el dt que
-        // reporta el propio X-Plane. TakeoffSequence y ManeuverSequence son
-        // mutuamente excluyentes -- el director aborta la otra antes de
-        // arrancar cualquiera de las dos -- asi que llamarlas siempre a
-        // ambas es seguro: la que esta en Idle no hace nada. AiStraightHold
-        // puede correr a la vez (IA distinta, Holds cinematicos).
-        _client.TelemetryReceived += frame => {
-            _sequence.Update(frame.Dt);
-            _maneuvers.Update(frame.Dt);
-            _cruise.Update(frame.Dt);
-            _intercept.Update(frame.Dt);
-            _aiHold.Update(frame.Dt);
-            _director.Tick();
-        };
+        // reporta el propio X-Plane. Cada avion del mundo corre sus secuencias
+        // en este mismo hilo (el del pipe), sincronizado con el sim.
+        _client.TelemetryReceived += frame => _world.Tick(frame.Dt);
 
         MainWindow = _shell;
         // Cerrar el shell cierra el core; el XPlaneDocker que vive dentro se
@@ -170,9 +170,12 @@ public partial class App : Application
         // Soltar antes de cerrar el pipe. El SafetyGuard del connector lo
         // haria igualmente al ver el pipe roto, pero pedirlo explicitamente
         // es instantaneo y no depende de que el otro lado reaccione.
-        if (_sequence?.IsRunning == true || _maneuvers?.IsRunning == true ||
-            _intercept?.IsRunning == true) _controls?.ReleaseAllOverrides();
-        if (_aiHold?.IsRunning == true) _aiHold.Abort();
+        if (_world is not null)
+            foreach (AircraftAgent a in _world.Active)
+            {
+                if (a.IsBusy) a.AbortAll();
+                else if (!a.Body.IsLocal) a.Body.ReleaseAllOverrides();
+            }
         _client?.Dispose();
         base.OnExit(e);
     }

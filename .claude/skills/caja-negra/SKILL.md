@@ -20,8 +20,9 @@ valores ni asumas la sesión anterior.
 ## Cómo acceder a los datos
 
 Hay **un logger por avión** (XPLM index). Por defecto **ninguno graba**;
-hace falta **Empezar a grabar** con esa nave en **EN FOCO**. Los ficheros
-están **junto al exe desplegado**, no en el repo:
+hace falta **Empezar a grabar** con esa nave en **EN FOCO**, o con foco
+**GLOBAL** (graba todo el roster a la vez). Los ficheros están **junto
+al exe desplegado**, no en el repo:
 
 | Avión | Log actual | Respaldo |
 |---|---|---|
@@ -36,7 +37,8 @@ avión que el usuario esté mirando (foco / “el Airbus” / “el F-14”); si
 solo tiene cabecera o está vacío, mira el `.previous` correspondiente.
 
 **Desde la UI:** panel **CAJA NEGRA** — Empezar/Detener/Borrar y la lista
-CSV / gráficos muestran el logger del avión **en foco**. Varias naves
+CSV / gráficos muestran el logger del avión **en foco** (con GLOBAL, la
+lista/gráficos muestran LOCAL; los CSV se escriben todos). Varias naves
 pueden grabar en paralelo; al cambiar el foco la UI cambia de CSV.
 
 Separador `;`, números en `InvariantCulture` (punto decimal). Ritmo

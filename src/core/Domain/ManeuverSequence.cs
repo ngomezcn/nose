@@ -1,3 +1,4 @@
+using AICopilotCore.Domain.Agents;
 using AICopilotCore.Connector;
 
 namespace AICopilotCore.Domain;
@@ -41,8 +42,7 @@ namespace AICopilotCore.Domain;
 // devuelve el avion a mando manual.
 public sealed class ManeuverSequence
 {
-    private readonly AircraftControls _controls;
-    private readonly Datarefs _d;
+    private readonly IAircraftBody _body;
     private readonly ControlTuning _tuning;
     private readonly ManeuverPlanner _planner;
     private readonly EnvelopeProtection _protection;
@@ -88,13 +88,18 @@ public sealed class ManeuverSequence
     private float _latchedIas = float.NaN;
     private string _lastAdaptation = "";
 
-    public ManeuverSequence(AircraftControls controls, Datarefs datarefs, ControlTuning tuning)
+    public ManeuverSequence(IAircraftBody body, ControlTuning tuning)
     {
-        _controls = controls;
-        _d = datarefs;
+        _body = body;
         _tuning = tuning;
         _planner = new ManeuverPlanner(tuning);
         _protection = new EnvelopeProtection(tuning);
+    }
+
+    private FlightState SenseState()
+    {
+        _body.Sense();
+        return _body.State;
     }
 
     public event Action<string>? ActionLogged;
@@ -142,14 +147,14 @@ public sealed class ManeuverSequence
     public float LastGCommand { get; private set; } = float.NaN;
     public float LastSpeedbrakeCmd { get; private set; }
     public float PredictedG => _protection.PredictedG;
-    public float GLoad => _d.GNormal.Float;
+    public float GLoad => _body.State.GNormal;
 
     public void Start(ManeuverKind kind)
     {
         lock (_gate)
         {
             ManeuverDefinition def = ManeuverCatalog.Get(kind);
-            FlightState s = FlightState.Capture(_d);
+            FlightState s = SenseState();
 
             // Capturado ANTES de pisar _active: es el unico sitio donde se
             // puede saber si veniamos ya de Acelerar/Frenar (para que el
@@ -203,9 +208,9 @@ public sealed class ManeuverSequence
                     LogAction($"{def.Label}: {_acroPlan.Explanation}.");
             }
 
-            _controls.EnablePitchOverride();
-            _controls.EnableRollOverride();
-            _controls.EnableThrottleOverride();
+            _body.EnablePitchOverride();
+            _body.EnableRollOverride();
+            _body.EnableThrottleOverride();
 
             string planBit = def.Mode == ManeuverMode.Aerobatic
                 ? $"plan G={_acroPlan.LoadFactorCmd:0.00} ~{_acroPlan.PredictedSeconds:0.0}s " +
@@ -227,7 +232,7 @@ public sealed class ManeuverSequence
     {
         lock (_gate)
         {
-            FlightState s = FlightState.Capture(_d);
+            FlightState s = SenseState();
             return _planner.Preview(ManeuverCatalog.Get(kind), s);
         }
     }
@@ -237,13 +242,13 @@ public sealed class ManeuverSequence
         lock (_gate)
         {
             if (_active is null) return;
-            FlightState s = FlightState.Capture(_d);
+            FlightState s = SenseState();
             LogAction(BlackBoxSnap.Join(
                 $"Fin: {_active.Label} abortada — control manual",
                 ManeuverLiveExtras(),
                 BlackBoxSnap.Of(s)));
-            _controls.SetSpeedbrake(0f);
-            _controls.ReleaseAllOverrides();
+            _body.SetSpeedbrake(0f);
+            _body.ReleaseAllOverrides();
             ClearActive();
         }
     }
@@ -255,7 +260,7 @@ public sealed class ManeuverSequence
         lock (_gate)
         {
             if (_active is null) return;
-            _controls.ForgetOverrideState();
+            _body.ForgetOverrideState();
             ClearActive();
         }
     }
@@ -282,7 +287,7 @@ public sealed class ManeuverSequence
     {
         if (_active is null || dt <= 0f) return;
 
-        FlightState s = FlightState.Capture(_d);
+        FlightState s = SenseState();
         // Un frame sin telemetria util (reconexion a medias) no debe producir
         // mandos calculados con NaN: mejor dejar en pie lo del frame anterior,
         // que ya esta puesto por Hold en el connector.
@@ -388,10 +393,10 @@ public sealed class ManeuverSequence
             (MathF.Cos(s.BankDeg * F14Aero.Deg2Rad) + 0.5f) / 1.20711f, 0f, 1f);
 
         float pitchErr = pitchTarget - s.PitchDeg;
-        _controls.SetPitchInput(kPitch * _pitchPid.Update(pitchErr, dt), dt);
+        _body.SetPitchInput(kPitch * _pitchPid.Update(pitchErr, dt), dt);
 
         float bankErr = Pid.NormalizeAngleDeg180(bankTarget - s.BankDeg);
-        _controls.SetRollInput(_bankPid.Update(bankErr, dt), dt);
+        _body.SetRollInput(_bankPid.Update(bankErr, dt), dt);
     }
 
     // --- Acrobacias -----------------------------------------------------------
@@ -485,8 +490,8 @@ public sealed class ManeuverSequence
         float pitchStick = Math.Clamp(feedForward + correction,
                                       limits.PitchStickMin, limits.PitchStickMax);
 
-        _controls.SetPitchInput(_pitchStickRamp.Update(pitchStick, dt), dt);
-        _controls.SetRollInput(_rollStickRamp.Update(rollStick, dt), dt);
+        _body.SetPitchInput(_pitchStickRamp.Update(pitchStick, dt), dt);
+        _body.SetRollInput(_rollStickRamp.Update(rollStick, dt), dt);
 
         LastPitchTarget = float.NaN;
         LastBankTarget = float.NaN;
@@ -616,9 +621,9 @@ public sealed class ManeuverSequence
 
         throttleCmd = Math.Clamp(throttleCmd, limits.ThrottleMin, limits.ThrottleMax);
         LastThrottleCmd = throttleCmd;
-        _controls.SetThrottle(throttleCmd, dt);
+        _body.SetThrottle(throttleCmd, dt);
         LastSpeedbrakeCmd = plan.SpeedbrakeTarget;
-        _controls.SetSpeedbrake(plan.SpeedbrakeTarget);
+        _body.SetSpeedbrake(plan.SpeedbrakeTarget);
     }
 
     // --- Log -------------------------------------------------------------------

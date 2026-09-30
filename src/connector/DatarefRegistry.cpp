@@ -79,7 +79,7 @@ void DatarefRegistry::Resolve(Entry& e) {
 
 DatarefRegistry::Entry* DatarefRegistry::Define(uint16_t id, proto::EntryKind kind,
                                                 const std::string& name, int index,
-                                                int count) {
+                                                int count, proto::FrameAxis frame) {
     if (id >= kMaxEntries) return nullptr;
     if (entries_.size() <= id) entries_.resize(id + 1);
 
@@ -99,6 +99,7 @@ DatarefRegistry::Entry* DatarefRegistry::Define(uint16_t id, proto::EntryKind ki
     e.name = name;
     e.index = std::max(0, index);
     e.count = std::clamp(count, 1, kMaxArrayWrite);
+    e.frame = frame;
     Resolve(e);
 
     if (!e.resolved) {
@@ -146,6 +147,13 @@ void DatarefRegistry::Clear() {
 double DatarefRegistry::Read(const Entry& e) const {
     if (!e.resolved || !e.dataref) return 0.0;
 
+    double v = ReadRaw(e);
+    if (e.frame == proto::FrameAxis::X) v += offX_;
+    else if (e.frame == proto::FrameAxis::Z) v += offZ_;
+    return v;
+}
+
+double DatarefRegistry::ReadRaw(const Entry& e) const {
     switch (e.dataKind) {
         case proto::DataKind::Int:
             return static_cast<double>(XPLMGetDatai(e.dataref));
@@ -175,6 +183,9 @@ double DatarefRegistry::Read(const Entry& e) const {
 
 void DatarefRegistry::Write(const Entry& e, double value) {
     if (!e.resolved || !e.dataref || !e.writable) return;
+
+    if (e.frame == proto::FrameAxis::X) value -= offX_;
+    else if (e.frame == proto::FrameAxis::Z) value -= offZ_;
 
     switch (e.dataKind) {
         case proto::DataKind::Int:

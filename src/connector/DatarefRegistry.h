@@ -54,6 +54,9 @@ public:
         // necesita: un comando que se quedo "pulsado" porque el core
         // murio a mitad es tan malo como un override enganchado.
         bool commandHeld = false;
+
+        // Eje de posicion local (ver proto::FrameAxis). Lo declara el core.
+        proto::FrameAxis frame = proto::FrameAxis::None;
     };
 
     // Resuelve (o re-resuelve) una entrada. Devuelve nullptr solo si el id
@@ -61,7 +64,15 @@ public:
     // la entrada con resolved == false para que el connector se lo pueda
     // contar al core en el DEFINE_ACK.
     Entry* Define(uint16_t id, proto::EntryKind kind, const std::string& name,
-                  int index, int count);
+                  int index, int count,
+                  proto::FrameAxis frame = proto::FrameAxis::None);
+
+    // Desplazamiento acumulado entre el marco local REAL de X-Plane y el
+    // marco estable que ve el core: estable = real + offset. Read() lo suma
+    // y Write() lo resta en las entradas con `frame` (X/Z).
+    void SetOriginOffset(double x, double z) { offX_ = x; offZ_ = z; }
+    double OriginOffsetX() const { return offX_; }
+    double OriginOffsetZ() const { return offZ_; }
 
     Entry* Get(uint16_t id);
 
@@ -80,7 +91,7 @@ public:
     // mantenido sigue moviendo el avion despues de que el core muera.
     int EndAllHeldCommands();
 
-    double Read(const Entry& e) const;
+    double Read(const Entry& e) const;  // traduce al marco estable (ver SetOriginOffset)
     void Write(const Entry& e, double value);
 
 private:
@@ -90,6 +101,9 @@ private:
     // decide con que par de funciones del SDK lo tocamos.
     static proto::DataKind PickKind(XPLMDataTypeID types);
     void Resolve(Entry& e);
+    double ReadRaw(const Entry& e) const;
 
     std::vector<Entry> entries_;
+    double offX_ = 0.0;
+    double offZ_ = 0.0;
 };

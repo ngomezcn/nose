@@ -22,6 +22,9 @@ public sealed class DataHandle
     public int Index { get; init; }
     public int Count { get; init; }
 
+    // Posicion local (X/Z) que el connector traslada al marco estable.
+    public FrameAxis Frame { get; init; }
+
     // Suscripcion pedida: 0 = no suscrito, N = emitir uno de cada N frames.
     public byte Divisor { get; internal set; }
 
@@ -116,7 +119,8 @@ public sealed class ConnectorClient : IDisposable
     // en `count` elementos desde `index`. Con eso se cubre el caso real de
     // "el mismo throttle en los N motores".
     public DataHandle Define(string path, EntryKind kind = EntryKind.Dataref,
-                             int index = 0, int count = 1)
+                             int index = 0, int count = 1,
+                             FrameAxis frame = FrameAxis.None)
     {
         DataHandle handle;
         lock (_handlesLock)
@@ -128,6 +132,7 @@ public sealed class ConnectorClient : IDisposable
                 Kind = kind,
                 Index = index,
                 Count = count,
+                Frame = frame,
             };
             _handles.Add(handle);
         }
@@ -235,12 +240,13 @@ public sealed class ConnectorClient : IDisposable
     // Boton de panico: suelta todos los holds y comandos mantenidos.
     public void ReleaseAll() => Send(new MessageWriter(Op.ReleaseAll));
 
-    // Overlays 2D del connector (etiqueta / lineas / marcadores). Hay que
-    // reenviarlo tras cada SessionReady: el plugin arranca con defaults
-    // y no guarda lo que mando el core anterior.
+    // Overlays 2D del connector (nombres / lineas / triangulo / marcadores).
+    // Hay que reenviarlo tras cada SessionReady: el plugin arranca con
+    // defaults y no guarda lo que mando el core anterior.
+    // labels: exactamente 20 strings (XPLM 0..19); vacio = sin etiqueta.
     public void SetGraphicsConfig(byte flags, byte font,
                                   float r, float g, float b, float scale,
-                                  string text)
+                                  IReadOnlyList<string> labels)
     {
         var w = new MessageWriter(Op.GraphicsConfig);
         w.U8(flags);
@@ -249,17 +255,22 @@ public sealed class ConnectorClient : IDisposable
         w.F32(g);
         w.F32(b);
         w.F32(scale);
-        w.Str(text ?? string.Empty);
+        for (int i = 0; i < Datarefs.OtherPlaneSlots + 1; i++)
+        {
+            string t = (labels is not null && i < labels.Count) ? labels[i] : "";
+            w.Str(t ?? string.Empty);
+        }
         Send(w);
     }
 
     // Teleporta usuario + IA a las coordenadas que decide el dominio
-    // (SimScenario). El connector aplica PlaceUserAtLocation y, tras cargar
+    // (SimScenarios). El connector aplica PlaceUserAtLocation y, tras cargar
     // el aeropuerto, coloca la IA sin quedarsela (X-Plane la vuela).
+    // aiOnGround: la IA queda parada en tierra (tren fuera, gas 0).
     public void PlaceScenario(
         double userLat, double userLon, double userElevMsl, double userHdgTrue, double userSpeedMps,
         double aiLat, double aiLon, double aiElevMsl, double aiHdgTrue, double aiSpeedMps,
-        string aiAircraftRelPath)
+        string aiAircraftRelPath, bool aiOnGround)
     {
         var w = new MessageWriter(Op.PlaceScenario);
         w.F64(userLat);
@@ -273,10 +284,12 @@ public sealed class ConnectorClient : IDisposable
         w.F64(aiHdgTrue);
         w.F64(aiSpeedMps);
         w.Str(aiAircraftRelPath ?? string.Empty);
+        w.U8(aiOnGround ? (byte)1 : (byte)0);
         Send(w);
     }
 
-    // Exclusive access a un avion IA (AcquirePlanes + DisableAI). El core
+    // Exclusive access a un avion IA (AcquirePlanes + DisableAI); el connector
+    // acumula los indices tomados en un conjunto. El core
     // escribe posiciones via Hold; el connector solo otorga/suelta acceso.
     // xplmIndex es el indice XPLM 1..19 (nunca 0 = usuario).
     public void TakeAiControl(int xplmIndex)
@@ -288,11 +301,14 @@ public sealed class ConnectorClient : IDisposable
         Send(w);
     }
 
-    public void ReleaseAiControl()
+    // planeIndex 0 = soltar todos los aviones IA tomados; 1..19 = soltar solo
+    // ese indice XPLM (el connector mantiene un conjunto de indices).
+    public void ReleaseAiControl(int planeIndex = 0)
     {
+        if (planeIndex < 0 || planeIndex > 19) return;
         var w = new MessageWriter(Op.AiControl);
         w.U8(0); // Release
-        w.U8(0);
+        w.U8((byte)planeIndex);
         Send(w);
     }
 
@@ -343,6 +359,7 @@ public sealed class ConnectorClient : IDisposable
         w.U8((byte)h.Kind);
         w.I32(h.Index);
         w.I32(h.Count);
+        w.U8((byte)h.Frame);
         w.Str(h.Path);
         Send(w);
     }

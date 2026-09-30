@@ -1,77 +1,38 @@
+using AICopilotCore.Domain.Agents;
+
 namespace AICopilotCore.Domain;
 
-// Fachada unica para arrancar/parar las secuencias de vuelo.
+// Foco de la UI: "a quien van las ordenes". Nada mas.
 //
-// TakeoffSequence, ManeuverSequence e InterceptSequence comparten los mismos
-// overrides (AircraftControls): si dos corrieran a la vez se pisarian los
-// mandos. La UI pasa por aqui para que la exclusion mutua viva en un solo
-// sitio, no duplicada en cada boton.
-//
-// CruisePilot orquesta LevelWings/virajes sobre ManeuverSequence: no escribe
-// mandos por su cuenta, pero hay que Stop()earlo al pedir otra secuencia.
-//
-// AiStraightHold es distinto: controla una IA por Holds cinematicos y puede
-// correr EN PARALELO con las secuencias del ownship.
-//
-// FocusedXplmIndex selecciona a quien van StartRoute/StartTakeoff/StartCruise/
-// StartManeuver:
-//   -1     = Global (opciones de zona / camara aerea; sin ordenes de vuelo)
+// Cada avion (AircraftAgent, en AircraftWorld) lleva su propia logica y sigue
+// a lo suyo aunque el foco cambie. Todos admiten las mismas ordenes; aqui solo
+// se resuelve el destinatario y se delega:
+//   -1     = Global (sin ordenes de vuelo; Abort = todos)
 //    0     = avion local
-//    1..19 = IA (solo crucero cinematico).
+//    1..19 = IA
 //
-// Interceptacion desde tierra: StartIntercept encola el blanco, arranca
-// despegue combate (handoff a minima altura) y Tick() encadena la
-// persecucion cuando el despegue llega a Done.
-//
-// Ruta desde tierra: StartRoute encola el CruiseMode y, al Done del
-// despegue, Tick() arranca CruisePilot.
+// Las secuencias de cada avion (despegue, maniobras, crucero, intercept) y su
+// exclusion mutua viven en AircraftAgent.
 public sealed class FlightDirector
 {
-    private readonly TakeoffSequence _takeoff;
-    private readonly ManeuverSequence _maneuvers;
-    private readonly InterceptSequence _intercept;
-    private readonly CruisePilot _cruise;
-    private readonly AiStraightHold _aiHold;
-    private readonly Connector.ConnectorClient _client;
+    private readonly AircraftWorld _world;
 
     private readonly object _logGate = new();
     private readonly Queue<string> _recentLog = new();
     private const int MaxRecentLog = 200;
 
-    private readonly object _pendingGate = new();
-    private PendingIntercept? _pending;
-    private CruiseMode? _pendingCruise;
+    private const string GlobalFocusError = "foco global: elige un avion primero";
 
-    private sealed class PendingIntercept
+    public FlightDirector(AircraftWorld world)
     {
-        public required int Index { get; init; }
-        public required InterceptStation Station { get; init; }
-        public required string Label { get; init; }
+        _world = world;
+        _world.ActionLogged += (idx, line) =>
+            Remember(idx == 0 ? line : $"[{_world.TryGet(idx)?.Label ?? AircraftWorld.DefaultLabel(idx)}] {line}");
     }
 
-    public FlightDirector(TakeoffSequence takeoff, ManeuverSequence maneuvers,
-                          InterceptSequence intercept, CruisePilot cruise,
-                          AiStraightHold aiHold, Connector.ConnectorClient client)
-    {
-        _takeoff = takeoff;
-        _maneuvers = maneuvers;
-        _intercept = intercept;
-        _cruise = cruise;
-        _aiHold = aiHold;
-        _client = client;
+    public AircraftWorld World => _world;
 
-        _takeoff.ActionLogged += Remember;
-        _maneuvers.ActionLogged += Remember;
-        _intercept.ActionLogged += Remember;
-        _cruise.ActionLogged += Remember;
-        _aiHold.ActionLogged += Remember;
-    }
-
-    public TakeoffSequence Takeoff => _takeoff;
-    public ManeuverSequence Maneuvers => _maneuvers;
-    public InterceptSequence Intercept => _intercept;
-    public CruisePilot Cruise => _cruise;
-    public AiStraightHold AiHold => _aiHold;
+    // --- Foco ---------------------------------------------------------------
 
     public const int GlobalFocusIndex = -1;
 
@@ -79,6 +40,9 @@ public sealed class FlightDirector
     public string FocusedLabel { get; private set; } = "Global";
 
     public bool IsGlobalFocus => FocusedXplmIndex == GlobalFocusIndex;
+
+    // Agente en foco (null con foco Global).
+    public AircraftAgent? Focused => IsGlobalFocus ? null : _world.Get(FocusedXplmIndex);
 
     public void SetFocus(int xplmIndex, string label)
     {
@@ -89,31 +53,28 @@ public sealed class FlightDirector
         if (xplmIndex == GlobalFocusIndex)
             FocusedLabel = string.IsNullOrWhiteSpace(label) ? "Global" : label;
         else
-            FocusedLabel = string.IsNullOrWhiteSpace(label)
-                ? (xplmIndex == 0 ? "Local" : $"IA {xplmIndex}")
-                : label;
+        {
+            // Nombre para UI/logs. El overlay en X-Plane lo pone la casilla
+            // de Aviones (World.SetLabel); aqui no se fuerza.
+            string overlay = _world.GetOverlayLabel(xplmIndex);
+            FocusedLabel = !string.IsNullOrWhiteSpace(overlay)
+                ? overlay
+                : (string.IsNullOrWhiteSpace(label)
+                    ? AircraftWorld.DefaultLabel(xplmIndex)
+                    : label);
+        }
     }
 
-    public bool IsInterceptPending
-    {
-        get { lock (_pendingGate) return _pending is not null; }
-    }
+    // --- Estado del avion en foco (vacio con foco Global) ----------------------
 
-    public bool IsRouteCruisePending
-    {
-        get { lock (_pendingGate) return _pendingCruise is not null; }
-    }
+    public bool IsInterceptPending => Focused?.IsInterceptPending ?? false;
+    public bool IsRouteCruisePending => Focused?.IsRouteCruisePending ?? false;
+    public string PendingInterceptLabel => Focused?.PendingInterceptLabel ?? "";
+    public int PendingInterceptIndex => Focused?.PendingInterceptIndex ?? -1;
 
-    public string PendingInterceptLabel
-    {
-        get { lock (_pendingGate) return _pending?.Label ?? ""; }
-    }
+    public AgentView? FocusedView => Focused?.View();
 
-    public int PendingInterceptIndex
-    {
-        get { lock (_pendingGate) return _pending?.Index ?? -1; }
-    }
-
+    // Log agregado de todos los aviones (los de IA llevan prefijo [etiqueta]).
     public IReadOnlyList<string> RecentLog
     {
         get
@@ -122,387 +83,111 @@ public sealed class FlightDirector
         }
     }
 
-    public void AbortAll()
-    {
-        ClearAllPending();
-        _cruise.Abort();
-        _takeoff.Abort();
-        _maneuvers.Abort();
-        _intercept.Abort();
-    }
+    // --- Ordenes: van al avion en foco ----------------------------------------
+
+    public void AbortAll() => _world.AbortAll();
 
     public void AbortFocused()
     {
-        if (IsGlobalFocus) AbortAll();
-        else if (FocusedXplmIndex >= 1) _aiHold.Abort();
-        else AbortAll();
+        AircraftAgent? a = Focused;
+        if (a is null) _world.AbortAll();
+        else a.AbortAll();
     }
 
     public void AbortInterceptMission()
     {
-        bool hadPending = ClearInterceptPending();
-        if (_intercept.IsRunning) _intercept.Abort();
-        else if (hadPending && _takeoff.IsRunning) _takeoff.Abort();
+        AircraftAgent? a = Focused;
+        if (a is null) _world.AbortInterceptMissions();
+        else a.AbortInterceptMission();
     }
 
     public bool ChangeInterceptStation(InterceptStation station, out string error)
     {
-        lock (_pendingGate)
+        AircraftAgent? a = Focused;
+        if (a is null)
         {
-            if (_pending is not null)
-            {
-                _pending = new PendingIntercept
-                {
-                    Index = _pending.Index,
-                    Station = station,
-                    Label = _pending.Label,
-                };
-                Remember($"Interceptar {_pending.Label}: estacion → " +
-                         $"{InterceptCatalog.Get(station).Label} (tras el despegue).");
-            }
+            error = GlobalFocusError;
+            return false;
         }
-
-        if (_intercept.IsRunning)
-        {
-            if (!_intercept.ChangeStation(station, out string refusal))
-            {
-                error = refusal;
-                return false;
-            }
-            error = "";
-            return true;
-        }
-
-        if (IsInterceptPending)
-        {
-            error = "";
-            return true;
-        }
-
-        error = "no hay interceptacion en marcha";
-        return false;
+        return a.ChangeInterceptStation(station, out error);
     }
 
-    // Ruta: en tierra despega con el estilo; en el aire (o tras Done)
-    // aplica el modo de vuelo. startedAs describe que se engancho.
     public bool StartRoute(TakeoffStyle style, CruiseMode cruiseMode,
                            out string error, out string startedAs)
     {
         startedAs = "";
-        if (!_client.IsConnected)
+        AircraftAgent? a = Focused;
+        if (a is null)
         {
-            error = "no hay conexion con el plugin";
+            error = GlobalFocusError;
             return false;
         }
-        if (IsGlobalFocus)
-        {
-            error = "foco global: elige un avion primero";
-            return false;
-        }
-
-        if (FocusedXplmIndex >= 1)
-        {
-            if (cruiseMode.Id != CruiseModeId.Straight)
-                Remember($"Ruta IA: modo '{cruiseMode.Name}' no aplica a holds " +
-                         "cinematicos; se usa recto estabilizado.");
-            if (!StartAiStraightHoldFocused(out error))
-                return false;
-            startedAs = "crucero IA (recto)";
-            return true;
-        }
-
-        ClearAllPending();
-        _cruise.Stop();
-        if (_maneuvers.IsRunning) _maneuvers.Abort();
-        if (_intercept.IsRunning) _intercept.Abort();
-
-        if (_intercept.NeedsOwnTakeoff())
-        {
-            if (_takeoff.IsRunning) _takeoff.Abort();
-            lock (_pendingGate) _pendingCruise = cruiseMode;
-            _takeoff.Start(style);
-            startedAs = $"despegue [{style.Name}] → luego {cruiseMode.Name}";
-            error = "";
-            return true;
-        }
-
-        if (_takeoff.IsRunning) _takeoff.Abort();
-        _cruise.Start(cruiseMode);
-        startedAs = $"vuelo [{cruiseMode.Name}]";
-        error = "";
-        return true;
+        return a.StartRoute(style, cruiseMode, out error, out startedAs);
     }
 
     public bool StartTakeoff(TakeoffStyle style, out string error)
     {
-        if (!_client.IsConnected)
+        AircraftAgent? a = Focused;
+        if (a is null)
         {
-            error = "no hay conexion con el plugin";
+            error = GlobalFocusError;
             return false;
         }
-        if (IsGlobalFocus)
-        {
-            error = "foco global: elige un avion primero";
-            return false;
-        }
-        if (FocusedXplmIndex >= 1)
-        {
-            error = "solo disponible en el avion local por ahora";
-            return false;
-        }
-        ClearAllPending();
-        _cruise.Stop();
-        if (_maneuvers.IsRunning) _maneuvers.Abort();
-        if (_intercept.IsRunning) _intercept.Abort();
-        _takeoff.Start(style);
-        error = "";
-        return true;
+        return a.StartTakeoff(style, out error);
     }
 
-    // Nivelado directo (sin detectar tierra): ownship → CruisePilot recto;
-    // IA → hold cinematico. No arranca despegue aunque el avion este en suelo.
     public bool StartCruise(out string error)
     {
-        if (!_client.IsConnected)
+        AircraftAgent? a = Focused;
+        if (a is null)
         {
-            error = "no hay conexion con el plugin";
+            error = GlobalFocusError;
             return false;
         }
-        if (IsGlobalFocus)
-        {
-            error = "foco global: elige un avion primero";
-            return false;
-        }
-        if (FocusedXplmIndex >= 1)
-            return StartAiStraightHoldFocused(out error);
-
-        ClearAllPending();
-        _cruise.Stop();
-        if (_takeoff.IsRunning) _takeoff.Abort();
-        if (_intercept.IsRunning) _intercept.Abort();
-        _cruise.Start(CruiseModes.Straight);
-        error = "";
-        return true;
+        return a.StartCruise(out error);
     }
 
     public bool StartManeuver(ManeuverKind kind, bool force, out string error, out string adaptation)
     {
         adaptation = "";
-        if (!_client.IsConnected)
+        AircraftAgent? a = Focused;
+        if (a is null)
         {
-            error = "no hay conexion con el plugin";
+            error = GlobalFocusError;
             return false;
         }
-
-        if (IsGlobalFocus)
-        {
-            error = "foco global: elige un avion primero";
-            return false;
-        }
-
-        if (FocusedXplmIndex >= 1)
-        {
-            if (kind == ManeuverKind.LevelWings)
-                return StartAiStraightHoldFocused(out error);
-            error = "solo disponible en el avion local por ahora";
-            return false;
-        }
-
-        var (level, text) = _maneuvers.Preview(kind);
-        adaptation = text;
-        if (!force && level == AdaptationLevel.Impossible)
-        {
-            error = text.Length > 0 ? text : "maniobra imposible en el estado actual";
-            return false;
-        }
-
-        ClearAllPending();
-        _cruise.Stop();
-        if (_takeoff.IsRunning) _takeoff.Abort();
-        if (_intercept.IsRunning) _intercept.Abort();
-        _maneuvers.Start(kind);
-        error = "";
-        return true;
+        return a.StartManeuver(kind, force, out error, out adaptation);
     }
 
+    // El avion en foco es el interceptor; xplmIndex es el blanco.
     public bool StartIntercept(int xplmIndex, InterceptStation station, string label,
                                out string error)
     {
-        if (!_client.IsConnected)
+        AircraftAgent? a = Focused;
+        if (a is null)
         {
-            error = "no hay conexion con el plugin";
+            error = GlobalFocusError;
             return false;
         }
-        ClearPendingCruise();
-        _cruise.Stop();
-        if (_maneuvers.IsRunning) _maneuvers.Abort();
+        return a.StartIntercept(xplmIndex, station, label, out error);
+    }
 
-        if (_intercept.NeedsOwnTakeoff())
+    // --- Inicios de simulacion (solo Global) -----------------------------------
+
+    public bool PendingGroundIdle => _world.PendingGroundIdle;
+    public void ClearPendingGroundIdle() => _world.ClearPendingGroundIdle();
+
+    public bool StartSimulation(SimStart start, out string error)
+    {
+        if (!IsGlobalFocus)
         {
-            if (_intercept.IsRunning) _intercept.Abort();
-            if (_takeoff.IsRunning) _takeoff.Abort();
-
-            lock (_pendingGate)
-            {
-                _pending = new PendingIntercept
-                {
-                    Index = xplmIndex,
-                    Station = station,
-                    Label = label,
-                };
-            }
-            _takeoff.Start(TakeoffStyles.CombatIntercept, handoffAtTurnAltitude: true);
-            Remember($"Interceptar {label}: despegue combate primero " +
-                     $"(handoff a +{TakeoffStyles.CombatIntercept.TurnHeightFt:0} ft), " +
-                     "luego giro hacia el blanco.");
-            error = "";
-            return true;
-        }
-
-        ClearInterceptPending();
-        if (_takeoff.IsRunning) _takeoff.Abort();
-        if (!_intercept.Start(xplmIndex, station, label, out string refusal))
-        {
-            error = refusal;
+            error = "solo disponible con foco GLOBAL";
             return false;
         }
-        error = "";
+        SimStartPlan plan = SimScenarios.Get(start);
+        if (!_world.StartSimulation(plan, out error)) return false;
+        Remember($"Inicio de simulacion: {plan.Name} ({plan.Label})");
         return true;
-    }
-
-    public void Tick()
-    {
-        PendingIntercept? pendingIx;
-        CruiseMode? pendingCruise;
-        lock (_pendingGate)
-        {
-            pendingIx = _pending;
-            pendingCruise = _pendingCruise;
-        }
-
-        if (pendingIx is not null)
-        {
-            if (_takeoff.Phase == TakeoffPhase.Done)
-            {
-                ClearInterceptPending();
-                if (!_intercept.Start(pendingIx.Index, pendingIx.Station, pendingIx.Label,
-                                      out string refusal, afterOwnTakeoff: true))
-                {
-                    Remember($"Interceptar {pendingIx.Label}: no se pudo encadenar tras " +
-                             $"despegue — {refusal}");
-                }
-                return;
-            }
-
-            if (!_takeoff.IsRunning && _takeoff.Phase == TakeoffPhase.Idle)
-            {
-                ClearInterceptPending();
-                Remember($"Interceptar {pendingIx.Label}: cancelada (despegue interrumpido).");
-            }
-            return;
-        }
-
-        if (pendingCruise is null) return;
-
-        if (_takeoff.Phase == TakeoffPhase.Done)
-        {
-            ClearPendingCruise();
-            _cruise.Start(pendingCruise);
-            return;
-        }
-
-        if (!_takeoff.IsRunning && _takeoff.Phase == TakeoffPhase.Idle)
-        {
-            ClearPendingCruise();
-            Remember($"Ruta: vuelo [{pendingCruise.Name}] cancelado (despegue interrumpido).");
-        }
-    }
-
-    public bool PendingGroundIdle { get; private set; }
-    public bool PendingAiCruise { get; private set; }
-
-    public bool ResetSimulation(out string error)
-    {
-        if (!_client.IsConnected)
-        {
-            error = "no hay conexion con el plugin";
-            return false;
-        }
-
-        AbortAll();
-        _aiHold.Abort();
-        _client.ReleaseAll();
-        PendingGroundIdle = true;
-        PendingAiCruise = true;
-        _client.PlaceScenario(
-            SimScenario.UserLat, SimScenario.UserLon, SimScenario.UserElevMsl,
-            SimScenario.UserHdgTrue, SimScenario.UserSpeedMps,
-            SimScenario.AiLat, SimScenario.AiLon, SimScenario.AiElevMsl,
-            SimScenario.AiHdgTrue, SimScenario.AiSpeedMps,
-            SimScenario.AiAircraftRelPath);
-        Remember($"Reset simulacion: {SimScenario.Label}");
-        error = "";
-        return true;
-    }
-
-    public void ClearPendingGroundIdle() => PendingGroundIdle = false;
-    public void ClearPendingAiCruise() => PendingAiCruise = false;
-
-    public bool TryStartPendingAiCruise()
-    {
-        if (!PendingAiCruise) return false;
-        PendingAiCruise = false;
-        if (!_client.IsConnected) return false;
-
-        int prevIdx = FocusedXplmIndex;
-        string prevLabel = FocusedLabel;
-        SetFocus(1, "Airbus A330");
-        bool ok = StartAiStraightHoldFocused(out _);
-        SetFocus(prevIdx, prevLabel);
-        return ok;
-    }
-
-    private bool StartAiStraightHoldFocused(out string error)
-    {
-        int idx = FocusedXplmIndex;
-        if (idx < 1 || idx > Connector.Datarefs.OtherPlaneSlots)
-        {
-            error = "hace falta enfocar una IA (1..19)";
-            return false;
-        }
-
-        if (_aiHold.IsRunning && _aiHold.XplmIndex != idx)
-            _aiHold.Abort();
-        if (_aiHold.IsRunning && _aiHold.XplmIndex == idx)
-        {
-            error = "";
-            return true;
-        }
-        return _aiHold.Start(idx, out error);
-    }
-
-    private bool ClearInterceptPending()
-    {
-        lock (_pendingGate)
-        {
-            bool had = _pending is not null;
-            _pending = null;
-            return had;
-        }
-    }
-
-    private void ClearPendingCruise()
-    {
-        lock (_pendingGate) _pendingCruise = null;
-    }
-
-    private void ClearAllPending()
-    {
-        lock (_pendingGate)
-        {
-            _pending = null;
-            _pendingCruise = null;
-        }
     }
 
     private void Remember(string line)

@@ -117,7 +117,7 @@
                     <ToggleButton x:Name="GraphicsTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE891;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
-                                  ToolTip="Graficos: etiquetas, lineas y marcadores sobre aviones"/>
+                                  ToolTip="Graficos: lineas, triangulo, marcadores sobre aviones"/>
                     <ToggleButton x:Name="DataLogTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE9D2;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
@@ -247,7 +247,7 @@
                                   Padding="14,4,14,14">
                         <StackPanel>
                             <TextBlock Text="AVIONES / FOCO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
-                            <TextBlock Text="GLOBAL = opciones de zona (graficos, reset, vista aerea). Un avion = ordenes de vuelo y caja negra."
+                            <TextBlock Text="GLOBAL = opciones de zona (graficos, inicios de simulacion, vista aerea). Un avion = ordenes de vuelo y caja negra."
                                        TextWrapping="Wrap" Margin="0,0,0,6"
                                        FontFamily="{StaticResource AICopilotFont}" FontSize="11"
                                        Foreground="{StaticResource TextFaint}"/>
@@ -298,7 +298,39 @@
                                                            FontFamily="{StaticResource AICopilotFont}"
                                                            FontSize="13"
                                                            Foreground="{StaticResource TextPrimary}"
-                                                           TextTrimming="CharacterEllipsis"/>
+                                                           TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsGlobal}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBox Text="{Binding Name, UpdateSourceTrigger=LostFocus}"
+                                                         FontFamily="{StaticResource AICopilotFont}"
+                                                         FontSize="13"
+                                                         MaxLength="32"
+                                                         ToolTip="Nombre overlay en X-Plane. Vacio = sin etiqueta. Enter o salir del campo para aplicar."
+                                                         LostFocus="OnAircraftNameLostFocus"
+                                                         KeyDown="OnAircraftNameKeyDown"
+                                                         GotKeyboardFocus="OnAircraftNameGotFocus"
+                                                         LostKeyboardFocus="OnAircraftNameLostKeyboardFocus">
+                                                    <TextBox.Style>
+                                                        <Style TargetType="TextBox" BasedOn="{StaticResource ShellTextBox}">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsGlobal}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBox.Style>
+                                                </TextBox>
                                             </DockPanel>
                                             <TextBlock Text="{Binding Detail}" Margin="16,3,0,0"
                                                        FontFamily="{StaticResource MonoFont}" FontSize="11"
@@ -355,9 +387,6 @@
                                     Click="OnReleaseCameraClick" HorizontalAlignment="Stretch"
                                     Margin="0,2,0,2"
                                     ToolTip="Devuelve el control de camara a X-Plane (tambien sale de la vista aerea)."/>
-                            <Button Style="{StaticResource AccentButton}" Content="Reset simulacion (LEBL)"
-                                    Click="OnResetSimClick" HorizontalAlignment="Stretch" Margin="0,10,0,2"
-                                    ToolTip="Accion global: F-14 en umbral LEBL 24L; A330 a FL210 en vuelo recto y nivelado."/>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -422,9 +451,6 @@
                                     ToolTip="En tierra: despegue con el estilo elegido y luego el tipo de vuelo. En el aire: aplica el tipo de vuelo."/>
                             <Button Style="{StaticResource DangerButton}" Content="Abortar / manual"
                                     Click="OnAbortClick" HorizontalAlignment="Stretch" Margin="0,4,0,2"/>
-                            <Button Style="{StaticResource AccentButton}" Content="Reset simulacion (LEBL)"
-                                    Click="OnResetSimClick" HorizontalAlignment="Stretch" Margin="0,10,0,2"
-                                    ToolTip="Accion global (no depende del avion en foco): F-14 en umbral LEBL 24L; A330 a FL210."/>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -695,10 +721,12 @@
                     </ScrollViewer>
 
                     <!-- Vista: caja negra / log de datos crudo. Empezar/Detener
-                         controlan el DataLogger del avion EN FOCO; con grabacion
-                         activa Refresh alimenta a ~10Hz todos los que graben.
-                         "Ver graficos" abre la pestana del viewport; "Borrar
-                         todo" vacia buffer UI + fichero del avion en foco. -->
+                         controlan el DataLogger del avion EN FOCO; con foco
+                         GLOBAL actuan sobre todo el roster a la vez. Con
+                         grabacion activa Refresh alimenta a ~10Hz todos los
+                         que graben. "Ver graficos" abre la pestana del
+                         viewport (en GLOBAL muestra LOCAL como vista); "Borrar
+                         todo" vacia buffer UI + fichero(s) del alcance actual. -->
                     <DockPanel x:Name="DataLogView" Visibility="Collapsed">
                         <StackPanel DockPanel.Dock="Top" Margin="14,0,14,6">
                             <TextBlock Text="{Binding DataLogStatusText}"
@@ -709,24 +737,24 @@
                                 <Button x:Name="DataLogStartBtn" Style="{StaticResource AccentButton}"
                                         Content="Empezar a grabar" FontSize="12" Padding="10,4"
                                         Margin="0,0,6,0" Click="OnStartDataLogClick"
-                                        ToolTip="Empieza a registrar telemetria del avion EN FOCO (~10 Hz). Puedes cambiar de foco y grabar otra nave a la vez."/>
+                                        ToolTip="Avion en foco: registra su telemetria (~10 Hz). GLOBAL: registra todos los aviones del roster a la vez (cada uno en su CSV)."/>
                                 <Button x:Name="DataLogStopBtn" Style="{StaticResource DangerButton}"
                                         Content="Detener" FontSize="12" Padding="10,4"
                                         Margin="0,0,6,0" IsEnabled="False"
                                         Click="OnStopDataLogClick"
-                                        ToolTip="Deja de grabar el avion EN FOCO; conserva lo ya registrado. Otras naves que graben siguen."/>
+                                        ToolTip="Avion en foco: deja de grabar esa nave. GLOBAL: detiene todas las grabaciones."/>
                                 <Button Style="{StaticResource ToolButton}" Content="Ver graficos"
                                         FontSize="12" Padding="8,2" Margin="0,0,6,0"
                                         Click="OnShowBlackBoxChartsClick"
-                                        ToolTip="Abre la pestana Caja negra en el viewport (graficos del avion EN FOCO)"/>
+                                        ToolTip="Abre la pestana Caja negra en el viewport (graficos del avion EN FOCO; en GLOBAL muestra LOCAL)"/>
                                 <Button Style="{StaticResource ToolButton}" Content="Borrar todo"
                                         FontSize="12" Padding="8,2" Click="OnClearDataLogClick"
-                                        ToolTip="Borra muestras y CSV del avion EN FOCO (no toca las demas naves)"/>
+                                        ToolTip="Avion en foco: borra muestras y CSV de esa nave. GLOBAL: borra los de todo el roster."/>
                             </StackPanel>
                             <TextBlock Text="{Binding DataLogFilePathText}" Margin="0,4,0,0"
                                        FontFamily="{StaticResource MonoFont}" FontSize="10"
                                        Foreground="{StaticResource TextFaint}" TextWrapping="Wrap"
-                                       ToolTip="CSV del avion EN FOCO (se recrea al pulsar Borrar todo)"/>
+                                       ToolTip="CSV del avion EN FOCO, o lista de ficheros del roster en GLOBAL"/>
                         </StackPanel>
                         <ListBox x:Name="DataLogList" ItemsSource="{Binding DataLogSamples}"
                                  Background="Transparent" BorderThickness="0" Padding="10,0,10,10"
@@ -961,33 +989,59 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- Vista: overlays 2D en X-Plane (etiquetas / lineas / marcadores). -->
+                    <!-- Vista: overlays 2D en X-Plane (lineas / triangulo / marcadores). -->
                     <ScrollViewer x:Name="GraphicsView" VerticalScrollBarVisibility="Auto"
                                   Padding="14,4,14,14" Visibility="Collapsed">
                         <StackPanel>
-                            <TextBlock Text="ETIQUETAS" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
-                            <ToggleButton x:Name="GfxOwnLabelToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Etiqueta en mi avion" IsChecked="True"
+                            <!-- Solo visible con foco GLOBAL (SyncFocusChrome). -->
+                            <StackPanel x:Name="SimStartSection">
+                                <TextBlock Text="INICIOS DE SIMULACION" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                                <Button Style="{StaticResource AccentButton}" Content="Inicio en pista: dos aviones"
+                                        Tag="RunwayPair" Click="OnSimStartClick"
+                                        HorizontalAlignment="Stretch" Margin="0,2"
+                                        ToolTip="Solo en foco GLOBAL: caza en 06R y A330 en 06L (LEBL), los dos parados."/>
+                                <Button Style="{StaticResource AccentButton}" Content="Interceptacion desde tierra"
+                                        Tag="InterceptFromGround" Click="OnSimStartClick"
+                                        HorizontalAlignment="Stretch" Margin="0,2"
+                                        ToolTip="Solo en foco GLOBAL: caza en 06R; A330 a 10 km, FL210, alejandose en ruta vuelo normal."/>
+                                <Button Style="{StaticResource AccentButton}" Content="Interceptacion en el aire"
+                                        Tag="InterceptAirborne" Click="OnSimStartClick"
+                                        HorizontalAlignment="Stretch" Margin="0,2"
+                                        ToolTip="Solo en foco GLOBAL: caza a 20.000 ft, A330 a 28.000 ft, 15 km delante y 5 km a la derecha, caza interceptando, A330 en ruta vuelo normal."/>
+                                <Button Style="{StaticResource AccentButton}" Content="Interceptacion en el aire: cerca"
+                                        Tag="InterceptAirborneClose" Click="OnSimStartClick"
+                                        HorizontalAlignment="Stretch" Margin="0,2,0,8"
+                                        ToolTip="Solo en foco GLOBAL: caza a 20.000 ft, A330 a 24.000 ft, a 5 km (delante y a la derecha), caza interceptando, A330 en ruta vuelo normal."/>
+                            </StackPanel>
+
+                            <TextBlock Text="DIBUJO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <ToggleButton x:Name="GfxLinesToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Lineas (distancia)" IsChecked="False"
                                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                           Margin="0,2"
                                           Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Texto flotante encima del avion del usuario"/>
-                            <ToggleButton x:Name="GfxOtherLabelsToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Etiquetas en las demas" IsChecked="False"
+                                          ToolTip="Linea recta cyan hasta cada IA con la distancia 3D en metros"/>
+                            <ToggleButton x:Name="GfxTriangleToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Triangulo (Δ horiz / Δ alt)" IsChecked="False"
                                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
                                           Margin="0,2"
                                           Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Mismo texto encima de cada IA activa"/>
-                            <Grid Margin="0,6,0,3" ToolTip="Texto que se dibuja encima del avion (max. 32 caracteres).">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="110"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Texto" Style="{StaticResource FieldLabel}"/>
-                                <TextBox x:Name="GfxLabelTextBox" Grid.Column="1" Style="{StaticResource ShellTextBox}"
-                                         Text="Jev" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
-                            </Grid>
-                            <Grid Margin="0,3" ToolTip="Fuente del SDK: Basica es mas pequena; Proporcional es la del label original.">
+                                          ToolTip="Cateto horizontal (naranja) y vertical/altitud (verde) respecto a cada IA — forma un triangulo rectangulo con la linea de distancia"/>
+                            <ToggleButton x:Name="GfxMarkersToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Marcador (rombo)" IsChecked="False"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                          ToolTip="Rombo identificador en el centro de cada avion visible"/>
+                            <ToggleButton x:Name="GfxPathToggle" Style="{StaticResource ToolToggle}"
+                                          Content="Vector de trayectoria" IsChecked="False"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                          Margin="0,2"
+                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                          ToolTip="Predice donde estara el avion en ~1.5 s (integra velocidad+aceleracion). Sale 2.5 m por delante del CG; el horizonte se alarga/acorta con la acel. longitudinal"/>
+
+                            <TextBlock Text="ESTILO" Style="{StaticResource SectionHeader}"/>
+                            <Grid Margin="0,3" ToolTip="Fuente del SDK: Basica es mas pequena; Proporcional es la habitual.">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="110"/>
@@ -999,7 +1053,7 @@
                                     <ComboBoxItem Content="Proporcional"/>
                                 </ComboBox>
                             </Grid>
-                            <Grid Margin="0,3" ToolTip="Color RGB 0..255 del texto, lineas y marcadores.">
+                            <Grid Margin="0,3" ToolTip="Color RGB 0..255 de nombres, rombos y trayectoria (las lineas del triangulo tienen color fijo).">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="36"/>
@@ -1024,29 +1078,9 @@
                                          Text="1" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
                             </Grid>
 
-                            <TextBlock Text="DIBUJO" Style="{StaticResource SectionHeader}"/>
-                            <ToggleButton x:Name="GfxLinesToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Lineas a las demas naves" IsChecked="False"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2"
-                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Linea hasta cada IA (tambien fuera de vista) con la distancia en metros en el centro"/>
-                            <ToggleButton x:Name="GfxMarkersToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Marcador (rombo)" IsChecked="False"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2"
-                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Rombo identificador en el centro de cada avion visible"/>
-                            <ToggleButton x:Name="GfxPathToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Vector de trayectoria" IsChecked="False"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2"
-                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Predice donde estara el avion en ~1.5 s (integra velocidad+aceleracion). Sale 2.5 m por delante del CG; el horizonte se alarga/acorta con la acel. longitudinal"/>
-
                             <Button Style="{StaticResource ToolButton}" Content="Restablecer graficos"
                                     Click="OnResetGraphicsClick" HorizontalAlignment="Stretch" Margin="0,14,0,2"
-                                    ToolTip="Vuelve a etiqueta Jev amarilla solo en tu avion, sin lineas ni marcadores."/>
+                                    ToolTip="Apaga lineas, triangulo, rombos y trayectoria; color y tamano por defecto."/>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -1253,11 +1287,12 @@
                 </Border>
             </Grid>
 
-            <GridSplitter Grid.Column="4" Width="5" HorizontalAlignment="Stretch"
+            <GridSplitter x:Name="RightSplitter" Grid.Column="4" Width="5" HorizontalAlignment="Stretch"
                           VerticalAlignment="Stretch" Style="{StaticResource ShellSplitter}"/>
 
-            <!-- === Panel derecho: telemetria === -->
-            <Border Grid.Column="5" Background="{StaticResource SideBarBg}"
+            <!-- === Panel derecho: telemetria (siempre visible; vacio en
+                 GLOBAL para no resizear el docker de X-Plane). === -->
+            <Border x:Name="TelemetryPanel" Grid.Column="5" Background="{StaticResource SideBarBg}"
                     BorderBrush="{StaticResource ShellBorder}" BorderThickness="1,0,0,0">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top" Margin="14,10,14,4">

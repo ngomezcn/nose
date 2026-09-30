@@ -115,18 +115,55 @@ En la UI (pestaña **Aviones**) el usuario elige una fila y pulsa
 quién van despegue / crucero / acciones (o “GLOBAL” si no hay nave):
 
 - Índice **-1** = **Global** (por defecto): opciones de zona (gráficos,
-  reset sim, vista aérea). Sin órdenes de vuelo ni caja negra.
+  inicios de simulación, vista aérea) y **caja negra de todo el roster**
+  (Empezar graba todos los aviones a la vez; cada uno en su CSV). Sin
+  órdenes de vuelo (despegue / maniobras / intercept).
 - Índice XPLM **0** = ownship (F-14 / avión del usuario).
 - Índices **1..19** = IAs (`sim/multiplayer/position/planeN_*`).
 
 `FlightDirector.SetFocus` / `FocusedXplmIndex` / `IsGlobalFocus` viven en
 el core. Al poner foco Global el core pide al connector la **vista aérea**
 (`Op.CameraFollow` con `planeIndex = 255`) y activa rombos + líneas en
-gráficos. Con foco en IA, hoy solo tiene sentido
-**crucero / nivelar** (`AiStraightHold`: cinemático vía Holds +
-`Op.AiControl`). Despegue y el resto de maniobras siguen siendo solo del
-ownship. La interceptación **siempre** pilota el ownship hacia un blanco
-elegido en la pestaña Interceptar (lista aparte).
+gráficos.
+
+### Un agente por avión (plug&play)
+
+`src/core/Domain/Agents/`. Cada avión (XPLM 0..19) es un `AircraftAgent`
+creado bajo demanda por `AircraftWorld.Get(idx)`, con **sus propias**
+secuencias (despegue, maniobras, `CruisePilot`, intercept), su exclusión
+mutua y su estado. Todos admiten **exactamente las mismas órdenes**
+(despegue, ruta, maniobras, crucero, intercept): no hay ramas por tipo de
+avión ni opciones "solo ownship". Lo que un cuerpo no tiene lo declara
+`BodyCaps` y la maniobra se adapta (no se corta).
+
+- **Foco = a quién van las órdenes de la UI**, nada más. `FlightDirector`
+  solo resuelve el destinatario y delega en el agente en foco
+  (`Focused` / `FocusedView`). Cambiar el foco **no aborta ni toca** a
+  ningún otro avión: los demás siguen con su ruta / maniobra / intercept.
+  Los paneles (telemetría, listado, Interceptar, botones de acciones)
+  reflejan el `AgentView` del avión enfocado. Con foco Global, Abortar
+  actúa sobre todos.
+- **Cuerpo**: `LocalAircraftBody` (índice 0: `Datarefs` +
+  `AircraftControls`) y `KinematicAiBody` (1..19). Un avión IA sin orden
+  está *Observing* (no se toca; `State` reducido con NaN en G/AoA/mandos,
+  la UI pinta "—"); al recibir una orden pasa a *Simulating*.
+- **`KinematicAiBody`**: modelo cinemático F-14 (`F14Profile`) para todas
+  las IAs; la pose se reescribe por Holds + `Op.AiControl`. El terreno se
+  asume **plano** al nivel del punto de captura (AGL = altura sobre ese
+  plano). X-Plane **no reactiva la IA nativa** de un avión suelto: al
+  soltar se deja en la pose actual. El crucero de una IA es `CruisePilot`
+  sobre su `KinematicAiBody` (ya no existe `AiStraightHold`).
+- **Intercept**: el interceptor es el avión en foco; el blanco se elige en
+  la lista (cualquier avión distinto del interceptor, incluido el local).
+  `InterceptRegistry` (en `AircraftWorld`, compartido) permite **un
+  objetivo por interceptor** y rechaza la autointercepción, el cruce
+  mutuo (A→B con B→A, también si es solo una intención pendiente tras
+  despegue) y los ciclos; el motivo llega a la UI (log y panel Interceptar)
+  en vez de fallar mudo. Cada avión muestra a quién intercepta según su
+  propio `AgentView`.
+- **Telemetría de IAs a ritmo de frame**: `AircraftWorld.Watch/Unwatch`
+  (refcount sobre `Datarefs.WatchPlane`); la UI observa la IA en foco y la
+  suelta al cambiar de foco. Ya no se usa `FocusOtherPlane` en la UI.
 
 ### Cámara chase / vista aérea
 
@@ -140,21 +177,29 @@ elegido en la pestaña Interceptar (lista aparte).
   `ReleaseCamera`.
 - `ReleaseEverything` del plugin también suelta la cámara.
 
-No es lo mismo que el “foco” de órdenes ni que `FocusOtherPlane`
-(ritmo de telemetría del blanco de intercept).
+No es lo mismo que el “foco” de órdenes (aunque al cambiar el foco a una
+IA la UI también engancha la cámara chase).
 
 ### Caja negra: una por avión, off por defecto
 
 - **Por defecto nadie graba.** Empezar / Detener / Borrar del panel
   **CAJA NEGRA** actúan sobre el logger del avión **en foco**.
-- Varias naves pueden grabar a la vez (cambias foco y pulsas Empezar en
-  otra). `Refresh` alimenta todos los `IsRecording`.
+- Con foco **GLOBAL**, la pestaña CAJA NEGRA también está disponible:
+  Empezar graba **todo el roster** a la vez (y las naves que aparezcan
+  después mientras siga activo); Detener / Borrar actúan sobre todas.
+  Cada avión sigue escribiendo su propio CSV. La lista CSV / gráficos
+  del panel muestran LOCAL como vista representativa.
+- Varias naves pueden grabar a la vez también cambiando foco y pulsando
+  Empezar en cada una. `Refresh` alimenta todos los `IsRecording`.
 - Ficheros junto al exe desplegado (`…\plugins\AICopilot\win_x64\`):
   - Ownship: `DataLog.csv` (+ `.previous.csv`)
   - IA N: `DataLog.plane{N}.csv` (+ `DataLog.plane{N}.previous.csv`)
 - Código: `FlightDataLogs` + `DataLogger` en `src/core/Domain/`. La
-  telemetría de IA es reducida (GS/MSL/hdg/pitch/bank; sin G/mandos/AoA
-  completos del ownship).
+  telemetría se registra por un único camino por agente (`State` de su
+  cuerpo): completa para el local y las IAs *Simulating*; reducida (NaN en
+  G/mandos/AoA) para una IA *Observing*. Las líneas del CSV no llevan
+  prefijo de avión (marcas `Inicio:`/`Fin:`/`Fase:`); el log de pantalla sí
+  antepone `[etiqueta]` a las líneas de una IA.
 
 Si el usuario pide inspeccionar la caja negra, el DataLog, un temblor,
 overshoot de G, o qué pasó en una maniobra/intercept/despegue, lee y
@@ -177,25 +222,4 @@ worktree add`):
   al acabar aplica con `/apply-worktree` o merge/PR desde el panel.
 
 Reparto: zonas que no se solapen (`src/connector` vs `src/core`, etc.).
-Si dos tareas tocan el mismo archivo, serialízalas. **No** lances
-`tools\build_and_deploy*.ps1` desde varios worktrees a la vez: todos
-despliegan al mismo `E:\X-Plane 12\...\AICopilot\win_x64\`. El deploy
-lo hace el checkout principal (o un solo agente) tras integrar.
-
-## 5. Agentes en paralelo: worktrees de Cursor (no pelearse en el mismo árbol)
-
-Varios agentes en el mismo checkout se pisan. Para tareas en paralelo
-usa worktrees de Cursor (no hace falta crearlos a mano con `git
-worktree add`):
-
-- **Agents Window:** al crear/mover un agente, elige worktree.
-- **IDE:** comando `/worktree` (o `/best-of-n` para comparar modelos).
-- Setup automático en [`.cursor/worktrees.json`](.cursor/worktrees.json)
-  (`dotnet restore` del core). Cursor crea/limpia el worktree solo;
-  al acabar aplica con `/apply-worktree` o merge/PR desde el panel.
-
-Reparto: zonas que no se solapen (`src/connector` vs `src/core`, etc.).
-Si dos tareas tocan el mismo archivo, serialízalas. **No** lances
-`tools\build_and_deploy*.ps1` desde varios worktrees a la vez: todos
-despliegan al mismo `E:\X-Plane 12\...\AICopilot\win_x64\`. El deploy
-lo hace el checkout principal (o un solo agente) tras integrar.
+Si dos tareas tocan el mismo archivo, serialízalas.

@@ -11,8 +11,14 @@ namespace AICopilotCore.Domain;
 // exe). Sirve para reproducir y analizar el vuelo real sin simulador aparte.
 public sealed class InterceptTrace : IDisposable
 {
-    public static readonly string PathCsv =
-        System.IO.Path.Combine(AppContext.BaseDirectory, "InterceptTrace.csv");
+    // InterceptTrace.csv (idx 0) / InterceptTrace.plane{N}.csv (N>=1).
+    public static string PathFor(int xplmIndex) => System.IO.Path.Combine(
+        AppContext.BaseDirectory,
+        xplmIndex <= 0 ? "InterceptTrace.csv" : $"InterceptTrace.plane{xplmIndex}.csv");
+
+    public string Path { get; }
+
+    public InterceptTrace(int xplmIndex = 0) => Path = PathFor(xplmIndex);
 
     private StreamWriter? _w;
     private double _t;
@@ -22,7 +28,7 @@ public sealed class InterceptTrace : IDisposable
         Dispose();
         try
         {
-            _w = new StreamWriter(PathCsv, false, new UTF8Encoding(false)) { AutoFlush = true };
+            _w = new StreamWriter(Path, false, new UTF8Encoding(false)) { AutoFlush = true };
             _w.WriteLine("t;stage;regime;phase;detour;side;sideLocked;corridor;ox;oy;oz;ovx;ovy;ovz;tx;ty;tz;tvx;tvy;tvz;" +
                          "thdg;tturn;range;rpRange;along;cross;up;ownIas;ownBank;ownG;" +
                          "desTrk;filtTrk;desGs;desIas;iasCmd;vsCmd;bankCmd;minSep;eta");
