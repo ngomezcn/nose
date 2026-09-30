@@ -36,6 +36,7 @@ public partial class App : Application
     private ManeuverSequence? _maneuvers;
     private InterceptSequence? _intercept;
     private AiStraightHold? _aiHold;
+    private CruisePilot? _cruise;
     private FlightDirector? _director;
 
     private ShellWindow? _shell;
@@ -71,7 +72,9 @@ public partial class App : Application
         // Hold cinematico de una IA (recto y nivelado). Corre en paralelo
         // con las secuencias del ownship: no usa AircraftControls.
         _aiHold = new AiStraightHold(_client, _datarefs);
-        _director = new FlightDirector(_sequence, _maneuvers, _intercept, _aiHold, _client);
+        _cruise = new CruisePilot(_maneuvers, _datarefs);
+        _director = new FlightDirector(_sequence, _maneuvers, _intercept, _cruise,
+                                       _aiHold, _client);
 
         // Una sola ventana: el shell lleva dentro los paneles que antes eran
         // dos overlays flotantes (telemetria y log) y, en el hueco central,
@@ -147,6 +150,7 @@ public partial class App : Application
         _client.TelemetryReceived += frame => {
             _sequence.Update(frame.Dt);
             _maneuvers.Update(frame.Dt);
+            _cruise.Update(frame.Dt);
             _intercept.Update(frame.Dt);
             _aiHold.Update(frame.Dt);
             _director.Tick();

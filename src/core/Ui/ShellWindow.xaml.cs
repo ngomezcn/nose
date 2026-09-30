@@ -226,12 +226,15 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     private Brush _connectionDotColor = Brushes.Gray;
     public Brush ConnectionDotColor { get => _connectionDotColor; set => Set(ref _connectionDotColor, value); }
 
-    // Estilo que usara el proximo "Iniciar despegue". No se aplica a una
-    // secuencia que ya esta corriendo.
+    // Estilo / tipo de vuelo del proximo "Iniciar" de Ruta.
     private TakeoffStyleId _styleId = TakeoffStyleId.Relaxed;
     private bool _switchingStyle;
     public string StyleSummary => TakeoffStyles.Get(_styleId).Summary;
     public string StyleSpec => TakeoffStyles.Get(_styleId).Spec;
+
+    private CruiseModeId _flightModeId = CruiseModeId.Straight;
+    private bool _switchingFlightMode;
+    public string FlightModeSummary => CruiseModes.Get(_flightModeId).Summary;
 
     // --- Estado del hueco central ------------------------------------------
     private bool _dockedNow;
@@ -303,9 +306,9 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         set => Set(ref _interceptEmptyVisibility, value);
     }
 
-    // Posicion de la proxima interceptacion y, si ya hay mision en marcha
-    // (o pendiente de despegue combate), la que vuela ahora: OnInterceptStationChanged
-    // la propaga al director sin abortar.
+    // Posicion que usara la PROXIMA interceptacion. Cambiarla con una en
+    // marcha no la mueve: hay que volver a pulsar Interceptar, igual que el
+    // estilo de despegue no se aplica a un despegue ya empezado.
     private InterceptStation _stationId = InterceptStation.TailHigh;
     private bool _switchingStation;
     public string InterceptStationSummary => InterceptCatalog.Get(_stationId).Description;
@@ -615,11 +618,11 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     // --- Barra de herramientas ----------------------------------------------
 
     private void OnStartClick(object sender, RoutedEventArgs e) {
-        // Exclusion mutua con maniobras/intercept: vive en FlightDirector.
-        if (!_director.StartTakeoff(TakeoffStyles.Get(_styleId), out string error))
-            Append($"Despegue ({_director.FocusedLabel}): {error}.");
+        if (!_director.StartRoute(TakeoffStyles.Get(_styleId), CruiseModes.Get(_flightModeId),
+                                  out string error, out string startedAs))
+            Append($"Ruta ({_director.FocusedLabel}): {error}.");
         else
-            Append($"Despegue iniciado en {_director.FocusedLabel}.");
+            Append($"Ruta iniciada en {_director.FocusedLabel}: {startedAs}.");
     }
 
     private void OnStyleClick(object sender, RoutedEventArgs e) {
@@ -648,23 +651,35 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         }
     }
 
+    private void OnFlightModeClick(object sender, RoutedEventArgs e) {
+        if (!IsInitialized || sender is not System.Windows.Controls.Primitives.ToggleButton tab) return;
+        if (tab.IsChecked != true) tab.IsChecked = true;
+    }
+
+    private void OnFlightModeChanged(object sender, RoutedEventArgs e) {
+        if (!IsInitialized || _switchingFlightMode) return;
+        if (sender is not System.Windows.Controls.Primitives.ToggleButton { IsChecked: true } tab) return;
+
+        CruiseModeId id = tab == FlightWanderer ? CruiseModeId.Wanderer
+                        : tab == FlightNormal ? CruiseModeId.Normal
+                        : CruiseModeId.Straight;
+
+        _switchingFlightMode = true;
+        try {
+            FlightStraight.IsChecked = id == CruiseModeId.Straight;
+            FlightWanderer.IsChecked = id == CruiseModeId.Wanderer;
+            FlightNormal.IsChecked = id == CruiseModeId.Normal;
+            _flightModeId = id;
+            OnPropertyChanged(nameof(FlightModeSummary));
+        } finally {
+            _switchingFlightMode = false;
+        }
+    }
+
     private void OnAbortClick(object sender, RoutedEventArgs e) {
         // Con foco en IA suelta solo su hold; con foco local, despegue/maniobra/intercept.
         _director.AbortFocused();
         Append($"Abortar / manual: {_director.FocusedLabel}.");
-    }
-
-    // "Volar en crucero" no es un Abortar mas: Abortar suelta los overrides
-    // y devuelve el avion a mando manual tal cual estaba; esto en cambio
-    // corta cualquier despegue/accion en marcha y ENGANCHA el autopiloto de
-    // nivelado (la misma maniobra LevelWings del catalogo), como pedir "pon
-    // el avion a volar recto" antes de la siguiente orden -- el reset que
-    // hace falta para no tener que abortar del todo entre una accion y otra.
-    private void OnCruiseClick(object sender, RoutedEventArgs e) {
-        if (!_director.StartCruise(out string error))
-            Append($"Crucero ({_director.FocusedLabel}): {error}.");
-        else
-            Append($"Crucero en {_director.FocusedLabel}.");
     }
 
     private void OnResetSimClick(object sender, RoutedEventArgs e) {
@@ -1171,7 +1186,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
         LeftPanelTitle.Text = view switch {
             LeftPanelView.Aircraft => "AVIONES",
-            LeftPanelView.Takeoff => "DESPEGUE",
+            LeftPanelView.Takeoff => "RUTA",
             LeftPanelView.Actions => "ACCIONES",
             LeftPanelView.Intercept => "INTERCEPTAR",
             LeftPanelView.Graphics => "GRAFICOS",
@@ -1498,12 +1513,19 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
 
         bool maneuverActive = _maneuvers.IsRunning;
         bool takeoffActive = _sequence.IsRunning;
+        bool cruiseActive = _director.Cruise.IsRunning;
+        bool routeCruisePending = _director.IsRouteCruisePending;
         bool interceptActive = _intercept.IsRunning;
         bool interceptPending = _director.IsInterceptPending;
 
-        SequenceText = _sequence.Phase == TakeoffPhase.Idle
-            ? "En espera"
-            : $"{_sequence.StyleName} · {TakeoffSequence.PhaseName(_sequence.Phase)}";
+        if (takeoffActive || routeCruisePending)
+            SequenceText = routeCruisePending
+                ? $"{_sequence.StyleName} · {TakeoffSequence.PhaseName(_sequence.Phase)} → {_director.Cruise.Mode.Name}"
+                : $"{_sequence.StyleName} · {TakeoffSequence.PhaseName(_sequence.Phase)}";
+        else if (cruiseActive)
+            SequenceText = _director.Cruise.PhaseText;
+        else
+            SequenceText = "En espera";
         ChecklistText = TakeoffSequence.BuildChecklistLine(_sequence.Phase);
 
         // Una sola fuente de objetivos ownship: la maniobra si hay una, si no
@@ -1617,8 +1639,11 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     {
         ModeText = interceptActive ? _intercept.PhaseText
                  : interceptPending ? "Interceptar · Despegue combate"
+                 : takeoffActive ? (_director.IsRouteCruisePending
+                     ? $"Ruta · {_sequence.StyleName} → {_director.Cruise.Mode.Name}"
+                     : $"Ruta · {_sequence.StyleName}")
+                 : _director.Cruise.IsRunning ? $"Ruta · {_director.Cruise.PhaseText}"
                  : maneuverActive ? _maneuvers.PhaseText
-                 : takeoffActive ? $"Despegue · {_sequence.StyleName}"
                  : "Manual";
 
         float thrShown = float.IsNaN(thrCmd) ? float.NaN : thrCmd * 100f;
@@ -1717,8 +1742,10 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         string phase = takeoffActive ? TakeoffSequence.PhaseName(_sequence.Phase) : "-";
         string action = interceptActive ? _intercept.PhaseText
                       : interceptPending ? "Interceptar · Despegue combate"
+                      : takeoffActive ? "Ruta · Despegue"
+                      : _director.Cruise.IsRunning ? $"Ruta · {_director.Cruise.Mode.Name}"
                       : maneuverActive ? _maneuvers.PhaseText
-                      : takeoffActive ? "Despegue" : "-";
+                      : "-";
         log.Record(
             phase: phase,
             action: action,

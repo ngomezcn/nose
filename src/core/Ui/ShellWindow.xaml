@@ -105,7 +105,7 @@
                     <ToggleButton x:Name="TakeoffTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE709;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
-                                  ToolTip="Despegue"/>
+                                  ToolTip="Ruta: despegue o vuelo segun donde este el avion"/>
                     <ToggleButton x:Name="ActionsTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE8FD;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
@@ -295,11 +295,11 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- Vista: estilo de despegue, secuencia y botones. -->
+                    <!-- Vista: estilo de despegue, tipo de vuelo y boton Iniciar. -->
                     <ScrollViewer x:Name="TakeoffView" VerticalScrollBarVisibility="Auto"
                                   Padding="14,4,14,14" Visibility="Collapsed">
                         <StackPanel>
-                            <TextBlock Text="ESTILO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <TextBlock Text="ESTILO DESPEGUE" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
 
                             <ToggleButton x:Name="StyleRelaxed" Style="{StaticResource ToolToggle}"
                                           Content="Relajado" IsChecked="True" HorizontalAlignment="Stretch"
@@ -323,6 +323,27 @@
                             <TextBlock Text="{Binding StyleSpec}" Margin="0,8,0,0" TextWrapping="Wrap"
                                        Style="{StaticResource TelemetryText}"/>
 
+                            <TextBlock Text="TIPO DE VUELO" Style="{StaticResource SectionHeader}"/>
+                            <ToggleButton x:Name="FlightStraight" Style="{StaticResource ToolToggle}"
+                                          Content="Recto estabilizado" IsChecked="True" HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Center" Margin="0,2"
+                                          Checked="OnFlightModeChanged" Click="OnFlightModeClick"
+                                          ToolTip="Recto y nivelado a ~300 kt, sin cambiar de rumbo."/>
+                            <ToggleButton x:Name="FlightWanderer" Style="{StaticResource ToolToggle}"
+                                          Content="Movedizo" HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Center" Margin="0,2"
+                                          Checked="OnFlightModeChanged" Click="OnFlightModeClick"
+                                          ToolTip="Tramos cortos y muchas vueltas amplias."/>
+                            <ToggleButton x:Name="FlightNormal" Style="{StaticResource ToolToggle}"
+                                          Content="Vuelo normal" HorizontalAlignment="Stretch"
+                                          HorizontalContentAlignment="Center" Margin="0,2"
+                                          Checked="OnFlightModeChanged" Click="OnFlightModeClick"
+                                          ToolTip="Va recto un rato y de vez en cuando hace una vuelta suave."/>
+
+                            <TextBlock Text="{Binding FlightModeSummary}" Margin="0,8,0,0" TextWrapping="Wrap"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
+                                       Foreground="{StaticResource TextDim}"/>
+
                             <TextBlock Text="SECUENCIA" Style="{StaticResource SectionHeader}"/>
                             <TextBlock Text="{Binding SequenceText}" Style="{StaticResource TelemetryText}"
                                        Foreground="{StaticResource CyanText}" TextWrapping="Wrap"/>
@@ -330,13 +351,11 @@
                                        Margin="0,6,0,0"/>
 
                             <TextBlock Text="CONTROL" Style="{StaticResource SectionHeader}"/>
-                            <Button Style="{StaticResource AccentButton}" Content="Iniciar despegue"
-                                    Click="OnStartClick" HorizontalAlignment="Stretch" Margin="0,2"/>
+                            <Button Style="{StaticResource AccentButton}" Content="Iniciar"
+                                    Click="OnStartClick" HorizontalAlignment="Stretch" Margin="0,2"
+                                    ToolTip="En tierra: despegue con el estilo elegido y luego el tipo de vuelo. En el aire: aplica el tipo de vuelo."/>
                             <Button Style="{StaticResource DangerButton}" Content="Abortar / manual"
                                     Click="OnAbortClick" HorizontalAlignment="Stretch" Margin="0,4,0,2"/>
-                            <Button Style="{StaticResource ToolButton}" Content="Volar en crucero (estabilizar)"
-                                    Click="OnCruiseClick" HorizontalAlignment="Stretch" Margin="0,2"
-                                    ToolTip="Corta lo que este en marcha y deja el avion recto y nivelado persiguiendo 300 kt. El motor sigue esa velocidad."/>
                             <Button Style="{StaticResource AccentButton}" Content="Reset simulacion (LEBL)"
                                     Click="OnResetSimClick" HorizontalAlignment="Stretch" Margin="0,10,0,2"
                                     ToolTip="Accion global (no depende del avion en foco): F-14 en umbral LEBL 24L; A330 a FL210."/>
