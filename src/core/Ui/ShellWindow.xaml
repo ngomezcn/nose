@@ -49,7 +49,7 @@
                                FontSize="13" Foreground="{StaticResource TextPrimary}"
                                VerticalAlignment="Center"/>
                     <TextBlock Text="X-Plane 12" FontFamily="{StaticResource AICopilotFont}"
-                               FontSize="12" Foreground="{StaticResource TextFaint}"
+                               FontSize="10" Foreground="{StaticResource TextFaint}"
                                Margin="10,0,0,0" VerticalAlignment="Center"/>
                 </StackPanel>
 
@@ -91,7 +91,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*" MinWidth="320"/>
                 <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition x:Name="RightCol" Width="320" MinWidth="240"/>
+                <ColumnDefinition x:Name="RightCol" Width="240" MinWidth="180"/>
             </Grid.ColumnDefinitions>
 
             <!-- Barra de actividad: cambia solo el contenido del panel izquierdo. -->
@@ -157,34 +157,36 @@
                                FontFamily="{StaticResource AICopilotFont}" FontSize="11"
                                Foreground="{StaticResource TextFaint}"/>
 
-                    <!-- Desplegable EN FOCO: INLINE (sin Popup HWND). Los ComboBox /
-                         ToolTip de WPF son ventanas aparte; con X-Plane encima del
-                         shell quedan negros o tapan el hueco. Aqui la lista vive
-                         dentro del panel izquierdo. -->
-                    <Border x:Name="FocusPickerHost" DockPanel.Dock="Top" Margin="14,0,14,6"
+                    <!-- EN FOCO como seccion/boton (inline, sin Popup HWND). -->
+                    <Border x:Name="FocusPickerHost" DockPanel.Dock="Top" Margin="14,0,14,10"
                             Background="{StaticResource InputBg}"
-                            BorderBrush="{StaticResource CyanText}" BorderThickness="1"
+                            BorderBrush="{StaticResource ShellBorder}" BorderThickness="1"
+                            CornerRadius="4" Padding="10,8"
                             ToolTip="Elige GLOBAL (vista aerea / zona) o un avion (despegue, crucero, acciones).">
                         <StackPanel>
-                            <DockPanel>
-                                <TextBlock DockPanel.Dock="Left" Text="EN FOCO" Margin="8,0,8,0"
-                                           FontFamily="{StaticResource AICopilotFont}" FontSize="10"
-                                           Foreground="{StaticResource CyanText}"
-                                           VerticalAlignment="Center"/>
-                                <ToggleButton x:Name="FocusPickerToggle"
-                                              Style="{StaticResource FocusPickerToggle}"
-                                              IsChecked="{Binding FocusPickerOpen, Mode=TwoWay}"
-                                              ToolTip="GLOBAL = zona. LOCAL / IA = ordenes de vuelo y caja negra.">
-                                    <TextBlock Text="{Binding FocusText}"
-                                               FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
+                            <TextBlock Text="EN FOCO" Style="{StaticResource SectionHeader}" Margin="0,0,0,6"/>
+                            <ToggleButton x:Name="FocusPickerToggle"
+                                          Style="{StaticResource ToolToggle}"
+                                          IsChecked="{Binding FocusPickerOpen, Mode=TwoWay}"
+                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                          Margin="0,2" Padding="10,8"
+                                          ToolTip="GLOBAL = zona. LOCAL / IA = ordenes de vuelo y caja negra.">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Text="&#xE70D;"
+                                               FontFamily="Segoe MDL2 Assets" FontSize="10"
                                                Foreground="{StaticResource CyanText}"
-                                               TextTrimming="CharacterEllipsis"/>
-                                </ToggleButton>
-                            </DockPanel>
+                                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                    <TextBlock Text="{Binding FocusText}"
+                                               FontFamily="{StaticResource AICopilotFont}" FontSize="13"
+                                               Foreground="{StaticResource CyanText}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"/>
+                                </DockPanel>
+                            </ToggleButton>
                             <Border x:Name="FocusPickerListHost"
                                     BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,1,0,0"
                                     Visibility="{Binding FocusPickerListVisibility}"
-                                    MaxHeight="220">
+                                    MaxHeight="220" Margin="0,4,0,0">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <ItemsControl ItemsSource="{Binding AircraftEntries}">
                                         <ItemsControl.ItemTemplate>
@@ -994,92 +996,113 @@
                                   Padding="14,4,14,14" Visibility="Collapsed">
                         <StackPanel>
                             <!-- Solo visible con foco GLOBAL (SyncFocusChrome). -->
-                            <StackPanel x:Name="SimStartSection">
-                                <TextBlock Text="INICIOS DE SIMULACION" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
-                                <Button Style="{StaticResource AccentButton}" Content="Inicio en pista: dos aviones"
-                                        Tag="RunwayPair" Click="OnSimStartClick"
-                                        HorizontalAlignment="Stretch" Margin="0,2"
-                                        ToolTip="Solo en foco GLOBAL: caza en 06R y A330 en 06L (LEBL), los dos parados."/>
-                                <Button Style="{StaticResource AccentButton}" Content="Interceptacion desde tierra"
-                                        Tag="InterceptFromGround" Click="OnSimStartClick"
-                                        HorizontalAlignment="Stretch" Margin="0,2"
-                                        ToolTip="Solo en foco GLOBAL: caza en 06R; A330 a 10 km, FL210, alejandose en ruta vuelo normal."/>
-                                <Button Style="{StaticResource AccentButton}" Content="Interceptacion en el aire"
-                                        Tag="InterceptAirborne" Click="OnSimStartClick"
-                                        HorizontalAlignment="Stretch" Margin="0,2"
-                                        ToolTip="Solo en foco GLOBAL: caza a 20.000 ft, A330 a 28.000 ft, 15 km delante y 5 km a la derecha, caza interceptando, A330 en ruta vuelo normal."/>
-                                <Button Style="{StaticResource AccentButton}" Content="Interceptacion en el aire: cerca"
-                                        Tag="InterceptAirborneClose" Click="OnSimStartClick"
-                                        HorizontalAlignment="Stretch" Margin="0,2,0,8"
-                                        ToolTip="Solo en foco GLOBAL: caza a 20.000 ft, A330 a 24.000 ft, a 5 km (delante y a la derecha), caza interceptando, A330 en ruta vuelo normal."/>
-                            </StackPanel>
+                            <Border x:Name="SimStartSection"
+                                    Background="{StaticResource InputBg}"
+                                    BorderBrush="{StaticResource ShellBorder}" BorderThickness="1"
+                                    CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="INICIOS DE SIMULACION" Style="{StaticResource SectionHeader}" Margin="0,0,0,6"/>
+                                    <Button Style="{StaticResource AccentButton}" Content="Inicio en pista: dos aviones"
+                                            Tag="RunwayPair" Click="OnSimStartClick"
+                                            HorizontalAlignment="Stretch" Margin="0,2"
+                                            ToolTip="Solo en foco GLOBAL: caza en 06R y A330 en 06L (LEBL), los dos parados."/>
+                                    <Button Style="{StaticResource AccentButton}" Content="Interceptacion desde tierra"
+                                            Tag="InterceptFromGround" Click="OnSimStartClick"
+                                            HorizontalAlignment="Stretch" Margin="0,2"
+                                            ToolTip="Solo en foco GLOBAL: caza en 06R; A330 a 10 km, FL210, alejandose en ruta vuelo normal."/>
+                                    <Button Style="{StaticResource AccentButton}" Content="Interceptacion en el aire"
+                                            Tag="InterceptAirborne" Click="OnSimStartClick"
+                                            HorizontalAlignment="Stretch" Margin="0,2"
+                                            ToolTip="Solo en foco GLOBAL: caza a 20.000 ft, A330 a 28.000 ft, 15 km delante y 5 km a la derecha, caza interceptando, A330 en ruta vuelo normal."/>
+                                    <Button Style="{StaticResource AccentButton}" Content="Interceptacion en el aire: cerca"
+                                            Tag="InterceptAirborneClose" Click="OnSimStartClick"
+                                            HorizontalAlignment="Stretch" Margin="0,2"
+                                            ToolTip="Solo en foco GLOBAL: caza a 20.000 ft, A330 a 24.000 ft, a 5 km (delante y a la derecha), caza interceptando, A330 en ruta vuelo normal."/>
+                                    <Button Style="{StaticResource AccentButton}" Content="Formacion en el aire"
+                                            Tag="Formation" Click="OnSimStartClick"
+                                            HorizontalAlignment="Stretch" Margin="0,2,0,2"
+                                            ToolTip="Solo en foco GLOBAL: caza y A330 ya en formacion de ala a 20.000 ft y 200 m/s, mismo rumbo; el caza mantiene el puesto (paralelo izquierda)."/>
+                                </StackPanel>
+                            </Border>
 
-                            <TextBlock Text="DIBUJO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
-                            <ToggleButton x:Name="GfxLinesToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Lineas (distancia)" IsChecked="False"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2"
-                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Linea recta cyan hasta cada IA con la distancia 3D en metros"/>
-                            <ToggleButton x:Name="GfxTriangleToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Triangulo (Δ horiz / Δ alt)" IsChecked="False"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2"
-                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Cateto horizontal (naranja) y vertical/altitud (verde) respecto a cada IA — forma un triangulo rectangulo con la linea de distancia"/>
-                            <ToggleButton x:Name="GfxMarkersToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Marcador (rombo)" IsChecked="False"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2"
-                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Rombo identificador en el centro de cada avion visible"/>
-                            <ToggleButton x:Name="GfxPathToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Vector de trayectoria" IsChecked="False"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2"
-                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Predice donde estara el avion en ~1.5 s (integra velocidad+aceleracion). Sale 2.5 m por delante del CG; el horizonte se alarga/acorta con la acel. longitudinal"/>
+                            <Border Background="{StaticResource InputBg}"
+                                    BorderBrush="{StaticResource ShellBorder}" BorderThickness="1"
+                                    CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="DIBUJO" Style="{StaticResource SectionHeader}" Margin="0,0,0,6"/>
+                                    <ToggleButton x:Name="GfxLinesToggle" Style="{StaticResource ToolToggle}"
+                                                  Content="Lineas (distancia)" IsChecked="False"
+                                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                  Margin="0,2"
+                                                  Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                                  ToolTip="Linea recta cyan hasta cada IA con la distancia 3D en metros"/>
+                                    <ToggleButton x:Name="GfxTriangleToggle" Style="{StaticResource ToolToggle}"
+                                                  Content="Triangulo (Δ horiz / Δ alt)" IsChecked="False"
+                                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                  Margin="0,2"
+                                                  Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                                  ToolTip="Cateto horizontal (naranja) y vertical/altitud (verde) respecto a cada IA — forma un triangulo rectangulo con la linea de distancia"/>
+                                    <ToggleButton x:Name="GfxMarkersToggle" Style="{StaticResource ToolToggle}"
+                                                  Content="Marcador (rombo)" IsChecked="False"
+                                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                  Margin="0,2"
+                                                  Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                                  ToolTip="Rombo identificador en el centro de cada avion visible"/>
+                                    <ToggleButton x:Name="GfxPathToggle" Style="{StaticResource ToolToggle}"
+                                                  Content="Vector de trayectoria" IsChecked="False"
+                                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                  Margin="0,2"
+                                                  Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
+                                                  ToolTip="Predice donde estara el avion en ~1.5 s (integra velocidad+aceleracion). Sale 2.5 m por delante del CG; el horizonte se alarga/acorta con la acel. longitudinal"/>
+                                </StackPanel>
+                            </Border>
 
-                            <TextBlock Text="ESTILO" Style="{StaticResource SectionHeader}"/>
-                            <Grid Margin="0,3" ToolTip="Fuente del SDK: Basica es mas pequena; Proporcional es la habitual.">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="110"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Estilo" Style="{StaticResource FieldLabel}"/>
-                                <ComboBox x:Name="GfxFontCombo" Grid.Column="1"
-                                          SelectedIndex="1" SelectionChanged="OnGraphicsFontChanged">
-                                    <ComboBoxItem Content="Basica"/>
-                                    <ComboBoxItem Content="Proporcional"/>
-                                </ComboBox>
-                            </Grid>
-                            <Grid Margin="0,3" ToolTip="Color RGB 0..255 de nombres, rombos y trayectoria (las lineas del triangulo tienen color fijo).">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="36"/>
-                                    <ColumnDefinition Width="36"/>
-                                    <ColumnDefinition Width="36"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Color R G B" Style="{StaticResource FieldLabel}"/>
-                                <TextBox x:Name="GfxColorR" Grid.Column="1" Style="{StaticResource ShellTextBox}"
-                                         Text="255" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
-                                <TextBox x:Name="GfxColorG" Grid.Column="2" Style="{StaticResource ShellTextBox}"
-                                         Text="217" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
-                                <TextBox x:Name="GfxColorB" Grid.Column="3" Style="{StaticResource ShellTextBox}"
-                                         Text="26" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
-                            </Grid>
-                            <Grid Margin="0,3" ToolTip="Escala del marcador y grosor de linea (0.5 .. 4). Valores altos tambien engrosan el texto.">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="76"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Tamano" Style="{StaticResource FieldLabel}"/>
-                                <TextBox x:Name="GfxScaleText" Grid.Column="1" Style="{StaticResource ShellTextBox}"
-                                         Text="1" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
-                            </Grid>
+                            <Border Background="{StaticResource InputBg}"
+                                    BorderBrush="{StaticResource ShellBorder}" BorderThickness="1"
+                                    CornerRadius="4" Padding="10,8" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Text="ESTILO" Style="{StaticResource SectionHeader}" Margin="0,0,0,6"/>
+                                    <Grid Margin="0,3" ToolTip="Fuente del SDK: Basica es mas pequena; Proporcional es la habitual.">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="110"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Estilo" Style="{StaticResource FieldLabel}"/>
+                                        <ComboBox x:Name="GfxFontCombo" Grid.Column="1"
+                                                  SelectedIndex="1" SelectionChanged="OnGraphicsFontChanged">
+                                            <ComboBoxItem Content="Basica"/>
+                                            <ComboBoxItem Content="Proporcional"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <Grid Margin="0,3" ToolTip="Color RGB 0..255 de nombres, rombos y trayectoria (las lineas del triangulo tienen color fijo).">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="36"/>
+                                            <ColumnDefinition Width="36"/>
+                                            <ColumnDefinition Width="36"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Color R G B" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="GfxColorR" Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                                 Text="255" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                                        <TextBox x:Name="GfxColorG" Grid.Column="2" Style="{StaticResource ShellTextBox}"
+                                                 Text="217" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                                        <TextBox x:Name="GfxColorB" Grid.Column="3" Style="{StaticResource ShellTextBox}"
+                                                 Text="26" Margin="2,0,0,0" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                                    </Grid>
+                                    <Grid Margin="0,3" ToolTip="Escala del marcador y grosor de linea (0.5 .. 4). Valores altos tambien engrosan el texto.">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="76"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="Tamano" Style="{StaticResource FieldLabel}"/>
+                                        <TextBox x:Name="GfxScaleText" Grid.Column="1" Style="{StaticResource ShellTextBox}"
+                                                 Text="1" LostFocus="OnGraphicsChanged" KeyDown="OnGraphicsTextKeyDown"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
 
                             <Button Style="{StaticResource ToolButton}" Content="Restablecer graficos"
-                                    Click="OnResetGraphicsClick" HorizontalAlignment="Stretch" Margin="0,14,0,2"
+                                    Click="OnResetGraphicsClick" HorizontalAlignment="Stretch" Margin="0,4,0,2"
                                     ToolTip="Apaga lineas, triangulo, rombos y trayectoria; color y tamano por defecto."/>
                         </StackPanel>
                     </ScrollViewer>
@@ -1295,30 +1318,30 @@
             <Border x:Name="TelemetryPanel" Grid.Column="5" Background="{StaticResource SideBarBg}"
                     BorderBrush="{StaticResource ShellBorder}" BorderThickness="1,0,0,0">
                 <DockPanel>
-                    <StackPanel DockPanel.Dock="Top" Margin="14,10,14,4">
+                    <StackPanel DockPanel.Dock="Top" Margin="10,8,10,2">
                         <TextBlock Text="TELEMETRIA"
-                                   FontFamily="{StaticResource AICopilotFont}" FontSize="11"
+                                   FontFamily="{StaticResource AICopilotFont}" FontSize="10"
                                    Foreground="{StaticResource TextFaint}"/>
-                        <TextBlock Text="{Binding FocusText}" Margin="0,2,0,0"
-                                   FontFamily="{StaticResource AICopilotFont}" FontSize="11"
+                        <TextBlock Text="{Binding FocusText}" Margin="0,1,0,0"
+                                   FontFamily="{StaticResource AICopilotFont}" FontSize="10"
                                    Foreground="{StaticResource CyanText}"
                                    TextTrimming="CharacterEllipsis"
-                                   ToolTip="Telemetria del avion EN FOCO (desplegable EN FOCO arriba a la izquierda)."/>
+                                   ToolTip="Telemetria del avion EN FOCO (seccion EN FOCO del panel izquierdo)."/>
                     </StackPanel>
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,4,14,14">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10,2,10,10">
                         <StackPanel>
-                            <TextBlock Text="MODO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <TextBlock Text="MODO" Style="{StaticResource SectionHeader}" Margin="0,4,0,4"/>
                             <TextBlock Text="{Binding ModeText}" Style="{StaticResource TelemetryText}"
-                                       Foreground="{StaticResource CyanText}" TextWrapping="Wrap"/>
+                                       FontSize="11.5" Foreground="{StaticResource CyanText}" TextWrapping="Wrap"/>
 
-                            <TextBlock Text="VUELO" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock Text="{Binding FlightText}" Style="{StaticResource TelemetryText}"/>
+                            <TextBlock Text="VUELO" Style="{StaticResource SectionHeader}" Margin="0,10,0,4"/>
+                            <TextBlock Text="{Binding FlightText}" Style="{StaticResource TelemetryText}" FontSize="11.5"/>
 
-                            <TextBlock Text="ACTITUD" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock Text="{Binding AttitudeText}" Style="{StaticResource TelemetryText}"/>
+                            <TextBlock Text="ACTITUD" Style="{StaticResource SectionHeader}" Margin="0,10,0,4"/>
+                            <TextBlock Text="{Binding AttitudeText}" Style="{StaticResource TelemetryText}" FontSize="11.5"/>
 
-                            <TextBlock Text="MANDOS" Style="{StaticResource SectionHeader}"/>
-                            <TextBlock Text="{Binding ControlsText}" Style="{StaticResource TelemetryText}"/>
+                            <TextBlock Text="MANDOS" Style="{StaticResource SectionHeader}" Margin="0,10,0,4"/>
+                            <TextBlock Text="{Binding ControlsText}" Style="{StaticResource TelemetryText}" FontSize="11.5"/>
                         </StackPanel>
                     </ScrollViewer>
                 </DockPanel>

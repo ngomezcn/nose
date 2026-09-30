@@ -36,7 +36,14 @@ public sealed class DataLogger
         "ThrottleObj_pct;ThrottleReal_pct;FlapsObj_pct;FlapsReal_pct;" +
         "MandoPitch;MandoRoll;MandoYaw;" +
         "G_obj;G_pred;AoA_deg;Aerofrenos_pct;Peso_lb;Mach;" +
-        "PitchRate_dps;RollRate_dps;Adaptacion;Proteccion";
+        "PitchRate_dps;RollRate_dps;Adaptacion;Proteccion;" +
+        // Pose y ritmo de frame (IA y ownship). Los *_ms / Salto_* resumen los
+        // Tick de sim entre dos filas (~10 Hz): lo que el muestreo no ve.
+        "Cuerpo;X_m;Y_m;Z_m;Vx_mps;Vy_mps;Vz_mps;GS_kt;" +
+        "Ticks;Dt_min_ms;Dt_max_ms;Hueco_max_ms;Salto_max_m;SaltoErr_max_m;" +
+        "Rumbo_obs_deg;Adapt_fisica";
+
+    private static readonly int ColumnCount = Header.Count(c => c == ';') + 1;
 
     public string LogFilePath { get; }
     private readonly string _previousLogFilePath;
@@ -126,7 +133,8 @@ public sealed class DataLogger
         float gCommand, float gPredicted, float aoaDeg, float speedbrake01,
         float weightLb, float mach,
         float pitchRateDps, float rollRateDps,
-        string adaptation, string protection)
+        string adaptation, string protection,
+        PoseSample pose)
     {
         if (!IsRecording) return;
         double tSec = _clock.Elapsed.TotalSeconds;
@@ -161,6 +169,15 @@ public sealed class DataLogger
             F(speedbrake01 * 100f, "0"), F(weightLb, "0"), F(mach, "0.000"),
             F(pitchRateDps, "0.0"), F(rollRateDps, "0.0"),
             Safe(adaptation), Safe(protection),
+            Safe(pose.Body),
+            F(pose.X, "0.00"), F(pose.Y, "0.00"), F(pose.Z, "0.00"),
+            F(pose.Vx, "0.00"), F(pose.Vy, "0.00"), F(pose.Vz, "0.00"),
+            F(pose.GsKt, "0.0"),
+            pose.Cadence.Ticks.ToString(CultureInfo.InvariantCulture),
+            F(pose.Cadence.DtMinMs, "0.0"), F(pose.Cadence.DtMaxMs, "0.0"),
+            F(pose.Cadence.GapMaxMs, "0.0"),
+            F(pose.Cadence.JumpMaxM, "0.00"), F(pose.Cadence.JumpErrMaxM, "0.00"),
+            F(pose.HeadingObservedDeg, "0.0"), Safe(pose.PhysicsAdaptation),
         });
 
         AddLine(line);
@@ -185,18 +202,12 @@ public sealed class DataLogger
             PruneMarkers();
         }
 
-        string line = string.Join(';', new[]
-        {
-            DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture),
-            "", "", Safe(note),
-            "", "", "", "",
-            "", "", "", "",
-            "", "", "",
-            "", "", "", "",
-            "", "", "",
-            "", "", "", "", "", "", "", "", "", "",
-        });
-        AddLine(line);
+        // Hora;Fase;Accion;Nota y el resto de columnas vacias.
+        var cols = new string[ColumnCount];
+        Array.Fill(cols, "");
+        cols[0] = DateTime.Now.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture);
+        cols[3] = Safe(note);
+        AddLine(string.Join(';', cols));
     }
 
     private void AddLine(string line)
@@ -270,6 +281,15 @@ public sealed class DataLogger
     {
         try
         {
+            // Un CSV con la cabecera de una version anterior se aparta a
+            // .previous (si hay datos) y se empieza limpio: mezclar formatos en
+            // un fichero deja columnas sin cabecera.
+            if (append && File.Exists(LogFilePath) && new FileInfo(LogFilePath).Length > 0
+                && !HasCurrentHeader())
+            {
+                PreservePreviousSnapshot();
+                append = false;
+            }
             bool writeHeader = !append
                 || !File.Exists(LogFilePath)
                 || new FileInfo(LogFilePath).Length == 0;
@@ -282,6 +302,20 @@ public sealed class DataLogger
         catch (IOException)
         {
             _writer = null;
+        }
+    }
+
+    private bool HasCurrentHeader()
+    {
+        try
+        {
+            using var fs = new FileStream(LogFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var sr = new StreamReader(fs);
+            return sr.ReadLine() == Header;
+        }
+        catch (IOException)
+        {
+            return true;
         }
     }
 
@@ -299,6 +333,9 @@ public sealed class DataLogger
     }
 
     private static string Safe(string s) => s.Replace(';', ',');
+
+    private static string F(double v, string format) =>
+        double.IsNaN(v) ? "" : v.ToString(format, CultureInfo.InvariantCulture);
 
     private static string F(float v, string format) =>
         float.IsNaN(v) ? "" : v.ToString(format, CultureInfo.InvariantCulture);

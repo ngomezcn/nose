@@ -40,6 +40,20 @@ struct PendingAi {
 
 inline PendingAi g_pendingAi;
 
+// Pose del usuario en un inicio EN EL AIRE. X-Plane recarga el aeropuerto
+// despues de XPLMPlaceUserAtLocation y deja al usuario con velocidad 0; mientras
+// se asienta la IA se reescribe su posicion y velocidad cada frame, asi no se
+// adelanta a la IA (congelada) ni llega parado al ScenarioReady.
+struct UserHold {
+    bool active = false;
+    double lat = 0;
+    double lon = 0;
+    float elevMsl = 0;
+    float hdgTrue = 0;
+    float speedMps = 0;
+};
+inline UserHold g_userHold;
+
 inline void WriteDouble(const char* path, double v) {
     XPLMDataRef r = XPLMFindDataRef(path);
     if (!r) return;
@@ -174,7 +188,22 @@ inline bool AiAtTarget(const PendingAi& p) {
     return std::sqrt(dN * dN + dE * dE) <= kMaxHorizM && std::fabs(el - p.elevMsl) <= kMaxVertM;
 }
 
+// Solo con velocidad > 0 (inicio en el aire). No toca cabeceo ni alabeo.
+inline void WriteUserPose(const UserHold& u) {
+    double x = 0, y = 0, z = 0;
+    XPLMWorldToLocal(u.lat, u.lon, u.elevMsl, &x, &y, &z);
+    const double rad = u.hdgTrue * (3.14159265358979323846 / 180.0);
+    WriteDouble("sim/flightmodel/position/local_x", x);
+    WriteDouble("sim/flightmodel/position/local_y", y);
+    WriteDouble("sim/flightmodel/position/local_z", z);
+    WriteFloat("sim/flightmodel/position/psi", u.hdgTrue);
+    WriteFloat("sim/flightmodel/position/local_vx", static_cast<float>(u.speedMps * std::sin(rad)));
+    WriteFloat("sim/flightmodel/position/local_vy", 0.0f);
+    WriteFloat("sim/flightmodel/position/local_vz", static_cast<float>(-u.speedMps * std::cos(rad)));
+}
+
 inline void CancelPending() {
+    g_userHold = UserHold{};
     g_pendingAi = PendingAi{};
     g_settle = Settle{};
 }
@@ -192,6 +221,7 @@ inline void OnAirportLoaded() {
 inline bool TickPending() {
     if (g_settle.active) {
         ++g_settle.frames;
+        if (g_userHold.active) WriteUserPose(g_userHold);
         if (EnsureAiOwned(g_settle.p)) {
             if (AiAtTarget(g_settle.p)) {
                 ++g_settle.stable;
@@ -216,6 +246,7 @@ inline bool TickPending() {
                 LogInfo("PlaceScenario: IA estable tras %d frames (%d correcciones).",
                         g_settle.frames, g_settle.corrections);
             g_settle = Settle{};
+            g_userHold = UserHold{};
             return true;
         }
         return false;
@@ -265,6 +296,16 @@ inline void Begin(double userLat, double userLon, float userElevMsl,
     g_pendingAi.speedMps = aiSpeedMps;
     g_pendingAi.acfRelPath = aiAcfRelPath;
     g_pendingAi.onGround = aiOnGround;
+
+    g_userHold = UserHold{};
+    if (userSpeedMps > 1.0f) {
+        g_userHold.active = true;
+        g_userHold.lat = userLat;
+        g_userHold.lon = userLon;
+        g_userHold.elevMsl = userElevMsl;
+        g_userHold.hdgTrue = userHdgTrue;
+        g_userHold.speedMps = userSpeedMps;
+    }
 
     XPLMPlaceUserAtLocation(userLat, userLon, userElevMsl, userHdgTrue, userSpeedMps);
     LogInfo("PlaceScenario: usuario en lat=%.5f lon=%.5f elev=%.1fm hdg=%.1f.",

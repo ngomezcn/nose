@@ -895,7 +895,12 @@ public sealed class InterceptSequence
             // Sobra velocidad sobre la pedida -> aerofrenos, proporcional al
             // exceso. En persecucion la pedida ES el maximo, asi que esto da
             // cero solo: no hace falta preguntar por la fase.
-            float sbWant = Math.Clamp((st.IasKt - iasCmd - SpeedbrakeDeadbandKt) / SpeedbrakeSpanKt,
+            // En formacion la banda muerta de 12 kt dejaba que el avion pasara
+            // 30 kt del blanco antes de frenar (oscilacion larga): se estrecha.
+            bool tight = _phase == InterceptPhase.Station;
+            float sbDead = tight ? SpeedbrakeDeadbandStationKt : SpeedbrakeDeadbandKt;
+            float sbSpan = tight ? SpeedbrakeSpanStationKt : SpeedbrakeSpanKt;
+            float sbWant = Math.Clamp((st.IasKt - iasCmd - sbDead) / sbSpan,
                                       0f, 1f);
             _speedbrakeRamp.MaxRate = SpeedbrakeRatePerSec;
             _speedbrakeCmd = _speedbrakeRamp.Update(sbWant, dt);
@@ -1294,6 +1299,8 @@ public sealed class InterceptSequence
     private const float SpeedbrakeRatePerSec = 0.8f;
     private const float SpeedbrakeDeadbandKt = 12f;
     private const float SpeedbrakeSpanKt = 50f;
+    private const float SpeedbrakeDeadbandStationKt = 4f;
+    private const float SpeedbrakeSpanStationKt = 20f;
     private const float SlowControlRefreshSeconds = 1f;
 
     // Espera solo si el estado del blanco es desconocido (alabeo sostenido

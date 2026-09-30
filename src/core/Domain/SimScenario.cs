@@ -13,6 +13,9 @@ public enum SimStart
     InterceptAirborne,
     // Igual pero cerca: 5 km y la mitad de diferencia de altura.
     InterceptAirborneClose,
+    // Los dos ya en formacion (caza al ala izquierda del A330), mismo rumbo,
+    // altura y velocidad; el caza mantiene el puesto.
+    Formation,
 }
 
 public sealed record SimStartPlan
@@ -38,6 +41,7 @@ public sealed record SimStartPlan
     // Ordenes que se dan al llegar ScenarioReady.
     public required bool AiRoute { get; init; }
     public required bool UserIntercept { get; init; }
+    public InterceptStation UserStation { get; init; } = InterceptStation.TailHigh;
 
     // Relativo a la raiz de X-Plane. A330 AI viene de serie en XP12.
     public string AiAircraftRelPath { get; init; } = SimScenarios.AiAircraftRelPath;
@@ -75,6 +79,7 @@ public static class SimScenarios
         SimStart.InterceptFromGround => InterceptFromGround,
         SimStart.InterceptAirborne => InterceptAirborne,
         SimStart.InterceptAirborneClose => InterceptAirborneClose,
+        SimStart.Formation => Formation,
         _ => RunwayPair,
     };
 
@@ -93,6 +98,30 @@ public static class SimScenarios
     public static readonly SimStartPlan InterceptFromGround = BuildInterceptFromGround();
     public static readonly SimStartPlan InterceptAirborne = BuildInterceptAirborne();
     public static readonly SimStartPlan InterceptAirborneClose = BuildInterceptAirborneClose();
+    public static readonly SimStartPlan Formation = BuildFormation();
+
+    // Formacion de ala: los dos a FL200 con el mismo rumbo y 200 m/s (~390 kt
+    // TAS). El caza se coloca en "Paralelo izquierda" con las distancias de
+    // fabrica (0,25 x 200 m detras, 100 m a la izquierda, misma altura); el A330
+    // queda por tanto 50 m por delante y 100 m a la derecha del caza.
+    private static SimStartPlan BuildFormation()
+    {
+        const float speed = 200f;
+        (double aLat, double aLon) = Destination(Rwy06RLat, Rwy06RLon, Rwy06Hdg, 50);
+        (double lat, double lon) = Destination(aLat, aLon, Rwy06Hdg + 90.0, 100);
+        return new SimStartPlan
+        {
+            Id = SimStart.Formation,
+            Name = "Formacion en el aire",
+            Label = "Caza en el ala izquierda del A330 (50 m detras, 100 m al lado), FL200, 200 m/s, mismo rumbo",
+            UserLat = Rwy06RLat, UserLon = Rwy06RLon, UserElevMsl = Fl200M,
+            UserHdgTrue = Rwy06Hdg, UserSpeedMps = speed, UserOnGround = false,
+            AiLat = lat, AiLon = lon, AiElevMsl = Fl200M,
+            AiHdgTrue = Rwy06Hdg, AiSpeedMps = speed, AiOnGround = false,
+            AiRoute = true, UserIntercept = true,
+            UserStation = InterceptStation.ParallelLeft,
+        };
+    }
 
     // Como InterceptAirborne pero a 5 km en total (4,33 km delante + 2,5 km a la
     // derecha) y 4.000 ft de diferencia (la mitad de los 8.000 ft del lejano).

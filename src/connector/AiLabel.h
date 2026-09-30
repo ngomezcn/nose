@@ -391,7 +391,7 @@ private:
     }
 
     // Por debajo de estos umbrales no se dibuja el cateto (linea + etiqueta).
-    static constexpr float kTriangleHorizMinMeters = 1000.0f;
+    static constexpr float kTriangleHorizMinMeters = 1500.0f;
     static constexpr float kTriangleVertMinMeters = 150.0f;
 
     void DrawColoredSegment(float sx0, float sy0, float sx1, float sy1,

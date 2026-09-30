@@ -241,6 +241,7 @@ public static class InterceptPlanner
     private const double ExtraPerCross = 0.9;
     private const double ExtraMaxM = 3500.0;
     private const double DirectEntryM = 3500.0;
+    private const double CloseEntryM = 400.0;
     private const double DirectEntryMaxClosureMps = 100.0;
     // Velocidad relativa TOTAL maxima para entrar en Formacion (no solo el cierre
     // sobre el eje: cruzar de lado a 300 m/s tambien atraviesa la estacion).
@@ -271,11 +272,25 @@ public static class InterceptPlanner
     // Tope del cierre relativo mientras se recorren los ultimos km (~136 kt).
     private const double FormationCapMps = 70.0;
     private const double StationTrimMps = 22.0;
-    private const double AlongGain = 0.30;
+    // Ganancias de posicion de la ley de estacion. Con el lazo de velocidad
+    // (retardo ~2 s + rampas + aerofrenos) y el de rumbo/alabeo (~2.5 s) por
+    // dentro, K*T debe quedar bien por debajo de 0.5 o el puesto se oscila:
+    // la caja negra con 0.30/0.25 daba ciclos de ~18 s de +-70 m y +-20 deg de
+    // alabeo, y cruzaba 33 m del blanco.
+    private const double AlongGain = 0.11;
     // Ganancia del cierre sobre la distancia total en la guia inercial: a la
     // entrada de la zona de estacion (~160 m) deja ~24 m/s de cierre.
     private const double FormationCloseGain = 0.15;
-    private const double CrossGain = 0.25;
+    private const double CrossGain = 0.10;
+    // Zona de seguridad alrededor del blanco: dentro, se empuja radialmente
+    // hacia fuera (proporcional a la intrusion) antes de que actue la guardia
+    // dura de la secuencia. Fraccion de la distancia del puesto, con techo.
+    private const double SafeFracOfSlot = 0.6;
+    private const double RouteMaxM = 600.0;
+    private const double SafeMaxM = 90.0;
+    private const double SafeMinM = 15.0;
+    private const double SafePushGain = 0.6;
+    private const double SafePushCapMps = 30.0;
     // Se pierde la formacion si se queda por delante de la estacion mas de esto.
     private const double FormationAheadM = 2000.0;
     // ... pero solo si ademas queda casi alineado con el blanco (riesgo de pasar
@@ -350,7 +365,7 @@ public static class InterceptPlanner
         {
             L = L, Aft = inp.AftM, Right = inp.RightM, Up = inp.UpM,
             Behind = Math.Max(inp.RendezvousBehindM, Math.Abs(inp.AftM) + 600.0),
-            Zone = Math.Clamp(0.6 * Math.Abs(inp.AftM) + 40.0, 80.0, 250.0),
+            Zone = Math.Clamp(0.6 * Math.Abs(inp.AftM) + 40.0, 160.0, 250.0),
         };
 
         PlannerMemory mem = inp.Memory ?? new PlannerMemory();
@@ -400,13 +415,17 @@ public static class InterceptPlanner
         bool slowEnough = relSpeed <= HandoffMaxRelMps;
         bool directOk = inFunnel && dh < DirectEntryM && slowEnough &&
                         vRelAxis <= Math.Min(1.1 * wBrakeNow + 10.0, DirectEntryMaxClosureMps);
+        // Ya pegado al blanco (p.ej. se ordena el puesto desde otra formacion):
+        // no se aleja a hacer un rodeo de kilometros; la ley de formacion
+        // pasa por detras del blanco y respeta la zona segura.
+        bool closeOk = dh < CloseEntryM && slowEnough;
         int stage = mem.Stage;
         if (stage == 0)
         {
             double aRp = (own.E - rpE) * Math.Sin(rpTrk) + (own.N - rpN) * Math.Cos(rpTrk);
             double cRp = (own.E - rpE) * Math.Cos(rpTrk) - (own.N - rpN) * Math.Sin(rpTrk);
             bool alignedAtRp = dRp < TransitDoneM && Math.Abs(cRp) <= Math.Abs(aRp) * TanHandoff + 300.0;
-            if ((alignedAtRp && slowEnough) || directOk) stage = 1;
+            if ((alignedAtRp && slowEnough) || directOk || closeOk) stage = 1;
         }
         else if (dh > x.Behind + 2000.0 || a > FormationFarAheadM ||
                  (a > FormationAheadM && Math.Abs(c) < FormationAheadLatM))
@@ -762,6 +781,22 @@ public static class InterceptPlanner
         OwnLimits L = x.L;
         double rE = fN, rN = -fE;
         GetStationPoint(t, x, out double sE, out double sN, out double sU);
+
+        // Ruta segura al puesto: si la recta hacia el (en el marco del blanco)
+        // pasa por su zona segura, se apunta antes a un punto de paso DETRAS
+        // del blanco, del lado en que ya se esta, y luego al puesto.
+        double slot0 = Math.Sqrt(x.Aft * x.Aft + x.Right * x.Right + x.Up * x.Up);
+        double safe0 = Math.Clamp(SafeFracOfSlot * slot0, SafeMinM, SafeMaxM);
+        double pAlong = a - x.Aft, pCross = c + x.Right;
+        double sAlong = -x.Aft, sCross = x.Right;
+        if (dh < RouteMaxM && SegmentMissM(pAlong, pCross, sAlong, sCross) < safe0 * 1.0)
+        {
+            double vAlong = Math.Min(sAlong, -2.5 * safe0);
+            double vCross = (pCross >= 0.0 ? 1.0 : -1.0) * Math.Max(Math.Abs(pCross), 1.3 * safe0);
+            a = pAlong - vAlong;
+            c = pCross - vCross;
+            dh = Math.Sqrt(a * a + c * c);
+        }
         var cmd = new Cmd
         {
             Regime = dh < x.Zone ? InterceptRegime.Station : InterceptRegime.Formation,
@@ -839,6 +874,27 @@ public static class InterceptPlanner
         double wc = Math.Clamp(-c * CrossGain, -cap * 0.7, cap * 0.7);
 
         double wE = wa * fE + wc * rE, wN = wa * fN + wc * rN;
+
+        // Zona segura: posicion respecto al BLANCO (no a la estacion). Si se
+        // invade, cierre radial hacia fuera sumado a la ley de puesto.
+        double safe = safe0;
+        double tAlong = pAlong, tCross = pCross, tUp = x.Up - dU;
+        double tHor = Math.Sqrt(tAlong * tAlong + tCross * tCross);
+        double tSep = Math.Sqrt(tHor * tHor + tUp * tUp);
+        if (tSep < safe)
+        {
+            double push = Math.Min((safe - tSep) * SafePushGain + 4.0, SafePushCapMps);
+            double ux, uy;
+            if (tHor > 1.0) { ux = tAlong / tHor; uy = tCross / tHor; }
+            else { ux = -1.0; uy = 0.0; }       // encima del blanco: hacia atras
+            // Horizontal (marco del blanco -> ENU): eje = f, lateral = r.
+            wE += push * (ux * fE + uy * rE) * tHor / Math.Max(tSep, 1.0);
+            wN += push * (ux * fN + uy * rN) * tHor / Math.Max(tSep, 1.0);
+            // Si la invasion es sobre todo vertical, se separa en altura.
+            double vPush = push * Math.Sign(tUp == 0.0 ? 1.0 : tUp) * Math.Abs(tUp) / Math.Max(tSep, 1.0);
+            cmd.VyCmd = Math.Clamp(cmd.VyCmd + vPush, -L.MaxDescentMps, L.MaxClimbMps);
+            // Menos aproximacion por detras mientras se invade.
+        }
         // Techo de |v| = Vtgt + cierre de situacion (no Vmax del avion).
         double vCeil = Math.Min(L.VmaxGsMps,
             t.V + InterceptEngagement.MaxClosureMps(rangeT, InterceptSituation.SternNear));
@@ -851,6 +907,16 @@ public static class InterceptPlanner
         // Feed-forward: termino de blanco maniobrante (a poca distancia).
         cmd.PsiDotFF = dh < 4000.0 ? t.Omega : 0.0;
         return cmd;
+    }
+
+    // Distancia minima del origen (el blanco) al segmento p0->p1 (marco del blanco).
+    private static double SegmentMissM(double x0, double y0, double x1, double y1)
+    {
+        double dx = x1 - x0, dy = y1 - y0;
+        double l2 = dx * dx + dy * dy;
+        double u = l2 < 1e-6 ? 0.0 : Math.Clamp(-(x0 * dx + y0 * dy) / l2, 0.0, 1.0);
+        double px = x0 + u * dx, py = y0 + u * dy;
+        return Math.Sqrt(px * px + py * py);
     }
 
     // Rumbo muy opuesto al actual: se gira por el lado que ya se estaba

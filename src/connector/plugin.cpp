@@ -439,7 +439,20 @@ void SendAircraftRoster() {
 
 // --- Flight loop -----------------------------------------------------------
 
-float FlightLoopCallback(float dt, float, int, void*) {
+// Tiempo de SIMULACION desde el frame anterior. El dt que da X-Plane al flight
+// loop es de pared: en pausa (o con sim_speed 0) sigue corriendo y el core, que
+// integra las IAs con ese dt, las movia con el mundo congelado. Con 0 todas las
+// secuencias del core se quedan quietas (todas exigen dt > 0).
+static float SimDt(float wallDt) {
+    static XPLMDataRef paused = XPLMFindDataRef("sim/time/paused");
+    static XPLMDataRef speed = XPLMFindDataRef("sim/time/sim_speed");
+    if (paused && XPLMGetDatai(paused) != 0) return 0.0f;
+    if (speed && XPLMGetDatai(speed) == 0) return 0.0f;
+    return wallDt;
+}
+
+float FlightLoopCallback(float wallDt, float, int, void*) {
+    const float dt = SimDt(wallDt);
     // 1. ¿Sesion nueva? El core que se acaba de conectar no sabe nada de los
     //    ids ni de los holds del anterior, asi que se empieza de cero. Va
     //    ANTES de Poll() para que el HELLO de la sesion nueva no se

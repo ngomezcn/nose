@@ -193,7 +193,36 @@ public partial class ShellWindow {
             rollRateDps: hasControls ? st.RollRateDegPerSec : N,
             adaptation: maneuver ? agent.Maneuvers.AdaptationText
                       : intercept ? agent.Intercept.TelemetryText : "",
-            protection: maneuver ? agent.Maneuvers.ProtectionText : "");
+            protection: maneuver ? agent.Maneuvers.ProtectionText : "",
+            pose: BuildPoseSample(agent));
+    }
+
+    // Columnas extra: pose local, velocidad y ritmo de Tick. Sirven para ver si una
+    // IA va a trompicones (saltos de posicion / huecos entre frames) sin que el
+    // muestreo a 10 Hz lo esconda.
+    private PoseSample BuildPoseSample(AircraftAgent agent)
+    {
+        IAircraftBody body = agent.Body;
+        TickCadenceSummary cadence = agent.Cadence.Drain();
+
+        string mode = body.IsLocal ? "Local"
+                    : body is KinematicAiBody kin
+                        ? (kin.Mode == KinematicAiBody.BodyMode.Simulating ? "Simulando" : "Observando")
+                        : "?";
+        string adaptation = body is KinematicAiBody k2 ? k2.AdaptationText : "";
+
+        float headingObs = float.NaN;
+        int slot = body.XplmIndex - 1;
+        if (slot >= 0 && slot < Datarefs.OtherPlaneSlots && _d.OtherHeadingDeg[slot].HasValue)
+            headingObs = _d.OtherHeadingDeg[slot].Float;
+
+        if (!body.TryGetKinematics(out Kinematics kn))
+            return PoseSample.None with { Body = mode, Cadence = cadence,
+                                          HeadingObservedDeg = headingObs, PhysicsAdaptation = adaptation };
+
+        return new PoseSample(mode, kn.X, kn.Y, kn.Z, kn.Vx, kn.Vy, kn.Vz,
+                              (float)(kn.GroundSpeedMps * MpsToKnots), cadence,
+                              headingObs, adaptation);
     }
 
     // Marca cada boton de accion con lo que va a pasar si se pulsa: normal si

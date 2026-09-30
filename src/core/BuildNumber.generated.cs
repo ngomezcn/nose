@@ -3,5 +3,5 @@
 // vive en tools\BUILD_NUMBER.txt. Se ve en la cabecera del core.
 namespace AICopilotCore;
 internal static class BuildInfo {
-    public const string BuildNumber = "221";
+    public const string BuildNumber = "230";
 }

@@ -259,13 +259,15 @@ public sealed class AircraftAgent
     // Este avion intercepta a targetIdx. Un solo objetivo activo: si ya
     // intercepta a otro se sustituye. El registro compartido rechaza los cruces
     // (A->B con B->A) con un mensaje claro, sin tocar lo que el avion ya hacia.
+    // alreadyFlying: el llamador sabe que el avion esta en el aire (inicio de
+    // simulacion en vuelo) aunque la telemetria aun diga IAS 0, p. ej. en pausa.
     public bool StartIntercept(int targetIdx, InterceptStation station, string label,
-                               out string error)
+                               out string error, bool alreadyFlying = false)
     {
         if (!CheckConnected(out error)) return false;
 
         Body.Sense();
-        bool needsTakeoff = Intercept.NeedsOwnTakeoff();
+        bool needsTakeoff = !alreadyFlying && Intercept.NeedsOwnTakeoff();
 
         if (needsTakeoff && !_registry.TryRegister(XplmIndex, targetIdx, out error))
             return false;   // la intencion pendiente tambien cuenta para el registro
@@ -300,7 +302,8 @@ public sealed class AircraftAgent
 
         ClearInterceptPending(keepRegistration: false);
         if (Takeoff.IsRunning) Takeoff.Abort();
-        if (!Intercept.Start(targetIdx, station, label, out string refusal))
+        if (!Intercept.Start(targetIdx, station, label, out string refusal,
+                             afterOwnTakeoff: alreadyFlying))
         {
             error = refusal;
             return false;
@@ -379,7 +382,12 @@ public sealed class AircraftAgent
         Cruise.Update(dt);
         Intercept.Update(dt);
         Body.Step(dt);
+        bool hasKin = Body.TryGetKinematics(out Kinematics k);
+        Cadence.Observe(dt, hasKin, k);
     }
+
+    // Ritmo de Tick y saltos de posicion, para la caja negra (ver TickCadence).
+    public TickCadence Cadence { get; } = new();
 
     private void ProcessPending()
     {
