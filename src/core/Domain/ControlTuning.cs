@@ -340,38 +340,65 @@ public sealed class ControlTuning
     // hardcodeados antes de que existiera esta clase).
     // --- Interceptacion (InterceptSequence) ---------------------------------
     //
-    // Donde se coloca el avion respecto al blanco. Los tres numeros son la
-    // ESCALA de la formacion, no la posicion: cada posicion del catalogo
-    // (Domain/Intercept.cs) los multiplica por sus propios factores, asi que
-    // bajar la distancia a 120 m encoge la formacion entera y cada posicion
-    // sigue pareciendose a si misma.
-    //
-    // 200 m de fabrica es la distancia de una interceptacion visual real:
-    // lo bastante cerca para leer matriculas y distintivos, lo bastante lejos
-    // para caber dentro de un viraje del otro avion sin tener que romper.
-    private float _interceptDistanceM = 200f;
-    public float InterceptDistanceM
+    // Cada puesto del catalogo (Domain/Intercept.cs) tiene SU PROPIA
+    // configuracion de distancias: metros por detras del blanco, separacion
+    // lateral y separacion vertical (en modulo; el lado / signo vertical lo
+    // pone el puesto). Se leen cada frame, asi que un cambio se aplica en
+    // caliente, incluso con la interceptacion en marcha.
+    public sealed record StationOffsets(float AftM, float LateralM, float VerticalM);
+
+    private static readonly StationOffsets[] StationDefaults =
     {
-        get => _interceptDistanceM;
-        // El suelo de 30 m no es un gusto: por debajo, el error normal del
-        // lazo de control ya es del tamano de la separacion pedida.
-        set => _interceptDistanceM = Math.Clamp(value, 30f, 2000f);
+        /* TailHigh      */ new(200f, 0f, 40f),
+        /* ParallelRight */ new(50f, 100f, 0f),
+        /* ParallelLeft  */ new(50f, 100f, 0f),
+        /* Above         */ new(100f, 0f, 80f),
+        /* Below         */ new(100f, 0f, 80f),
+    };
+
+    private readonly StationOffsets[] _stationOffsets = (StationOffsets[])StationDefaults.Clone();
+
+    public StationOffsets GetStationOffsets(InterceptStation id) =>
+        Volatile.Read(ref _stationOffsets[(int)id]);
+
+    public void SetStationOffsets(InterceptStation id, float aftM, float lateralM, float verticalM) =>
+        Volatile.Write(ref _stationOffsets[(int)id], new StationOffsets(
+            Math.Clamp(aftM, 0f, 2000f),
+            Math.Clamp(lateralM, 0f, 1000f),
+            Math.Clamp(verticalM, 0f, 500f)));
+
+    // Zona de seguridad alrededor del blanco: cilindro de radio horizontal y
+    // semialtura vertical. Dentro, el planner empuja hacia fuera y la
+    // secuencia frena / abre aerofrenos.
+    private float _safeHorizontalM = 25f;
+    public float SafeHorizontalM
+    {
+        get => _safeHorizontalM;
+        set => _safeHorizontalM = Math.Clamp(value, 5f, 300f);
     }
 
-    // Separacion lateral de las posiciones "paralelo".
-    private float _interceptLateralM = 100f;
-    public float InterceptLateralM
+    private float _safeVerticalM = 15f;
+    public float SafeVerticalM
     {
-        get => _interceptLateralM;
-        set => _interceptLateralM = Math.Clamp(value, 15f, 1000f);
+        get => _safeVerticalM;
+        set => _safeVerticalM = Math.Clamp(value, 2f, 150f);
     }
 
-    // Separacion vertical de "cola alta" (y la mitad de la de arriba/abajo).
-    private float _interceptVerticalM = 40f;
-    public float InterceptVerticalM
+    // Puesto resuelto a (atras, derecha, arriba) con signo, listo para la
+    // geometria. Un puesto configurado DENTRO de la zona de seguridad se
+    // aleja (hacia atras) hasta su borde + 30 %: no tiene sentido pedir
+    // formar en un sitio que el propio guiado esta empujando a abandonar.
+    public (float Aft, float Right, float Up) ResolveStation(InterceptStation id)
     {
-        get => _interceptVerticalM;
-        set => _interceptVerticalM = Math.Clamp(value, 0f, 500f);
+        InterceptStationDef def = InterceptCatalog.Get(id);
+        StationOffsets o = GetStationOffsets(id);
+        float aft = o.AftM;
+        float right = Math.Sign(def.RightFactor) * o.LateralM;
+        float up = Math.Sign(def.UpFactor) * o.VerticalM;
+        float minH = SafeHorizontalM * 1.3f;
+        if (MathF.Abs(up) < SafeVerticalM * 1.3f && MathF.Sqrt(aft * aft + right * right) < minH)
+            aft = MathF.Sqrt(MathF.Max(minH * minH - right * right, 0f));
+        return (aft, right, up);
     }
 
     public void ResetToDefaults()
@@ -416,8 +443,8 @@ public sealed class ControlTuning
         MinTargetIasKt = 130f;
         MaxTargetIasKt = 650f;
 
-        InterceptDistanceM = 200f;
-        InterceptLateralM = 100f;
-        InterceptVerticalM = 40f;
+        for (int i = 0; i < StationDefaults.Length; i++) _stationOffsets[i] = StationDefaults[i];
+        SafeHorizontalM = 25f;
+        SafeVerticalM = 15f;
     }
 }

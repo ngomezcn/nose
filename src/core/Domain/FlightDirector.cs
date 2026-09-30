@@ -159,6 +159,38 @@ public sealed class FlightDirector
         return a.StartManeuver(kind, force, out error, out adaptation);
     }
 
+    public bool RequestRouteTurn(ManeuverKind kind, out string error)
+    {
+        AircraftAgent? a = Focused;
+        if (a is null)
+        {
+            error = GlobalFocusError;
+            return false;
+        }
+        return a.RequestRouteTurn(kind, out error);
+    }
+
+    public bool NudgeRouteAltitude(float deltaFt, out string error)
+    {
+        AircraftAgent? a = Focused;
+        if (a is null)
+        {
+            error = GlobalFocusError;
+            return false;
+        }
+        return a.NudgeRouteAltitude(deltaFt, out error);
+    }
+
+    // Tipo de vuelo del panel izquierdo: aplica al crucero en marcha o al
+    // pendiente tras despegue. Sin ruta activa no hace nada (preferencia UI).
+    public bool SetCruiseMode(CruiseMode mode, out string appliedAs)
+    {
+        appliedAs = "";
+        AircraftAgent? a = Focused;
+        if (a is null) return false;
+        return a.SetCruiseMode(mode, out appliedAs);
+    }
+
     // El avion en foco es el interceptor; xplmIndex es el blanco.
     public bool StartIntercept(int xplmIndex, InterceptStation station, string label,
                                out string error)

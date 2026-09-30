@@ -123,6 +123,10 @@ public sealed record InterceptPlanInput
     public double AftM { get; init; } = 200.0;
     public double RightM { get; init; }
     public double UpM { get; init; } = 40.0;
+    // Zona de seguridad alrededor del blanco (cilindro): radio horizontal y
+    // semialtura, en metros.
+    public double SafeHorizM { get; init; } = 25.0;
+    public double SafeVertM { get; init; } = 15.0;
     // Punto de reunion: metros detras del blanco sobre su vector de cola.
     public double RendezvousBehindM { get; init; } = 3000.0;
     public OwnLimits Limits { get; init; } = OwnLimits.F14;
@@ -284,14 +288,11 @@ public static class InterceptPlanner
     private const double CrossGain = 0.10;
     // Zona de seguridad alrededor del blanco: dentro, se empuja radialmente
     // hacia fuera (proporcional a la intrusion) antes de que actue la guardia
-    // dura de la secuencia. Fraccion de la distancia del puesto, con techo.
-    private const double SafeFracOfSlot = 0.6;
+    // dura de la secuencia. Radio/altura: ControlTuning.SafeHorizontalM/SafeVerticalM.
     private const double RouteMaxM = 600.0;
     private const double CrossLinearM = 60.0;
     private const double CrossAccelMps2 = 2.0;
-    private const double SafeMaxM = 90.0;
-    private const double SafeMinM = 15.0;
-    private const double SafePushGain = 0.6;
+    private const double SafePushScaleMps = 40.0;
     private const double SafePushCapMps = 30.0;
     // Se pierde la formacion si se queda por delante de la estacion mas de esto.
     private const double FormationAheadM = 2000.0;
@@ -319,7 +320,7 @@ public static class InterceptPlanner
     private struct Ctx
     {
         public OwnLimits L;
-        public double Aft, Right, Up, Behind, Zone;
+        public double Aft, Right, Up, Behind, Zone, SafeH, SafeV;
         // Ancho del pasillo lateral (0 = RP en eje). Se reduce al quedar detras.
         public double CorridorW;
     }
@@ -366,6 +367,7 @@ public static class InterceptPlanner
         Ctx x = new()
         {
             L = L, Aft = inp.AftM, Right = inp.RightM, Up = inp.UpM,
+            SafeH = Math.Max(inp.SafeHorizM, 1.0), SafeV = Math.Max(inp.SafeVertM, 1.0),
             Behind = Math.Max(inp.RendezvousBehindM, Math.Abs(inp.AftM) + 600.0),
             Zone = Math.Clamp(0.6 * Math.Abs(inp.AftM) + 40.0, 160.0, 250.0),
         };
@@ -787,20 +789,18 @@ public static class InterceptPlanner
         // Ruta segura al puesto: si la recta hacia el (en el marco del blanco)
         // pasa por su zona segura, se apunta antes a un punto de paso DETRAS
         // del blanco, del lado en que ya se esta, y luego al puesto.
-        double slot0 = Math.Sqrt(x.Aft * x.Aft + x.Right * x.Right + x.Up * x.Up);
-        double safe0 = Math.Clamp(SafeFracOfSlot * slot0, SafeMinM, SafeMaxM);
+        double clear = 1.5 * x.SafeH;
         double pAlong = a - x.Aft, pCross = c + x.Right;
         double sAlong = -x.Aft, sCross = x.Right;
-        if (dh < RouteMaxM && SegmentMissM(pAlong, pCross, sAlong, sCross) < safe0 * 1.0)
+        if (dh < RouteMaxM && SegmentMissM(pAlong, pCross, sAlong, sCross) < clear)
         {
-            // Punto de paso lo mas cerca posible: justo detras del blanco
-            // (1.5 radios seguros). Si ya se esta por detras de su travesano se
-            // corta directo hacia el eje; si se esta por delante, se sigue del
-            // lado actual hasta quedar detras.
-            double vAlong = Math.Min(sAlong, -1.5 * safe0);
+            // Punto de paso lo mas cerca posible: justo detras del blanco. Si ya
+            // se esta por detras de su travesano se corta directo hacia el eje;
+            // si se esta por delante, se sigue del lado actual hasta quedar detras.
+            double vAlong = Math.Min(sAlong, -1.5 * clear);
             double vCross = 0.0;
-            if (SegmentMissM(pAlong, pCross, vAlong, vCross) < safe0)
-                vCross = (pCross >= 0.0 ? 1.0 : -1.0) * Math.Max(Math.Abs(pCross), 1.3 * safe0);
+            if (SegmentMissM(pAlong, pCross, vAlong, vCross) < clear)
+                vCross = (pCross >= 0.0 ? 1.0 : -1.0) * Math.Max(Math.Abs(pCross), 1.3 * clear);
             a = pAlong - vAlong;
             c = pCross - vCross;
             dh = Math.Sqrt(a * a + c * c);
@@ -890,25 +890,25 @@ public static class InterceptPlanner
 
         double wE = wa * fE + wc * rE, wN = wa * fN + wc * rN;
 
-        // Zona segura: posicion respecto al BLANCO (no a la estacion). Si se
-        // invade, cierre radial hacia fuera sumado a la ley de puesto.
-        double safe = safe0;
-        double tAlong = pAlong, tCross = pCross, tUp = x.Up - dU;
-        double tHor = Math.Sqrt(tAlong * tAlong + tCross * tCross);
-        double tSep = Math.Sqrt(tHor * tHor + tUp * tUp);
-        if (tSep < safe)
+        // Zona segura: cilindro alrededor del BLANCO (no de la estacion), de
+        // radio SafeH y semialtura SafeV. Se mide con una norma elipsoidal
+        // (d<1 = dentro); si se invade, cierre hacia fuera sumado a la ley de
+        // puesto, repartido entre horizontal y vertical segun por donde se entre.
+        double tUp = x.Up - dU;
+        double tHor = Math.Sqrt(pAlong * pAlong + pCross * pCross);
+        double hN = tHor / x.SafeH, vN = Math.Abs(tUp) / x.SafeV;
+        double dN = Math.Sqrt(hN * hN + vN * vN);
+        if (dN < 1.0)
         {
-            double push = Math.Min((safe - tSep) * SafePushGain + 4.0, SafePushCapMps);
-            double ux, uy;
-            if (tHor > 1.0) { ux = tAlong / tHor; uy = tCross / tHor; }
-            else { ux = -1.0; uy = 0.0; }       // encima del blanco: hacia atras
-            // Horizontal (marco del blanco -> ENU): eje = f, lateral = r.
-            wE += push * (ux * fE + uy * rE) * tHor / Math.Max(tSep, 1.0);
-            wN += push * (ux * fN + uy * rN) * tHor / Math.Max(tSep, 1.0);
-            // Si la invasion es sobre todo vertical, se separa en altura.
-            double vPush = push * Math.Sign(tUp == 0.0 ? 1.0 : tUp) * Math.Abs(tUp) / Math.Max(tSep, 1.0);
-            cmd.VyCmd = Math.Clamp(cmd.VyCmd + vPush, -L.MaxDescentMps, L.MaxClimbMps);
-            // Menos aproximacion por detras mientras se invade.
+            double push = Math.Min((1.0 - dN) * SafePushScaleMps + 4.0, SafePushCapMps);
+            double ux = -1.0, uy = 0.0;                 // encima del blanco: hacia atras
+            if (tHor > 1.0) { ux = pAlong / tHor; uy = pCross / tHor; }
+            double hShare = dN < 1e-6 ? 1.0 : hN / dN;
+            double vShare = dN < 1e-6 ? 0.0 : vN / dN;
+            wE += push * hShare * (ux * fE + uy * rE);
+            wN += push * hShare * (ux * fN + uy * rN);
+            cmd.VyCmd = Math.Clamp(cmd.VyCmd + push * vShare * (tUp >= 0.0 ? 1.0 : -1.0),
+                                   -L.MaxDescentMps, L.MaxClimbMps);
         }
         // Techo de |v| = Vtgt + cierre de situacion (no Vmax del avion).
         double vCeil = Math.Min(L.VmaxGsMps,

@@ -97,6 +97,7 @@ public partial class ShellWindow {
     {
         _ = connected;
         ModeText = "Vista global";
+        SyncRoutePanelFromFocus(null);
         FlightText = "";
         AttitudeText = "";
         ControlsText = "";
@@ -124,6 +125,7 @@ public partial class ShellWindow {
         string gearObj = t.GearTargetKnown ? (t.GearDownCommanded ? "abajo" : "arriba") : Dash;
 
         ModeText = view.ModeText;
+        SyncRoutePanelFromFocus(view);
 
         float thrShown = float.IsNaN(t.Throttle01) ? float.NaN : t.Throttle01 * 100f;
         FlightText =

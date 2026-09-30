@@ -111,6 +111,7 @@ public sealed class InterceptSequence
     // PlanPeriodSec (cada llamada simula decenas de candidatos por delante) y
     // entre llamadas se reutiliza el ultimo plan.
     private readonly TurnRateEstimator _turnEst = new();
+    private bool _insideSafety;
     private readonly SlewLimiter _iasCmdRamp = new(IasCmdRateKtPerSec);
     private PlannerMemory? _plannerMem;
     private InterceptPlan? _plan;
@@ -323,7 +324,7 @@ public sealed class InterceptSequence
                 : $"Inicio: interceptar {label} — {def.Label}";
             LogAction(BlackBoxSnap.Join(
                 prelude,
-                def.Summary(_tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM),
+                StationSummary(station),
                 InterceptConfigExtras(def),
                 BlackBoxSnap.Of(own)));
             _repositioning = false;
@@ -383,8 +384,7 @@ public sealed class InterceptSequence
             _planTimer = 99f;
             LogAction(BlackBoxSnap.Join(
                 $"Interceptacion: cambio de estacion → {def.Label}",
-                def.Summary(_tuning.InterceptDistanceM, _tuning.InterceptLateralM,
-                            _tuning.InterceptVerticalM),
+                StationSummary(station),
                 near
                     ? "transicion: cruce rapido por detras del blanco con zona segura"
                     : "en persecucion: el planificador apunta ya al puesto nuevo",
@@ -598,8 +598,7 @@ public sealed class InterceptSequence
 
         // --- Geometria ------------------------------------------------------
         InterceptStationDef def = InterceptCatalog.Get(_station);
-        (float aft, float right, float up) = def.Resolve(
-            _tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM);
+        (float aft, float right, float up) = _tuning.ResolveStation(_station);
         // Blanco parado: el puesto de formacion se eleva a ~2 km para que el
         // interceptor no intente "formar" a ras de pista. El offset del
         // catalogo (p. ej. Abajo, UpFactor negativo) no puede dejar el puesto
@@ -622,6 +621,10 @@ public sealed class InterceptSequence
         CrossM = now.CrossM;
         VerticalM = now.UpM;
         ClosureKt = ClosureRateKt(t, ownX, ownY, ownZ, ownVx, ownVy, ownVz, now.SeparationM);
+        // Zona de seguridad (cilindro alrededor del AVION blanco).
+        _insideSafety =
+            Math.Sqrt((t.X - ownX) * (t.X - ownX) + (t.Z - ownZ) * (t.Z - ownZ)) < _tuning.SafeHorizontalM &&
+            Math.Abs(t.Y - ownY) < _tuning.SafeVerticalM;
 
         // --- Plan de aproximacion -----------------------------------------
         double tgtTurnDegS = _turnEst.Update(t.TrackDeg, dt, t.GroundSpeedMps);
@@ -653,6 +656,7 @@ public sealed class InterceptSequence
                 TgtHeadingDeg = t.HeadingDeg,
                 TgtTurnRateDegPerS = tgtTurnDegS,
                 AftM = aft, RightM = right, UpM = up,
+                SafeHorizM = _tuning.SafeHorizontalM, SafeVertM = _tuning.SafeVerticalM,
                 Limits = limits,
                 IasPerGs = iasPerGs0,
                 DtSec = _planTimer,
@@ -696,7 +700,15 @@ public sealed class InterceptSequence
         float bankFf = plan.Regime == InterceptRegime.Station
             ? (float)(Math.Atan(ownGsMps * tgtTurnDegS * F14Aero.Deg2Rad / 9.81) * F14Aero.Rad2Deg)
             : 0f;
-        float bankRaw = Math.Clamp(TrackToBankGain * trackErr + bankFf, -maxBank, maxBank);
+        // En formacion el lazo rumbo->alabeo con 1.2 deg/deg era demasiado lento
+        // (constante de tiempo ~17 s a 200 m/s: 4 deg de error daban 5 deg de
+        // alabeo y un cambio de puesto de 200 m tardaba 35 s). La ganancia se
+        // escala con la velocidad para una constante de tiempo fija.
+        float trackGain = TrackToBankGain;
+        if (plan.Regime is InterceptRegime.Station or InterceptRegime.Formation)
+            trackGain = Math.Clamp((float)ownGsMps / (9.81f * FormationTrackTauSec),
+                                   TrackToBankGain, FormationTrackGainMax);
+        float bankRaw = Math.Clamp(trackGain * trackErr + bankFf, -maxBank, maxBank);
         // Alivio de G: el backstop de las maniobras ABORTA, pero aqui abortar
         // seria soltar el avion en mitad de una persecucion. Se afloja el
         // alabeo, que es de donde sale la G en un viraje, y se avisa.
@@ -861,7 +873,7 @@ public sealed class InterceptSequence
         // Guardia de proximidad: por debajo de esto ya no es una formacion,
         // es un riesgo de colision. Se pide ir mas despacio que el blanco
         // pase lo que pase con la geometria, para abrirse por detras.
-        if (now.SeparationM < MinSeparationM)
+        if (_insideSafety)
         {
             if (!float.IsNaN(targetIasEquivalent))
                 iasCmd = MathF.Min(iasCmd, targetIasEquivalent - BackOffKt);
@@ -890,7 +902,7 @@ public sealed class InterceptSequence
         iasCmd = Math.Clamp(iasCmd, minSafeNow, maxIas);
 
         // --- Aerofrenos: para quitar el exceso sin tocar la actitud ----------
-        if (now.SeparationM >= MinSeparationM)
+        if (!_insideSafety)
         {
             // Sobra velocidad sobre la pedida -> aerofrenos, proporcional al
             // exceso. En persecucion la pedida ES el maximo, asi que esto da
@@ -1009,8 +1021,7 @@ public sealed class InterceptSequence
                              double ownVx, double ownVy, double ownVz)
     {
         InterceptStationDef def = InterceptCatalog.Get(_station);
-        (float aft, float right, float up) = def.Resolve(
-            _tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM);
+        (float aft, float right, float up) = _tuning.ResolveStation(_station);
         InterceptGeometry g = InterceptGeometry.Solve(ownX, ownY, ownZ, t, aft, right, up, 0.0);
         RangeM = g.RangeM;
         SeparationM = g.SeparationM;
@@ -1111,9 +1122,14 @@ public sealed class InterceptSequence
             BlackBoxSnap.Short(own)));
     }
 
+    private string StationSummary(InterceptStation id)
+    {
+        (float aft, float right, float up) = _tuning.ResolveStation(id);
+        return InterceptStationDef.Summary(aft, right, up);
+    }
+
     private string InterceptConfigExtras(InterceptStationDef _) =>
-        $"cfg dist={_tuning.InterceptDistanceM:0}m lat={_tuning.InterceptLateralM:0}m " +
-        $"vert={_tuning.InterceptVerticalM:0}m · Gsoft={_tuning.GSoftHigh:0.0} " +
+        $"cfg {StationSummary(_station)} · zona segura {_tuning.SafeHorizontalM:0}m/{_tuning.SafeVerticalM:0}m · Gsoft={_tuning.GSoftHigh:0.0} " +
         $"sueloAGL={_tuning.TerrainFloorAglFt:0}ft · " +
         $"umbrales cierre<{ClosingEnterM:0}m formacion<{StationEnterM:0}m salida>{StationExitM:0}m";
 
@@ -1240,7 +1256,6 @@ public sealed class InterceptSequence
 
     // Separacion minima con el AVION (no con el puesto) antes de considerarlo
     // riesgo de colision y abrirse por detras.
-    private const double MinSeparationM = 60.0;
     private const float BackOffKt = 20f;
 
     // Limites por fase: alabeo (deg), V/S (fpm) y cuanto se adelanta el punto
@@ -1261,6 +1276,8 @@ public sealed class InterceptSequence
     private const float GBudgetFraction = 0.85f;
     private const float GReliefFactor = 0.6f;
 
+    private const float FormationTrackTauSec = 4.5f;
+    private const float FormationTrackGainMax = 6f;
     private const float TrackToBankGain = 1.2f;   // deg de alabeo por deg de error de rumbo
     private const float MaxPitchDeg = 45f;
     private const float VerticalTauSec = 6f;      // en cuantos segundos se quiere borrar el error vertical

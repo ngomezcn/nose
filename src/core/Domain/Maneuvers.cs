@@ -306,18 +306,20 @@ public static class ManeuverCatalog
         // y el planificador pone el morro que haga falta a cada velocidad.
         new ManeuverDefinition(ManeuverKind.TurnGentleLeft, "Virar suave, izquierda",
             ManeuverCategory.Virajes, ManeuverMode.AttitudeHold,
-            "Viraje de crucero a ~20 deg de alabeo, manteniendo altitud y velocidad.",
+            "Viraje de crucero a ~20 deg de alabeo, manteniendo altitud y velocidad. " +
+            "Entrada lenta (~8 deg/s), estilo piloto comercial.",
             BankTargetDeg: -20f, ThrottleTarget: 0.75f,
             MinIasKt: 170f, MaxIasKt: 600f,
-            GBudgetMax: 2f, GPushMin: 0.6f, GOnsetGPerSec: 0.5f, BankRateCapDegPerSec: 30f,
+            GBudgetMax: 2f, GPushMin: 0.6f, GOnsetGPerSec: 0.35f, BankRateCapDegPerSec: 8f,
             HoldsEntryAltitude: true, HoldsEntryIas: true),
 
         new ManeuverDefinition(ManeuverKind.TurnGentleRight, "Virar suave, derecha",
             ManeuverCategory.Virajes, ManeuverMode.AttitudeHold,
-            "Viraje de crucero a ~20 deg de alabeo, manteniendo altitud y velocidad.",
+            "Viraje de crucero a ~20 deg de alabeo, manteniendo altitud y velocidad. " +
+            "Entrada lenta (~8 deg/s), estilo piloto comercial.",
             BankTargetDeg: 20f, ThrottleTarget: 0.75f,
             MinIasKt: 170f, MaxIasKt: 600f,
-            GBudgetMax: 2f, GPushMin: 0.6f, GOnsetGPerSec: 0.5f, BankRateCapDegPerSec: 30f,
+            GBudgetMax: 2f, GPushMin: 0.6f, GOnsetGPerSec: 0.35f, BankRateCapDegPerSec: 8f,
             HoldsEntryAltitude: true, HoldsEntryIas: true),
 
         // 60 deg de alabeo son 2 g exactos. El ala los da a partir de ~211 kt;

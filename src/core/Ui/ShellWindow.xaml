@@ -23,7 +23,7 @@
                             UseAeroCaptionButtons="False"/>
     </shell:WindowChrome.WindowChrome>
 
-    <Grid>
+    <Grid x:Name="ShellRoot">
         <Grid.RowDefinitions>
             <RowDefinition Height="32"/>
             <RowDefinition Height="*"/>
@@ -162,7 +162,7 @@
                             Background="{StaticResource InputBg}"
                             BorderBrush="{StaticResource ShellBorder}" BorderThickness="1"
                             CornerRadius="4" Padding="10,8"
-                            ToolTip="Elige GLOBAL (vista aerea / zona) o un avion (despegue, crucero, acciones).">
+                            ToolTip="Elige GLOBAL (vista aerea / zona) o un avion (ordenes). Un clic no mueve la camara; doble clic en la lista o 'Poner en foco' si.">
                         <StackPanel>
                             <TextBlock Text="EN FOCO" Style="{StaticResource SectionHeader}" Margin="0,0,0,6"/>
                             <ToggleButton x:Name="FocusPickerToggle"
@@ -170,7 +170,7 @@
                                           IsChecked="{Binding FocusPickerOpen, Mode=TwoWay}"
                                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
                                           Margin="0,2" Padding="10,8"
-                                          ToolTip="GLOBAL = zona. LOCAL / IA = ordenes de vuelo y caja negra.">
+                                          ToolTip="Clic = foco de ordenes sin cambiar la vista. GLOBAL reaplica vista aerea. Doble clic en Aviones / Poner en foco = camara.">
                                 <DockPanel>
                                     <TextBlock DockPanel.Dock="Right" Text="&#xE70D;"
                                                FontFamily="Segoe MDL2 Assets" FontSize="10"
@@ -265,7 +265,7 @@
                                      Background="Transparent" BorderThickness="0" Padding="0"
                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                      MouseDoubleClick="OnFocusAircraftClick"
-                                     ToolTip="Selecciona GLOBAL o un avion. Doble clic = poner en foco. 'Seguir con camara' solo en IA.">
+                                     ToolTip="Clic = selecciona. Doble clic = poner en foco y cambiar camara (chase en IA). 'Seguir con camara' solo en IA.">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel>
@@ -380,7 +380,7 @@
                             <Button Style="{StaticResource AccentButton}" Content="Poner en foco"
                                     Click="OnFocusAircraftClick" HorizontalAlignment="Stretch"
                                     Margin="0,6,0,2"
-                                    ToolTip="GLOBAL: vista aerea + opciones de zona. Un avion: ordenes de despegue/crucero/acciones."/>
+                                    ToolTip="Aplica el foco y mueve la camara (vista aerea en GLOBAL; chase en IA; soltar en local). El desplegable EN FOCO solo cambia ordenes."/>
                             <Button Style="{StaticResource AccentButton}" Content="Seguir con camara"
                                     Click="OnFollowCameraClick" HorizontalAlignment="Stretch"
                                     Margin="0,2"
@@ -440,6 +440,75 @@
                             <TextBlock Text="{Binding FlightModeSummary}" Margin="0,8,0,0" TextWrapping="Wrap"
                                        FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
                                        Foreground="{StaticResource TextDim}"/>
+
+                            <TextBlock Text="ACCIONES EN RUTA" Style="{StaticResource SectionHeader}"/>
+                            <TextBlock Text="{Binding RouteActionsHint}"
+                                       Margin="0,0,0,6" TextWrapping="Wrap"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="11.5"
+                                       Foreground="{StaticResource TextDim}"/>
+
+                            <TextBlock Text="Giro abierto" Margin="0,2,0,2"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="11.5"
+                                       Foreground="{StaticResource TextDim}"/>
+                            <Grid Margin="0,0,0,4" IsEnabled="{Binding RouteActionsEnabled}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Style="{StaticResource ToolButton}"
+                                        Content="Izquierda" Tag="TurnGentleLeft"
+                                        Click="OnRouteActionClick" HorizontalAlignment="Stretch"
+                                        FontSize="11.5" Margin="0,1"
+                                        ToolTip="Viraje suave (~20° alabeo, entrada lenta) ~90° a la izquierda."/>
+                                <Button Grid.Column="2" Style="{StaticResource ToolButton}"
+                                        Content="Derecha" Tag="TurnGentleRight"
+                                        Click="OnRouteActionClick" HorizontalAlignment="Stretch"
+                                        FontSize="11.5" Margin="0,1"
+                                        ToolTip="Viraje suave (~20° alabeo, entrada lenta) ~90° a la derecha."/>
+                            </Grid>
+
+                            <TextBlock Text="Giro cerrado" Margin="0,4,0,2"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="11.5"
+                                       Foreground="{StaticResource TextDim}"/>
+                            <Grid Margin="0,0,0,4" IsEnabled="{Binding RouteActionsEnabled}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Style="{StaticResource ToolButton}"
+                                        Content="Izquierda" Tag="TurnTightLeft"
+                                        Click="OnRouteActionClick" HorizontalAlignment="Stretch"
+                                        FontSize="11.5" Margin="0,1"
+                                        ToolTip="Viraje cerrado (~60° / 2 g) ~90° a la izquierda."/>
+                                <Button Grid.Column="2" Style="{StaticResource ToolButton}"
+                                        Content="Derecha" Tag="TurnTightRight"
+                                        Click="OnRouteActionClick" HorizontalAlignment="Stretch"
+                                        FontSize="11.5" Margin="0,1"
+                                        ToolTip="Viraje cerrado (~60° / 2 g) ~90° a la derecha."/>
+                            </Grid>
+
+                            <TextBlock Text="Altitud objetivo" Margin="0,4,0,2"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="11.5"
+                                       Foreground="{StaticResource TextDim}"/>
+                            <Grid Margin="0,0,0,4" IsEnabled="{Binding RouteActionsEnabled}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="6"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Grid.Column="0" Style="{StaticResource ToolButton}"
+                                        Content="−1.000 ft" Tag="AltDown1000"
+                                        Click="OnRouteActionClick" HorizontalAlignment="Stretch"
+                                        FontSize="11.5" Margin="0,1"
+                                        ToolTip="Baja la altitud objetivo del crucero 1.000 ft."/>
+                                <Button Grid.Column="2" Style="{StaticResource ToolButton}"
+                                        Content="+1.000 ft" Tag="AltUp1000"
+                                        Click="OnRouteActionClick" HorizontalAlignment="Stretch"
+                                        FontSize="11.5" Margin="0,1"
+                                        ToolTip="Sube la altitud objetivo del crucero 1.000 ft."/>
+                            </Grid>
 
                             <TextBlock Text="SECUENCIA" Style="{StaticResource SectionHeader}"/>
                             <TextBlock Text="{Binding SequenceText}" Style="{StaticResource TelemetryText}"
@@ -674,34 +743,64 @@
                                        TextWrapping="Wrap" Style="{StaticResource TelemetryText}"
                                        Foreground="{StaticResource CyanText}"/>
 
-                            <TextBlock Text="SEPARACION (m)" Style="{StaticResource SectionHeader}"/>
-                            <Grid Margin="0,3" ToolTip="Distancia por detras del blanco a la que se coloca el avion. Es la escala de la formacion: el resto de posiciones la usan en proporcion.">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="76"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Distancia (atras)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
-                                         Text="{Binding InterceptDistanceText, UpdateSourceTrigger=PropertyChanged}"/>
-                            </Grid>
-                            <Grid Margin="0,3" ToolTip="Separacion lateral de las posiciones paralelo izquierda/derecha.">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="76"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Lateral (paralelo)" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
-                                         Text="{Binding InterceptLateralText, UpdateSourceTrigger=PropertyChanged}"/>
-                            </Grid>
-                            <Grid Margin="0,3" ToolTip="Separacion vertical de la posicion de cola alta. Arriba y abajo usan el doble.">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="76"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Vertical" Style="{StaticResource FieldLabel}"/>
-                                <TextBox Grid.Column="1" Style="{StaticResource ShellTextBox}"
-                                         Text="{Binding InterceptVerticalText, UpdateSourceTrigger=PropertyChanged}"/>
-                            </Grid>
+                            <TextBlock Text="DISTANCIAS DE ESTE PUESTO" Style="{StaticResource SectionHeader}"/>
+                            <StackPanel Margin="0,3" ToolTip="Metros por detras del blanco. Cada puesto guarda los suyos; se aplica en tiempo real.">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
+                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
+                                               Text="{Binding StationAftM, StringFormat={}{0:0} m}"/>
+                                    <TextBlock Text="Atras del blanco" Style="{StaticResource FieldLabel}"/>
+                                </DockPanel>
+                                <Slider Style="{StaticResource ShellSlider}" Minimum="0" Maximum="500"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding StationAftM, Mode=TwoWay}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,3" Visibility="{Binding StationLateralVisibility}" ToolTip="Separacion lateral de este puesto (el lado lo fija el puesto).">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
+                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
+                                               Text="{Binding StationLateralM, StringFormat={}{0:0} m}"/>
+                                    <TextBlock Text="Lateral" Style="{StaticResource FieldLabel}"/>
+                                </DockPanel>
+                                <Slider Style="{StaticResource ShellSlider}" Minimum="0" Maximum="300"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding StationLateralM, Mode=TwoWay}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,3" Visibility="{Binding StationVerticalVisibility}" ToolTip="Separacion vertical de este puesto (encima/debajo lo fija el puesto).">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
+                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
+                                               Text="{Binding StationVerticalM, StringFormat={}{0:0} m}"/>
+                                    <TextBlock Text="Vertical" Style="{StaticResource FieldLabel}"/>
+                                </DockPanel>
+                                <Slider Style="{StaticResource ShellSlider}" Minimum="0" Maximum="300"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding StationVerticalM, Mode=TwoWay}"/>
+                            </StackPanel>
+
+                            <TextBlock Text="ZONA DE SEGURIDAD" Style="{StaticResource SectionHeader}"/>
+                            <StackPanel Margin="0,3" ToolTip="Radio horizontal alrededor del blanco que nunca se invade. Tiempo real.">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
+                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
+                                               Text="{Binding SafeHorizontalM, StringFormat={}{0:0} m}"/>
+                                    <TextBlock Text="Horizontal (plano)" Style="{StaticResource FieldLabel}"/>
+                                </DockPanel>
+                                <Slider Style="{StaticResource ShellSlider}" Minimum="5" Maximum="100"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding SafeHorizontalM, Mode=TwoWay}"/>
+                            </StackPanel>
+                            <StackPanel Margin="0,3" ToolTip="Semialtura de la zona de seguridad: solo cuenta si ademas se esta dentro del radio horizontal. Tiempo real.">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource TelemetryText}"
+                                               Foreground="{StaticResource CyanText}" Margin="8,0,0,0"
+                                               Text="{Binding SafeVerticalM, StringFormat={}{0:0} m}"/>
+                                    <TextBlock Text="Vertical (altura)" Style="{StaticResource FieldLabel}"/>
+                                </DockPanel>
+                                <Slider Style="{StaticResource ShellSlider}" Minimum="2" Maximum="60"
+                                        TickFrequency="1" IsSnapToTickEnabled="True"
+                                        Value="{Binding SafeVerticalM, Mode=TwoWay}"/>
+                            </StackPanel>
 
                             <TextBlock Text="CONTROL" Style="{StaticResource SectionHeader}"/>
                             <Button Style="{StaticResource AccentButton}" Content="Interceptar"
@@ -1360,6 +1459,21 @@
                     <TextBlock Text="{Binding BuildText}" Style="{StaticResource StatusText}"/>
                 </StackPanel>
             </Grid>
+        </Border>
+
+        <!-- Tooltip inline (mismo HWND del shell). Los ToolTip WPF abren un
+             Popup HWND owned y Windows sube el shell por encima de X-Plane:
+             el hueco se ve negro. Misma idea que el desplegable EN FOCO. -->
+        <Border x:Name="InlineTip" Grid.RowSpan="3"
+                Visibility="Collapsed" IsHitTestVisible="False"
+                HorizontalAlignment="Left" VerticalAlignment="Top"
+                Background="{StaticResource ChromeBg}"
+                BorderBrush="{StaticResource CyanAccent}" BorderThickness="1"
+                Padding="8,5" CornerRadius="2" MaxWidth="340"
+                Panel.ZIndex="1000">
+            <TextBlock x:Name="InlineTipText" TextWrapping="Wrap"
+                       FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
+                       Foreground="{StaticResource TextPrimary}"/>
         </Border>
     </Grid>
 </Window>

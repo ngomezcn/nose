@@ -114,6 +114,7 @@ public sealed class TakeoffSequence
     public float TurnAltFt { get; private set; } = 3000f;
     public float TurnDeltaDeg { get; private set; } = 90f;
     public string StyleName => _style.Name;
+    public TakeoffStyleId StyleId => _style.Id;
 
     // --- Ultimos objetivos pedidos, para enseñarlos junto al valor real ---
     // NaN = esta fase no persigue ese eje (en tierra no hay pitch objetivo,

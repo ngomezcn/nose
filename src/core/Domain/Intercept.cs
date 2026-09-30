@@ -37,11 +37,10 @@ public enum InterceptStation
     Below,
 }
 
-// Una posicion del catalogo. Los tres factores multiplican a los tres
-// numeros que el usuario edita en la UI (distancia / separacion lateral /
-// separacion vertical) en vez de llevar metros escritos dentro: asi bajar
-// "distancia" a 120 m encoge la formacion entera de forma coherente y cada
-// posicion sigue pareciendose a si misma.
+// Una posicion del catalogo. Los factores son solo el SIGNO / aplicabilidad
+// (lado derecho = +1, izquierdo = -1, por encima = +1, por debajo = -1, 0 =
+// no aplica): los modulos de las distancias son por puesto y se editan en
+// ControlTuning (GetStationOffsets / SetStationOffsets).
 //
 // Los ejes son los del BLANCO, no los nuestros: Aft = metros por detras de
 // su cola, Right = metros a su derecha, Up = metros por encima.
@@ -53,16 +52,13 @@ public sealed record InterceptStationDef(
     float RightFactor,
     float UpFactor)
 {
-    public (float Aft, float Right, float Up) Resolve(float distanceM, float lateralM,
-                                                      float verticalM) =>
-        (AftFactor * distanceM, RightFactor * lateralM, UpFactor * verticalM);
+    public bool HasLateral => RightFactor != 0f;
+    public bool HasVertical => UpFactor != 0f;
 
     // "200 m detras / 40 m por encima": lo que se pinta debajo de los botones
-    // para que el numero de la casilla y lo que va a hacer el avion se vean
-    // juntos, sin tener que imaginarselo.
-    public string Summary(float distanceM, float lateralM, float verticalM)
+    // para que el numero y lo que va a hacer el avion se vean juntos.
+    public static string Summary(float aft, float right, float up)
     {
-        (float aft, float right, float up) = Resolve(distanceM, lateralM, verticalM);
         var parts = new List<string>();
         if (MathF.Abs(aft) >= 1f) parts.Add($"{aft:0} m detras");
         if (MathF.Abs(right) >= 1f)
@@ -91,22 +87,22 @@ public static class InterceptCatalog
         new InterceptStationDef(InterceptStation.ParallelRight, "Paralelo derecha",
             "Al costado derecho del blanco, ligeramente atrasado: formacion de ala, " +
             "para que su piloto nos vea sin tener que girar del todo la cabeza.",
-            AftFactor: 0.25f, RightFactor: 1f, UpFactor: 0f),
+            AftFactor: 1f, RightFactor: 1f, UpFactor: 0f),
 
         new InterceptStationDef(InterceptStation.ParallelLeft, "Paralelo izquierda",
             "Al costado izquierdo del blanco, ligeramente atrasado: la formacion de " +
             "interceptacion estandar (al interceptado se le señala por su izquierda).",
-            AftFactor: 0.25f, RightFactor: -1f, UpFactor: 0f),
+            AftFactor: 1f, RightFactor: -1f, UpFactor: 0f),
 
         new InterceptStationDef(InterceptStation.Above, "Arriba",
             "Por encima y algo atras: domina la geometria y deja sitio para picar " +
             "si el blanco maniobra.",
-            AftFactor: 0.5f, RightFactor: 0f, UpFactor: 2f),
+            AftFactor: 1f, RightFactor: 0f, UpFactor: 1f),
 
         new InterceptStationDef(InterceptStation.Below, "Abajo",
             "Por debajo y algo atras: la posicion desde la que se inspecciona el " +
             "vientre del otro avion (cargas externas, tren, daños).",
-            AftFactor: 0.5f, RightFactor: 0f, UpFactor: -2f),
+            AftFactor: 1f, RightFactor: 0f, UpFactor: -1f),
     };
 
     private static readonly Dictionary<InterceptStation, InterceptStationDef> ByKind =

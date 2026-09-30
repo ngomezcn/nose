@@ -54,13 +54,13 @@ public static class CruiseModes
         Id = CruiseModeId.Wanderer,
         Name = "Movedizo",
         Summary = "Tramos cortos y muchas vueltas: cambia de rumbo a menudo " +
-                  "(~60-120°) con viraje cerrado. Parece que no sabe a donde va.",
+                  "(~60-120°) con viraje suave de linea (~20°). Parece que no sabe a donde va.",
         StraightMinSec = 12f,
         StraightMaxSec = 28f,
         TurnDeltaMinDeg = 60f,
         TurnDeltaMaxDeg = 120f,
-        TurnLeft = ManeuverKind.TurnTightLeft,
-        TurnRight = ManeuverKind.TurnTightRight,
+        TurnLeft = ManeuverKind.TurnGentleLeft,
+        TurnRight = ManeuverKind.TurnGentleRight,
     };
 
     public static readonly CruiseMode Normal = new()

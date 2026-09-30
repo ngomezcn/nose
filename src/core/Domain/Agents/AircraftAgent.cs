@@ -44,7 +44,7 @@ public sealed class AircraftAgent
         _isConnected = isConnected;
 
         Takeoff = new TakeoffSequence(body);
-        Maneuvers = new ManeuverSequence(body, tuning);
+        Maneuvers = new ManeuverSequence(body, tuning, profile);
         Cruise = new CruisePilot(Maneuvers, body);
         Intercept = new InterceptSequence(body, targets, tuning, registry);
 
@@ -121,10 +121,18 @@ public sealed class AircraftAgent
         int targetIdx = InterceptTargetIndex;
         string targetLabel = intercept ? Intercept.TargetLabel : pendingLabel;
 
+        // Con ruta pendiente tras despegue, el modo vigente es el pendiente
+        // (Cruise.Mode aun no se ha arrancado).
+        CruiseMode effectiveCruise;
+        lock (_pendingGate)
+            effectiveCruise = _pendingCruise ?? Cruise.Mode;
+        CruiseModeId cruiseId = effectiveCruise.Id;
+        string cruiseName = effectiveCruise.Name;
+
         string sequence;
         if (takeoff || routePending)
             sequence = routePending
-                ? $"{Takeoff.StyleName} · {TakeoffSequence.PhaseName(Takeoff.Phase)} → {Cruise.Mode.Name}"
+                ? $"{Takeoff.StyleName} · {TakeoffSequence.PhaseName(Takeoff.Phase)} → {cruiseName}"
                 : $"{Takeoff.StyleName} · {TakeoffSequence.PhaseName(Takeoff.Phase)}";
         else if (cruise)
             sequence = Cruise.PhaseText;
@@ -146,12 +154,12 @@ public sealed class AircraftAgent
         else if (takeoff || routePending)
         {
             mode = AgentMode.Takeoff;
-            modeText = routePending ? $"Despegue → {Cruise.Mode.Name}" : "Despegue";
+            modeText = routePending ? $"Despegue → {cruiseName}" : "Despegue";
         }
         else if (cruise)
         {
             mode = AgentMode.Route;
-            modeText = $"Ruta · {Cruise.Mode.Name}";
+            modeText = $"Ruta · {cruiseName}";
         }
         else if (maneuver)
         {
@@ -164,16 +172,19 @@ public sealed class AircraftAgent
             modeText = "Manual";
         }
 
+        InterceptStation station;
+        lock (_pendingGate)
+            station = intercept ? Intercept.Station : (_pending?.Station ?? Intercept.Station);
+
         return new AgentView(
             XplmIndex, Label, Profile.Name, mode, modeText, sequence,
             TakeoffSequence.BuildChecklistLine(Takeoff.Phase),
-            takeoff, Takeoff.Phase, Takeoff.StyleName,
-            cruise, Cruise.Mode.Name, Cruise.PhaseText, routePending,
+            takeoff, Takeoff.Phase, Takeoff.StyleId, Takeoff.StyleName,
+            cruise, cruiseId, cruiseName, Cruise.PhaseText, routePending,
             maneuver, Maneuvers.ActiveLabel, Maneuvers.PhaseText,
             Maneuvers.AdaptationText, Maneuvers.ProtectionText,
             intercept, interceptPending, targetIdx, targetLabel,
-            Intercept.PhaseText,
-            intercept ? Intercept.Station : (_pending?.Station ?? Intercept.Station));
+            Intercept.PhaseText, station);
     }
 
     // --- Ordenes ------------------------------------------------------------
@@ -253,6 +264,54 @@ public sealed class AircraftAgent
         if (Intercept.IsRunning) Intercept.Abort();
         Maneuvers.Start(kind);
         error = "";
+        return true;
+    }
+
+    // Ordenes del panel RUTA mientras el crucero esta activo (no abortan la ruta).
+    public bool RequestRouteTurn(ManeuverKind kind, out string error)
+    {
+        if (!CheckConnected(out error)) return false;
+        if (Intercept.IsRunning || IsInterceptPending)
+        {
+            error = "en interceptacion: las acciones de ruta no aplican";
+            return false;
+        }
+        return Cruise.RequestTurn(kind, CruisePilot.ManualTurnDeltaDeg, out error);
+    }
+
+    public bool NudgeRouteAltitude(float deltaFt, out string error)
+    {
+        if (!CheckConnected(out error)) return false;
+        if (Intercept.IsRunning || IsInterceptPending)
+        {
+            error = "en interceptacion: las acciones de ruta no aplican";
+            return false;
+        }
+        return Cruise.NudgeAltitude(deltaFt, out error);
+    }
+
+    // Cambia el tipo de vuelo del crucero en marcha, o el pendiente tras
+    // despegue. Si no hay ruta activa, no toca nada (la UI guarda preferencia).
+    public bool SetCruiseMode(CruiseMode mode, out string appliedAs)
+    {
+        appliedAs = "";
+        if (Cruise.IsRunning)
+        {
+            if (!Cruise.SetMode(mode, out string error))
+            {
+                appliedAs = error;
+                return false;
+            }
+            appliedAs = $"ruta → {mode.Name}";
+            return true;
+        }
+
+        lock (_pendingGate)
+        {
+            if (_pendingCruise is null) return false;
+            _pendingCruise = mode;
+        }
+        appliedAs = $"tras despegue → {mode.Name}";
         return true;
     }
 

@@ -11,10 +11,12 @@
 //   teclas , y .            = alejar / acercar (radio de orbita / dolly)
 //
 // Controles vista aerea:
-//   clic izquierdo sobre avion   = seguimiento desde arriba + aviso OverviewFocus
+//   clic izquierdo sobre avion   = aviso OverviewFocus (foco UI; la camara no se mueve)
 //   clic izquierdo + arrastre    = paneo relativo al centroide (sigue a las naves);
 //                                  si habia seguimiento, vuelve a libre
-//   doble clic izquierdo         = reencuadrar todas las naves
+//   doble clic sobre avion       = zoom-in rapido a la vista del avion
+//                                  (chase IA / soltar en local)
+//   doble clic en vacio          = reencuadrar todas las naves
 //   clic derecho + arrastre      = orbitar (incluye por debajo del plano)
 //   rueda / teclas , y .         = alejar / acercar (distancia)
 //
@@ -57,6 +59,7 @@ inline XPLMDataRef g_refX = nullptr;
 inline XPLMDataRef g_refY = nullptr;
 inline XPLMDataRef g_refZ = nullptr;
 inline XPLMDataRef g_refPsi = nullptr;
+inline XPLMDataRef g_userPsi = nullptr;
 
 inline XPLMDataRef g_userX = nullptr;
 inline XPLMDataRef g_userY = nullptr;
@@ -83,6 +86,8 @@ constexpr float kMinZoom = 0.25f;
 constexpr float kMaxZoom = 16.0f;
 constexpr float kMinElevDeg = -85.0f;
 constexpr float kMaxElevDeg = 85.0f;
+// Zoom-in overview → chase / local: corto para no cortar el ritmo.
+constexpr float kEnterZoomSec = 0.26f;
 
 inline float g_azimDeg = 0.0f;   // rumbo camara (0 = norte)
 inline float g_elevDeg = kChaseElevDeg;
@@ -92,6 +97,16 @@ inline bool g_orbitDragging = false;
 inline int g_lastMouseX = 0;
 inline int g_lastMouseY = 0;
 inline int g_pendingWheelClicks = 0;  // >0 = zoom in (tele)
+
+// Transicion de entrada (doble clic en vista aerea).
+struct CamPose {
+    float x = 0, y = 0, z = 0;
+    float pitch = 0, heading = 0, zoom = 1.0f;
+};
+inline bool g_ziActive = false;
+inline bool g_ziReleaseAtEnd = false;  // local: al acabar, soltar camara
+inline CamPose g_ziFrom{};
+inline float g_ziT = 0.0f;  // 0..1
 
 inline XPLMWindowID g_inputWindow = nullptr;
 
@@ -156,6 +171,9 @@ inline void ClearState() {
     ClearChaseRefs();
     g_orbitDragging = false;
     g_pendingWheelClicks = 0;
+    g_ziActive = false;
+    g_ziReleaseAtEnd = false;
+    g_ziT = 0.0f;
     g_ovManual = false;
     g_ovHasFrame = false;
     g_ovTrackIndex = -1;
@@ -173,6 +191,72 @@ inline float Wrap360(float deg) {
     return deg;
 }
 
+inline float Lerp(float a, float b, float t) { return a + (b - a) * t; }
+
+inline float LerpAngleDeg(float a, float b, float t) {
+    float d = b - a;
+    while (d > 180.0f) d -= 360.0f;
+    while (d < -180.0f) d += 360.0f;
+    return Wrap360(a + d * t);
+}
+
+// Ease-out cubico: arranca con energia y frena al llegar (zoom-in snappy).
+inline float EaseOutCubic(float t) {
+    const float u = 1.0f - t;
+    return 1.0f - u * u * u;
+}
+
+inline CamPose CaptureOverviewEye() {
+    const float az = g_ovAzimDeg * kDeg2Rad;
+    const float el = g_ovElevDeg * kDeg2Rad;
+    const float cosEl = std::cos(el);
+    CamPose p;
+    p.x = static_cast<float>(g_ovLookX - g_ovDist * cosEl * std::sin(az));
+    p.y = static_cast<float>(g_ovLookY + g_ovDist * std::sin(el));
+    p.z = static_cast<float>(g_ovLookZ + g_ovDist * cosEl * std::cos(az));
+    p.pitch = -g_ovElevDeg;
+    p.heading = g_ovAzimDeg;
+    p.zoom = 1.0f;
+    return p;
+}
+
+inline CamPose OrbitPoseAt(double px, double py, double pz,
+                           float azimDeg, float elevDeg, float distM,
+                           float zoom) {
+    const float az = azimDeg * kDeg2Rad;
+    const float el = elevDeg * kDeg2Rad;
+    const float cosEl = std::cos(el);
+    CamPose p;
+    p.x = static_cast<float>(px - distM * cosEl * std::sin(az));
+    p.y = static_cast<float>(py + distM * std::sin(el));
+    p.z = static_cast<float>(pz + distM * cosEl * std::cos(az));
+    p.pitch = -elevDeg;
+    p.heading = azimDeg;
+    p.zoom = zoom;
+    return p;
+}
+
+inline void WritePose(XPLMCameraPosition_t* out, const CamPose& p) {
+    out->x = p.x;
+    out->y = p.y;
+    out->z = p.z;
+    out->pitch = p.pitch;
+    out->heading = p.heading;
+    out->roll = 0.0f;
+    out->zoom = p.zoom;
+}
+
+inline CamPose LerpPose(const CamPose& a, const CamPose& b, float t) {
+    CamPose p;
+    p.x = Lerp(a.x, b.x, t);
+    p.y = Lerp(a.y, b.y, t);
+    p.z = Lerp(a.z, b.z, t);
+    p.pitch = Lerp(a.pitch, b.pitch, t);
+    p.heading = LerpAngleDeg(a.heading, b.heading, t);
+    p.zoom = Lerp(a.zoom, b.zoom, t);
+    return p;
+}
+
 inline void ResetChaseOrbit(float planeHdgDeg) {
     g_azimDeg = Wrap360(planeHdgDeg);
     g_elevDeg = kChaseElevDeg;
@@ -180,6 +264,13 @@ inline void ResetChaseOrbit(float planeHdgDeg) {
     g_zoom = 1.0f;
     g_orbitDragging = false;
     g_pendingWheelClicks = 0;
+}
+
+inline void BeginEnterZoom(const CamPose& from, bool releaseAtEnd) {
+    g_ziActive = true;
+    g_ziReleaseAtEnd = releaseAtEnd;
+    g_ziFrom = from;
+    g_ziT = 0.0f;
 }
 
 // Solo orbitar/dolly cuando el foco de SO esta en X-Plane (no en la UI core).
@@ -396,23 +487,36 @@ inline int PickOverviewPlane(int mouseX, int mouseY) {
     return best;
 }
 
-inline void StartOverviewTrack(int xplmIndex) {
+// Clic sobre un avion: solo selecciona en la UI. No mueve la camara (ya se ve
+// en la vista aerea); el usuario panea/orbita/zoom a mano si quiere acercarse.
+inline void SelectOverviewPlane(int xplmIndex) {
     if (xplmIndex < 0 || xplmIndex > kMaxAi) return;
     double x = 0, y = 0, z = 0;
     if (!ReadPlaneLocal(xplmIndex, x, y, z)) return;
-    g_ovTrackIndex = xplmIndex;
-    g_ovManual = true;
-    g_ovLookX = x;
-    g_ovLookY = y;
-    g_ovLookZ = z;
-    g_ovPanX = 0.0;
-    g_ovPanZ = 0.0;
-    // Seguimiento desde arriba: si veniamos muy oblicuos, sube a nadir-ish.
-    if (g_ovElevDeg < 70.0f) g_ovElevDeg = kOverviewElevDeg;
     NotifyOverviewFocus(xplmIndex);
 }
 
-// Clic izquierdo (overview): pick / paneo / deselect / doble-clic reencuadra.
+// Declaraciones adelantadas: EnterPlaneView llama a Start/Stop definidos abajo.
+inline bool Start(uint8_t planeIndex, bool zoomFromOverview = false);
+inline void Stop();
+inline bool ZoomInThenReleaseLocal();
+
+// Doble clic sobre un avion en vista aerea: foco UI + zoom-in a su vista
+// (chase en IA, soltar a la vista nativa en el local).
+inline void EnterPlaneView(int xplmIndex) {
+    if (xplmIndex < 0 || xplmIndex > kMaxAi) return;
+    double x = 0, y = 0, z = 0;
+    if (!ReadPlaneLocal(xplmIndex, x, y, z)) return;
+    NotifyOverviewFocus(xplmIndex);
+    if (xplmIndex >= 1) {
+        Start(static_cast<uint8_t>(xplmIndex), /*zoomFromOverview=*/true);
+    } else {
+        if (!ZoomInThenReleaseLocal())
+            Stop();
+    }
+}
+
+// Clic izquierdo (overview): pick / paneo; doble clic = vista avion o reencuadre.
 inline int HandleLeftClick(XPLMWindowID /*inWindowID*/, int x, int y,
                            XPLMMouseStatus status, void* /*inRefcon*/) {
     if (g_mode != Mode::Overview || !g_ovHasFrame) return 0;
@@ -422,8 +526,12 @@ inline int HandleLeftClick(XPLMWindowID /*inWindowID*/, int x, int y,
         const ULONGLONG now = GetTickCount64();
         if (g_ovLastLeftClickMs != 0 &&
             now - g_ovLastLeftClickMs < kOverviewReframeMs) {
-            ReframeOverview();
             g_ovLastLeftClickMs = 0;
+            const int hit = PickOverviewPlane(x, y);
+            if (hit >= 0)
+                EnterPlaneView(hit);
+            else
+                ReframeOverview();
             return 1;
         }
         BeginOverviewManual();
@@ -459,7 +567,7 @@ inline int HandleLeftClick(XPLMWindowID /*inWindowID*/, int x, int y,
         g_orbitDragging = false;
         if (!g_ovPressMoved) {
             const int hit = PickOverviewPlane(g_ovPressX, g_ovPressY);
-            if (hit >= 0) StartOverviewTrack(hit);
+            if (hit >= 0) SelectOverviewPlane(hit);
             g_ovLastLeftClickMs = GetTickCount64();
         } else {
             g_ovLastLeftClickMs = 0;
@@ -631,6 +739,7 @@ inline void EnsureOverviewRefs() {
     g_userX = XPLMFindDataRef("sim/flightmodel/position/local_x");
     g_userY = XPLMFindDataRef("sim/flightmodel/position/local_y");
     g_userZ = XPLMFindDataRef("sim/flightmodel/position/local_z");
+    g_userPsi = XPLMFindDataRef("sim/flightmodel/position/psi");
     g_frameDt = XPLMFindDataRef("sim/operation/misc/frame_rate_period");
     g_worldMatrix = XPLMFindDataRef("sim/graphics/view/world_matrix");
     g_projMatrix = XPLMFindDataRef("sim/graphics/view/projection_matrix_3d");
@@ -673,29 +782,42 @@ inline int ChaseCameraCallback(XPLMCameraPosition_t* outCameraPosition,
     }
 
     SyncInputWindowBounds();
-    PollDistanceKeys(FrameDt());
-    ApplyPendingZoom();
+    const float dt = FrameDt();
 
     const double px = XPLMGetDatad(g_refX);
     const double py = XPLMGetDatad(g_refY);
     const double pz = XPLMGetDatad(g_refZ);
 
+    if (g_ziActive) {
+        // Durante el zoom no orbitamos ni dolly: el destino es la orbita chase
+        // actual (sigue al avion si se mueve).
+        const CamPose to = OrbitPoseAt(px, py, pz, g_azimDeg, g_elevDeg,
+                                       g_distM, g_zoom);
+        g_ziT += dt / kEnterZoomSec;
+        if (g_ziT >= 1.0f) {
+            g_ziT = 1.0f;
+            g_ziActive = false;
+            WritePose(outCameraPosition, to);
+            if (g_ziReleaseAtEnd) {
+                // Camino local: soltar tras el zoom (vista nativa de XP).
+                SetInputWindowVisible(false);
+                ClearState();
+                return 0;
+            }
+            return 1;
+        }
+        const float u = EaseOutCubic(g_ziT);
+        WritePose(outCameraPosition, LerpPose(g_ziFrom, to, u));
+        return 1;
+    }
+
+    PollDistanceKeys(dt);
+    ApplyPendingZoom();
+
     // OpenGL local: +X este, +Y up, +Z sur. Rumbo 0 = norte (-Z).
     // Camara en orbita esferica; mira al CG (heading=azim, pitch=-elev).
-    const float az = g_azimDeg * kDeg2Rad;
-    const float el = g_elevDeg * kDeg2Rad;
-    const float cosEl = std::cos(el);
-    const float dx = -g_distM * cosEl * std::sin(az);
-    const float dy = g_distM * std::sin(el);
-    const float dz = g_distM * cosEl * std::cos(az);
-
-    outCameraPosition->x = static_cast<float>(px + dx);
-    outCameraPosition->y = static_cast<float>(py + dy);
-    outCameraPosition->z = static_cast<float>(pz + dz);
-    outCameraPosition->pitch = -g_elevDeg;
-    outCameraPosition->heading = g_azimDeg;
-    outCameraPosition->roll = 0.0f;
-    outCameraPosition->zoom = g_zoom;
+    WritePose(outCameraPosition,
+              OrbitPoseAt(px, py, pz, g_azimDeg, g_elevDeg, g_distM, g_zoom));
     return 1;
 }
 
@@ -833,7 +955,8 @@ inline void Stop() {
 }
 
 // planeIndex 1..19. Si ya seguimos otro (o overview), reinicia el chase.
-inline bool Start(uint8_t planeIndex) {
+// zoomFromOverview: interpola desde la ojo actual de la vista aerea.
+inline bool Start(uint8_t planeIndex, bool zoomFromOverview) {
     if (planeIndex < 1 || planeIndex > 19) {
         LogWarn("CameraFollow: Start planeIndex=%u invalido (1..19).",
                 static_cast<unsigned>(planeIndex));
@@ -860,6 +983,11 @@ inline bool Start(uint8_t planeIndex) {
         return false;
     }
 
+    const bool doZoom = zoomFromOverview && g_mode == Mode::Overview &&
+                        g_ovHasFrame;
+    CamPose from{};
+    if (doZoom) from = CaptureOverviewEye();
+
     if (g_mode != Mode::Off) {
         SetInputWindowVisible(false);
         XPLMDontControlCamera();
@@ -875,12 +1003,50 @@ inline bool Start(uint8_t planeIndex) {
     g_refZ = rz;
     g_refPsi = rpsi;
     ResetChaseOrbit(XPLMGetDataf(rpsi));
+    if (doZoom) BeginEnterZoom(from, /*releaseAtEnd=*/false);
     SetInputWindowVisible(true);
 
     XPLMControlCamera(xplm_ControlCameraUntilViewChanges, ChaseCameraCallback,
                       nullptr);
-    LogInfo("CameraFollow: Start chase planeIndex=%u.",
-            static_cast<unsigned>(planeIndex));
+    LogInfo("CameraFollow: Start chase planeIndex=%u%s.",
+            static_cast<unsigned>(planeIndex),
+            doZoom ? " (zoom-in)" : "");
+    return true;
+}
+
+// Zoom-in hacia una orbita chase del local y, al acabar, suelta la camara
+// (vista nativa de X-Plane). Reusa ChaseCameraCallback con g_ziReleaseAtEnd.
+inline bool ZoomInThenReleaseLocal() {
+    EnsureOverviewRefs();
+    if (!g_userX || !g_userY || !g_userZ) return false;
+    if (!g_userPsi) g_userPsi = XPLMFindDataRef("sim/flightmodel/position/psi");
+    if (!g_userPsi) return false;
+    if (g_mode != Mode::Overview || !g_ovHasFrame) return false;
+
+    const CamPose from = CaptureOverviewEye();
+    const float hdg = XPLMGetDataf(g_userPsi);
+
+    if (g_mode != Mode::Off) {
+        SetInputWindowVisible(false);
+        XPLMDontControlCamera();
+        ClearState();
+    }
+
+    EnsureInputWindow();
+
+    g_mode = Mode::Chase;
+    g_followingIndex = 0;
+    g_refX = g_userX;
+    g_refY = g_userY;
+    g_refZ = g_userZ;
+    g_refPsi = g_userPsi;
+    ResetChaseOrbit(hdg);
+    BeginEnterZoom(from, /*releaseAtEnd=*/true);
+    SetInputWindowVisible(true);
+
+    XPLMControlCamera(xplm_ControlCameraUntilViewChanges, ChaseCameraCallback,
+                      nullptr);
+    LogInfo("CameraFollow: Zoom-in to local then release.");
     return true;
 }
 

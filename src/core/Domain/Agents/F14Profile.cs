@@ -19,6 +19,7 @@ public sealed class F14Profile : IFlightProfile
     public float VneKt => F14Aero.VneSeaLevelKt;
     public float PitchLagSec { get; }
     public float RollLagSec { get; }
+    public float MaxOperationalBankDeg => 85f;
 
     public float GPerStickUnit(float iasKt) => F14Aero.GPerStickUnit(iasKt);
     public float RollRateAvailableDegPerSec(float tasKt) => F14Aero.RollRateAvailableDegPerSec(tasKt);

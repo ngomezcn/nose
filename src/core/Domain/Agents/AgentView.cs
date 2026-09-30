@@ -24,9 +24,11 @@ public sealed record AgentView(
     // Despegue
     bool TakeoffRunning,
     TakeoffPhase TakeoffPhase,
+    TakeoffStyleId TakeoffStyleId,
     string TakeoffStyleName,
     // Ruta / crucero
     bool CruiseRunning,
+    CruiseModeId CruiseModeId,     // modo activo o el pendiente tras despegue
     string CruiseModeName,
     string CruisePhaseText,
     bool RoutePending,             // despegue en curso y luego CruisePilot

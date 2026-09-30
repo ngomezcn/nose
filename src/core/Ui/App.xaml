@@ -212,8 +212,8 @@
             </Setter>
         </Style>
 
-        <!-- Tooltips del shell: oscuros (el default de Windows es blanco y, con
-             X-Plane encima del shell, el Popup acaba negro o ilegible). -->
+        <!-- Estilo residual por si algun ToolTip nativo se abre (p.ej. fuera
+             del shell). El camino normal usa InlineTip en ShellWindow. -->
         <Style TargetType="ToolTip">
             <Setter Property="Background" Value="{StaticResource ChromeBg}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
@@ -277,6 +277,50 @@
             <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Margin" Value="0,2"/>
+        </Style>
+
+        <Style x:Key="ShellSlider" TargetType="Slider">
+            <Setter Property="Height" Value="22"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Background="Transparent">
+                            <Border Height="4" CornerRadius="2" Background="{StaticResource ShellBorder}"
+                                    VerticalAlignment="Center"/>
+                            <Track x:Name="PART_Track">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Focusable="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" CornerRadius="2" Background="{StaticResource CyanAccent}"
+                                                        VerticalAlignment="Center"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Focusable="False">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent"/>
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="14" Height="14" Focusable="False">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="{StaticResource CyanText}"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <Style x:Key="FieldLabel" TargetType="TextBlock">

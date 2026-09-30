@@ -60,7 +60,7 @@ public sealed class KinematicAiBody : IAircraftBody
         _d = datarefs;
         _slot = xplmIndex - 1;
         XplmIndex = xplmIndex;
-        _profile = profile ?? F14Profile.Instance;
+        _profile = profile ?? A330Profile.Instance;
         _model = new KinematicFlightModel(_profile);
         _model.Adapted = t => ActionLogged?.Invoke($"IA {XplmIndex}: {t}");
         _state = BuildObserved();

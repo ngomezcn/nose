@@ -46,8 +46,8 @@ public sealed class AircraftWorld : ITargetSource
 
     public bool IsValidIndex(int xplmIndex) => xplmIndex >= 0 && xplmIndex < MaxPlanes;
 
-    // Creacion perezosa. 0 = ownship (LocalAircraftBody sobre Datarefs +
-    // AircraftControls); 1..19 = KinematicAiBody. Perfil F-14 para todos.
+    // Creacion perezosa. 0 = ownship (LocalAircraftBody + F14Profile);
+    // 1..19 = KinematicAiBody + A330Profile (piloto comercial: alabeo suave).
     public AircraftAgent Get(int xplmIndex)
     {
         if (!IsValidIndex(xplmIndex))
@@ -61,7 +61,9 @@ public sealed class AircraftWorld : ITargetSource
             a = _agents[xplmIndex];
             if (a is not null) return a;
 
-            IFlightProfile profile = F14Profile.Instance;
+            IFlightProfile profile = xplmIndex == 0
+                ? F14Profile.Instance
+                : A330Profile.Instance;
             IAircraftBody body = xplmIndex == 0
                 ? _localBody
                 : new KinematicAiBody(_client, _d, xplmIndex, profile);

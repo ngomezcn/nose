@@ -43,6 +43,7 @@ namespace AICopilotCore.Domain;
 public sealed class ManeuverSequence
 {
     private readonly IAircraftBody _body;
+    private readonly IFlightProfile _profile;
     private readonly ControlTuning _tuning;
     private readonly ManeuverPlanner _planner;
     private readonly EnvelopeProtection _protection;
@@ -88,9 +89,11 @@ public sealed class ManeuverSequence
     private float _latchedIas = float.NaN;
     private string _lastAdaptation = "";
 
-    public ManeuverSequence(IAircraftBody body, ControlTuning tuning)
+    public ManeuverSequence(IAircraftBody body, ControlTuning tuning,
+                            IFlightProfile? profile = null)
     {
         _body = body;
+        _profile = profile ?? F14Profile.Instance;
         _tuning = tuning;
         _planner = new ManeuverPlanner(tuning);
         _protection = new EnvelopeProtection(tuning);
@@ -106,6 +109,23 @@ public sealed class ManeuverSequence
 
     public bool IsRunning => _active is not null;
     public string ActiveLabel => _active?.Label ?? "(ninguna)";
+
+    // Ancla de altitud que defienden LevelWings / virajes (NaN si no hay
+    // maniobra). CruisePilot la reescribe tras cada Start para no perder el
+    // objetivo ±1000 ft al reiniciar LevelWings tras un viraje.
+    public float ReferenceAltitudeFt
+    {
+        get { lock (_gate) return _planner.ReferenceAltFt; }
+    }
+
+    public void SetReferenceAltitude(float altFt)
+    {
+        lock (_gate)
+        {
+            if (_active is null) return;
+            _planner.SyncReferenceAltitude(altFt);
+        }
+    }
 
     // Lo que se adapto en el ultimo frame (vacio si la maniobra sale tal cual).
     public string AdaptationText { get; private set; } = "";
@@ -332,8 +352,11 @@ public sealed class ManeuverSequence
         // actua).
         _pitchTargetRamp.MaxRate = limits.PitchRateUpDegPerSec;
         _pitchTargetRamp.MaxRateFalling = limits.PitchRateDownDegPerSec;
+        // Ritmo de entrada al alabeo: el menor entre el plan, la rampa humana
+        // de Config y lo que el perfil del avion puede (A330 ~10 deg/s).
         _bankTargetRamp.MaxRate = MathF.Min(plan.BankRateDegPerSec,
-                                            _tuning.ManeuverBankRampDegPerSec);
+            MathF.Min(_tuning.ManeuverBankRampDegPerSec,
+                      _profile.RollRateAvailableDegPerSec(s.TasKt)));
         _pitchPid.OutMin = limits.PitchStickMin;
         _pitchPid.OutMax = limits.PitchStickMax;
 
@@ -372,7 +395,8 @@ public sealed class ManeuverSequence
         float pitchTarget = _pitchTargetRamp.Update(plan.PitchTargetDeg + vsTrim, dt);
 
         float bankTarget = _bankTargetRamp.Update(
-            ClampMagnitude(plan.BankTargetDeg, limits.BankMagnitudeMaxDeg), dt);
+            ClampMagnitude(plan.BankTargetDeg,
+                MathF.Min(limits.BankMagnitudeMaxDeg, _profile.MaxOperationalBankDeg)), dt);
 
         LastPitchTarget = pitchTarget;
         LastBankTarget = bankTarget;

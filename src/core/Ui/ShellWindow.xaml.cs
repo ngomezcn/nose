@@ -257,6 +257,8 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     public Brush ConnectionDotColor { get => _connectionDotColor; set => Set(ref _connectionDotColor, value); }
 
     // Estilo / tipo de vuelo del proximo "Iniciar" de Ruta.
+    // Con ruta en marcha (o pendiente) los toggles reflejan el del avion en
+    // foco y al pulsar aplican en vivo; sin ruta, solo preferencia.
     private TakeoffStyleId _styleId = TakeoffStyleId.Relaxed;
     private bool _switchingStyle;
     public string StyleSummary => TakeoffStyles.Get(_styleId).Summary;
@@ -265,6 +267,19 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     private CruiseModeId _flightModeId = CruiseModeId.Straight;
     private bool _switchingFlightMode;
     public string FlightModeSummary => CruiseModes.Get(_flightModeId).Summary;
+
+    private bool _routeActionsEnabled;
+    public bool RouteActionsEnabled {
+        get => _routeActionsEnabled;
+        set => Set(ref _routeActionsEnabled, value);
+    }
+
+    private string _routeActionsHint =
+        "Con la ruta en marcha: virajes ~90° y cambios de altitud objetivo. No abortan el crucero.";
+    public string RouteActionsHint {
+        get => _routeActionsHint;
+        set => Set(ref _routeActionsHint, value);
+    }
 
     // --- Estado del hueco central ------------------------------------------
     private bool _dockedNow;
@@ -355,39 +370,54 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     private InterceptStation _stationId = InterceptStation.TailHigh;
     private bool _switchingStation;
     public string InterceptStationSummary => InterceptCatalog.Get(_stationId).Description;
-    public string InterceptStationSpec =>
-        InterceptCatalog.Get(_stationId).Summary(_tuning.InterceptDistanceM,
-                                                 _tuning.InterceptLateralM,
-                                                 _tuning.InterceptVerticalM);
-
-    // Las tres separaciones viven en ControlTuning (fuente de verdad unica,
-    // con su clamp en el setter) y se editan aqui con el mismo mecanismo que
-    // los campos de Config: se aplican en caliente en cuanto el texto parsea.
-    private string _interceptDistanceText = "";
-    public string InterceptDistanceText {
-        get => _interceptDistanceText;
-        set => SetTuningText(ref _interceptDistanceText, value, f => {
-            _tuning.InterceptDistanceM = f;
-            OnPropertyChanged(nameof(InterceptStationSpec));
-        });
+    public string InterceptStationSpec
+    {
+        get
+        {
+            (float aft, float right, float up) = _tuning.ResolveStation(_stationId);
+            return InterceptStationDef.Summary(aft, right, up);
+        }
     }
 
-    private string _interceptLateralText = "";
-    public string InterceptLateralText {
-        get => _interceptLateralText;
-        set => SetTuningText(ref _interceptLateralText, value, f => {
-            _tuning.InterceptLateralM = f;
-            OnPropertyChanged(nameof(InterceptStationSpec));
-        });
+    // Distancias del puesto SELECCIONADO (cada puesto guarda las suyas) y zona
+    // de seguridad. Son deslizadores ligados a ControlTuning: se aplican en
+    // tiempo real, tambien con una interceptacion en marcha.
+    public bool StationHasLateral => InterceptCatalog.Get(_stationId).HasLateral;
+    public bool StationHasVertical => InterceptCatalog.Get(_stationId).HasVertical;
+    public Visibility StationLateralVisibility => StationHasLateral ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility StationVerticalVisibility => StationHasVertical ? Visibility.Visible : Visibility.Collapsed;
+
+    public double StationAftM {
+        get => _tuning.GetStationOffsets(_stationId).AftM;
+        set => UpdateStation(aft: (float)value);
+    }
+    public double StationLateralM {
+        get => _tuning.GetStationOffsets(_stationId).LateralM;
+        set => UpdateStation(lateral: (float)value);
+    }
+    public double StationVerticalM {
+        get => _tuning.GetStationOffsets(_stationId).VerticalM;
+        set => UpdateStation(vertical: (float)value);
     }
 
-    private string _interceptVerticalText = "";
-    public string InterceptVerticalText {
-        get => _interceptVerticalText;
-        set => SetTuningText(ref _interceptVerticalText, value, f => {
-            _tuning.InterceptVerticalM = f;
-            OnPropertyChanged(nameof(InterceptStationSpec));
-        });
+    private void UpdateStation(float? aft = null, float? lateral = null, float? vertical = null) {
+        var o = _tuning.GetStationOffsets(_stationId);
+        _tuning.SetStationOffsets(_stationId, aft ?? o.AftM, lateral ?? o.LateralM, vertical ?? o.VerticalM);
+        OnPropertyChanged(nameof(StationAftM));
+        OnPropertyChanged(nameof(StationLateralM));
+        OnPropertyChanged(nameof(StationVerticalM));
+        OnPropertyChanged(nameof(InterceptStationSpec));
+    }
+
+    public double SafeHorizontalM {
+        get => _tuning.SafeHorizontalM;
+        set { _tuning.SafeHorizontalM = (float)value; OnPropertyChanged(nameof(SafeHorizontalM));
+              OnPropertyChanged(nameof(InterceptStationSpec)); }
+    }
+    public double SafeVerticalM {
+        get => _tuning.SafeVerticalM;
+        set { _tuning.SafeVerticalM = (float)value; OnPropertyChanged(nameof(SafeVerticalM));
+              OnPropertyChanged(nameof(InterceptStationSpec)); }
     }
 
     private string _interceptStatusText = "Sin interceptacion activa.";
@@ -584,9 +614,12 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         RecoverPitchCaptureText = FmtTuning(_tuning.RecoverPitchCaptureDeg);
         RecoverMinSecondsText = FmtTuning(_tuning.RecoverMinSeconds);
 
-        InterceptDistanceText = FmtTuning(_tuning.InterceptDistanceM);
-        InterceptLateralText = FmtTuning(_tuning.InterceptLateralM);
-        InterceptVerticalText = FmtTuning(_tuning.InterceptVerticalM);
+        OnPropertyChanged(nameof(StationAftM));
+        OnPropertyChanged(nameof(StationLateralM));
+        OnPropertyChanged(nameof(StationVerticalM));
+        OnPropertyChanged(nameof(SafeHorizontalM));
+        OnPropertyChanged(nameof(SafeVerticalM));
+        OnPropertyChanged(nameof(InterceptStationSpec));
 
         SpeedStepText = FmtTuning(_tuning.SpeedStepKt);
         MinTargetIasText = FmtTuning(_tuning.MinTargetIasKt);
@@ -681,17 +714,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
                          : tab == StyleEmergency ? TakeoffStyleId.Emergency
                          : TakeoffStyleId.Relaxed;
 
-        _switchingStyle = true;
-        try {
-            StyleRelaxed.IsChecked = id == TakeoffStyleId.Relaxed;
-            StyleCombat.IsChecked = id == TakeoffStyleId.Combat;
-            StyleEmergency.IsChecked = id == TakeoffStyleId.Emergency;
-            _styleId = id;
-            OnPropertyChanged(nameof(StyleSummary));
-            OnPropertyChanged(nameof(StyleSpec));
-        } finally {
-            _switchingStyle = false;
-        }
+        ApplyStyleUi(id);
     }
 
     private void OnFlightModeClick(object sender, RoutedEventArgs e) {
@@ -707,6 +730,16 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
                         : tab == FlightNormal ? CruiseModeId.Normal
                         : CruiseModeId.Straight;
 
+        ApplyFlightModeUi(id);
+
+        // Si el avion en foco ya tiene ruta (o pendiente), aplica ya; si no,
+        // queda como preferencia del proximo Iniciar.
+        if (_director.SetCruiseMode(CruiseModes.Get(id), out string appliedAs) &&
+            appliedAs.Length > 0)
+            Append($"Tipo de vuelo ({_director.FocusedLabel}): {appliedAs}.");
+    }
+
+    private void ApplyFlightModeUi(CruiseModeId id) {
         _switchingFlightMode = true;
         try {
             FlightStraight.IsChecked = id == CruiseModeId.Straight;
@@ -719,10 +752,86 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         }
     }
 
+    private void ApplyStyleUi(TakeoffStyleId id) {
+        _switchingStyle = true;
+        try {
+            StyleRelaxed.IsChecked = id == TakeoffStyleId.Relaxed;
+            StyleCombat.IsChecked = id == TakeoffStyleId.Combat;
+            StyleEmergency.IsChecked = id == TakeoffStyleId.Emergency;
+            _styleId = id;
+            OnPropertyChanged(nameof(StyleSummary));
+            OnPropertyChanged(nameof(StyleSpec));
+        } finally {
+            _switchingStyle = false;
+        }
+    }
+
+    // Enlaza los toggles del panel RUTA al AgentView del foco (modo real /
+    // pendiente). Sin ruta activa no pisa la preferencia del usuario.
+    private void SyncRoutePanelFromFocus(AgentView? view) {
+        if (view is null) {
+            RouteActionsEnabled = false;
+            RouteActionsHint =
+                "Foco GLOBAL: elige un avion para ver o cambiar su tipo de vuelo y acciones de ruta.";
+            return;
+        }
+
+        if (view.InterceptRunning || view.InterceptPending) {
+            RouteActionsEnabled = false;
+            RouteActionsHint =
+                $"En interceptacion ({view.ModeText}): las acciones de ruta no aplican. " +
+                "El tipo de vuelo de arriba es preferencia para el proximo Iniciar.";
+            return;
+        }
+
+        if (view.CruiseRunning || view.RoutePending) {
+            if (view.CruiseModeId != _flightModeId)
+                ApplyFlightModeUi(view.CruiseModeId);
+            RouteActionsEnabled = view.CruiseRunning;
+            RouteActionsHint = view.CruiseRunning
+                ? "Ruta en marcha: virajes ~90° y ±1000 ft de altitud objetivo. Cambiar el tipo de vuelo aplica ya."
+                : "Despegue en curso → luego ruta. Cambiar el tipo de vuelo actualiza el pendiente; las acciones de ruta se habilitan al nivelar.";
+            return;
+        }
+
+        RouteActionsEnabled = false;
+        RouteActionsHint =
+            "Sin ruta activa: pulsa Iniciar para aplicar el tipo de vuelo. Virajes y altitud solo con la ruta en marcha.";
+
+        if (view.TakeoffRunning)
+            ApplyStyleUi(view.TakeoffStyleId);
+    }
+
     private void OnAbortClick(object sender, RoutedEventArgs e) {
         // Aborta el avion en foco (todas sus secuencias); con GLOBAL, todos.
         _director.AbortFocused();
         Append($"Abortar / manual: {_director.FocusedLabel}.");
+    }
+
+    // Botones del panel RUTA: virajes / ±1000 ft sin abortar el crucero.
+    // Tag = ManeuverKind de viraje, o "AltUp1000" / "AltDown1000".
+    private void OnRouteActionClick(object sender, RoutedEventArgs e) {
+        if (sender is not Button { Tag: string tag }) return;
+
+        if (tag is "AltUp1000" or "AltDown1000") {
+            float delta = tag == "AltUp1000"
+                ? CruisePilot.AltitudeNudgeFt
+                : -CruisePilot.AltitudeNudgeFt;
+            if (!_director.NudgeRouteAltitude(delta, out string altError)) {
+                Append($"Ruta ALT ({_director.FocusedLabel}): {altError}.");
+                return;
+            }
+            string dir = delta >= 0f ? $"+{delta:0}" : $"{delta:0}";
+            Append($"Ruta ALT {dir} ft en {_director.FocusedLabel}.");
+            return;
+        }
+
+        if (!Enum.TryParse(tag, out ManeuverKind kind)) return;
+        if (!_director.RequestRouteTurn(kind, out string turnError)) {
+            Append($"Ruta viraje ({_director.FocusedLabel}): {turnError}.");
+            return;
+        }
+        Append($"Ruta: {ManeuverCatalog.Get(kind).Label} (~{CruisePilot.ManualTurnDeltaDeg:0}°) en {_director.FocusedLabel}.");
     }
 
     // Un solo handler para los botones de inicio de simulacion: el Tag lleva
@@ -771,7 +880,12 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     private void OnFocusPickerItemClick(object sender, RoutedEventArgs e) {
         if (sender is not FrameworkElement { Tag: AircraftListEntry ac }) return;
         SelectedAircraft = ac;
-        ApplyFocus(ac);
+        // Un clic en el desplegable solo cambia a quien van las ordenes: si
+        // estabas en vista aerea GLOBAL, la camara se queda (como el pick
+        // sobre un avion en overview). GLOBAL si reaplica la vista aerea.
+        // Para enganchar chase / soltar camara: doble clic en la lista o
+        // "Poner en foco".
+        ApplyFocus(ac, keepCamera: !ac.IsGlobal);
         FocusPickerOpen = false;
     }
 
@@ -804,7 +918,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             RefreshAircraftList();
             Append(keepCamera
                 ? "Foco: GLOBAL · vista libre."
-                : "Foco: GLOBAL · vista aerea. Clic sobre un avion lo sigue; arrastre izquierdo panea relativo al centro entre naves; rueda hace zoom; arrastre derecho orbita (tambien por debajo); doble clic reencuadra.");
+                : "Foco: GLOBAL · vista aerea. Clic sobre un avion lo selecciona (sin mover la camara); arrastre izquierdo panea; rueda hace zoom; arrastre derecho orbita; doble clic sobre un avion entra en su vista (chase / local); doble clic en vacio reencuadra.");
             return;
         }
 
@@ -821,6 +935,7 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         AgentView? view = _director.FocusedView;
         if (view is { InterceptRunning: true } or { InterceptPending: true })
             SetStationUi(view.InterceptStation);
+        SyncRoutePanelFromFocus(view);
 
         UpdateFocusText();
         RefreshAircraftList();
@@ -970,6 +1085,11 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
             _stationId = id;
             OnPropertyChanged(nameof(InterceptStationSummary));
             OnPropertyChanged(nameof(InterceptStationSpec));
+            OnPropertyChanged(nameof(StationAftM));
+            OnPropertyChanged(nameof(StationLateralM));
+            OnPropertyChanged(nameof(StationVerticalM));
+            OnPropertyChanged(nameof(StationLateralVisibility));
+            OnPropertyChanged(nameof(StationVerticalVisibility));
         } finally {
             _switchingStation = false;
         }
@@ -1789,24 +1909,24 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
     }
 
     // --- Popups flotantes vs X-Plane ------------------------------------------
-    // Tooltips y ComboBox abren un HWND aparte. Al crearse, Windows suele
-    // subir el shell (owner) por encima de X-Plane y el hueco se ve negro.
-    // Mitigacion: PopupGuard reapila el Z mientras el popup vive, y el HWND
-    // del tip se marca NOACTIVATE + TOPMOST para verse sin activar el shell.
+    // Los ToolTip WPF abren un HWND owned: Windows sube el shell y el hueco
+    // de X-Plane se ve negro. No se mitiga bien con Z-order (ya se intento).
+    // Solucion: cancelar el ToolTip nativo y pintar un overlay en el mismo
+    // HWND del shell (como el desplegable EN FOCO). ComboBox sigue con Popup
+    // + PopupGuard + TOPMOST.
 
     private static bool _floatingChromeHooked;
+    private FrameworkElement? _inlineTipOwner;
 
     private void HookFloatingChrome() {
         if (!_floatingChromeHooked) {
             _floatingChromeHooked = true;
-            EventManager.RegisterClassHandler(typeof(System.Windows.Controls.ToolTip),
-                System.Windows.Controls.ToolTip.OpenedEvent,
-                new RoutedEventHandler(OnAnyToolTipOpened));
-            EventManager.RegisterClassHandler(typeof(System.Windows.Controls.ToolTip),
-                System.Windows.Controls.ToolTip.ClosedEvent,
-                new RoutedEventHandler(OnAnyToolTipClosed));
+            EventManager.RegisterClassHandler(typeof(FrameworkElement),
+                ToolTipService.ToolTipOpeningEvent,
+                new ToolTipEventHandler(OnAnyToolTipOpening));
         }
         PreviewMouseDown += OnShellPreviewMouseDownCloseFocusPicker;
+        PreviewMouseDown += (_, _) => HideInlineTip();
         GfxFontCombo.DropDownOpened += OnGfxFontComboDropDownOpened;
     }
 
@@ -1830,25 +1950,69 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         return false;
     }
 
-    private static void OnAnyToolTipOpened(object sender, RoutedEventArgs e) {
-        if (sender is not System.Windows.Controls.ToolTip tip) return;
-        ShellWindow? shell = FindShellFor(tip.PlacementTarget as DependencyObject);
+    private static void OnAnyToolTipOpening(object sender, ToolTipEventArgs e) {
+        if (sender is not FrameworkElement owner) return;
+        ShellWindow? shell = FindShellFor(owner);
         if (shell is null) return;
-        shell._docker?.BeginPopupGuard();
-        ElevateFloating(tip, topmost: true);
-        // El HWND del tip a veces aparece un tick despues de Opened.
-        shell.Dispatcher.BeginInvoke(() => {
-            ElevateFloating(tip, topmost: true);
-            shell._docker?.EnsureStacked();
-        }, DispatcherPriority.Loaded);
-        shell.Dispatcher.BeginInvoke(() => shell._docker?.EnsureStacked(),
-                                     DispatcherPriority.Input);
+
+        // Cancela el Popup HWND nativo antes de que Windows reordene el Z.
+        e.Handled = true;
+
+        string? text = ExtractToolTipText(owner.ToolTip);
+        if (string.IsNullOrWhiteSpace(text)) return;
+        shell.ShowInlineTip(owner, text);
     }
 
-    private static void OnAnyToolTipClosed(object sender, RoutedEventArgs e) {
-        if (sender is not System.Windows.Controls.ToolTip tip) return;
-        ElevateFloating(tip, topmost: false);
-        FindShellFor(tip.PlacementTarget as DependencyObject)?._docker?.EndPopupGuard();
+    private static string? ExtractToolTipText(object? tip) {
+        return tip switch {
+            null => null,
+            string s => s,
+            System.Windows.Controls.ToolTip t =>
+                t.Content as string ?? t.Content?.ToString(),
+            _ => tip.ToString(),
+        };
+    }
+
+    private void ShowInlineTip(FrameworkElement owner, string text) {
+        if (_inlineTipOwner is not null && !ReferenceEquals(_inlineTipOwner, owner)) {
+            _inlineTipOwner.MouseLeave -= OnInlineTipOwnerLeave;
+        }
+        _inlineTipOwner = owner;
+        owner.MouseLeave -= OnInlineTipOwnerLeave;
+        owner.MouseLeave += OnInlineTipOwnerLeave;
+
+        InlineTipText.Text = text;
+        InlineTip.Visibility = Visibility.Visible;
+        InlineTip.Measure(new Size(InlineTip.MaxWidth, double.PositiveInfinity));
+        double tipW = InlineTip.DesiredSize.Width;
+        double tipH = InlineTip.DesiredSize.Height;
+
+        Point below = owner.TransformToAncestor(ShellRoot)
+            .Transform(new Point(0, owner.ActualHeight + 6));
+        double x = below.X;
+        double y = below.Y;
+        double maxX = Math.Max(8, ShellRoot.ActualWidth - tipW - 8);
+        double maxY = Math.Max(8, ShellRoot.ActualHeight - tipH - 8);
+        if (y > maxY) {
+            // No cabe debajo: encima del control.
+            Point above = owner.TransformToAncestor(ShellRoot)
+                .Transform(new Point(0, -tipH - 6));
+            y = above.Y;
+        }
+        x = Math.Clamp(x, 8, maxX);
+        y = Math.Clamp(y, 8, maxY);
+        InlineTip.Margin = new Thickness(x, y, 0, 0);
+    }
+
+    private void OnInlineTipOwnerLeave(object sender, MouseEventArgs e) => HideInlineTip();
+
+    private void HideInlineTip() {
+        if (_inlineTipOwner is not null) {
+            _inlineTipOwner.MouseLeave -= OnInlineTipOwnerLeave;
+            _inlineTipOwner = null;
+        }
+        if (InlineTip.Visibility != Visibility.Collapsed)
+            InlineTip.Visibility = Visibility.Collapsed;
     }
 
     private void OnGfxFontComboDropDownOpened(object? sender, EventArgs e) {
