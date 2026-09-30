@@ -238,9 +238,42 @@ public sealed class XPlaneDocker : IDisposable {
 
     public IntPtr XPlaneHwnd => _hwnd;
 
+    // Mientras un tooltip/ComboBox Popup esta abierto, Windows reordena el Z
+    // varias veces (crear HWND, owned window, sombra). Un solo EnsureZOrder
+    // en Opened no basta: el shell vuelve a subir y el hueco se ve negro.
+    // Este guard reapila a ~30 Hz hasta EndPopupGuard.
+    private int _popupGuard;
+    private DispatcherTimer? _popupGuardTimer;
+
+    public void BeginPopupGuard() {
+        if (!_attached || !_covering) return;
+        _popupGuard++;
+        if (_popupGuard == 1) {
+            _popupGuardTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(33) };
+            _popupGuardTimer.Tick -= OnPopupGuardTick;
+            _popupGuardTimer.Tick += OnPopupGuardTick;
+            _popupGuardTimer.Start();
+        }
+        EnsureZOrder();
+    }
+
+    public void EndPopupGuard() {
+        if (_popupGuard > 0) _popupGuard--;
+        if (_popupGuard == 0) {
+            if (_popupGuardTimer is not null) {
+                _popupGuardTimer.Stop();
+                _popupGuardTimer.Tick -= OnPopupGuardTick;
+            }
+            EnsureZOrder();
+        }
+    }
+
+    private void OnPopupGuardTick(object? sender, EventArgs e) => EnsureZOrder();
+
     private void EnsureZOrder() {
         // Sincrona a proposito: es nuestra ventana, asi que no hay riesgo de
         // quedarse esperando a que el simulador atienda su cola.
+        if (_shellHwnd == IntPtr.Zero || _hwnd == IntPtr.Zero || !IsWindow(_hwnd)) return;
         SetWindowPos(_shellHwnd, _hwnd, 0, 0, 0, 0,
                      SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }

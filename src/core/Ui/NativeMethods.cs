@@ -24,6 +24,11 @@ internal static class NativeMethods {
     public const long WS_EX_WINDOWEDGE = 0x00000100;
     public const long WS_EX_CLIENTEDGE = 0x00000200;
     public const long WS_EX_STATICEDGE = 0x00020000;
+    // Popups WPF (tooltips): sin activar el shell, o Windows lo sube y el
+    // hueco de X-Plane se ve negro (EnsureZOrder no puede poner XP encima
+    // de la ventana activa — solo puede bajar el shell).
+    public const long WS_EX_NOACTIVATE = 0x08000000;
+    public const long WS_EX_TOOLWINDOW = 0x00000080;
 
     public const uint SWP_NOSIZE = 0x0001;
     public const uint SWP_NOMOVE = 0x0002;
