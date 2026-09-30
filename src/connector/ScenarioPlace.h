@@ -21,7 +21,7 @@
 namespace scenario {
 
 inline constexpr const char* kDefaultAiRelPath =
-    "Aircraft/Laminar Research/Cessna Citation X/Cessna_CitationX.acf";
+    "Aircraft/Laminar Research/Airbus A330-300/A330_AI.acf";
 
 struct PendingAi {
     bool active = false;

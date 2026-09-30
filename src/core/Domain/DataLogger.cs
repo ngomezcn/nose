@@ -17,6 +17,9 @@ namespace AICopilotCore.Domain;
 //      izquierdo.
 //   3. Fichero en disco junto al .exe (LogFilePath), para sesiones futuras.
 //
+// Hay un DataLogger por avion (ownship = DataLog.csv; IA N =
+// DataLog.plane{N}.csv). FlightDataLogs los crea bajo demanda.
+//
 // Formato CSV: ';' y numeros en InvariantCulture (punto decimal fijo).
 public sealed class DataLogger
 {
@@ -35,11 +38,8 @@ public sealed class DataLogger
         "G_obj;G_pred;AoA_deg;Aerofrenos_pct;Peso_lb;Mach;" +
         "PitchRate_dps;RollRate_dps;Adaptacion;Proteccion";
 
-    public static readonly string LogFilePath =
-        Path.Combine(AppContext.BaseDirectory, "DataLog.csv");
-
-    private static readonly string PreviousLogFilePath =
-        Path.Combine(AppContext.BaseDirectory, "DataLog.previous.csv");
+    public string LogFilePath { get; }
+    private readonly string _previousLogFilePath;
 
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly List<BlackBoxSample> _typed = new(MaxSamples);
@@ -52,31 +52,44 @@ public sealed class DataLogger
     private StreamWriter? _writer;
 
     // false = no escribe muestras ni eventos (salvo las marcas de
-    // Start/Stop). El fichero CSV se abre al arrancar la UI en modo
+    // Start/Stop). El fichero CSV se abre al crear el logger en modo
     // append: un build/restart no tira el vuelo grabado. Clear() y la
     // rotacion por tamano siguen truncando a proposito.
     public bool IsRecording { get; private set; }
 
-    public DataLogger()
+    public DataLogger(string logFilePath, string previousPath)
     {
+        LogFilePath = logFilePath;
+        _previousLogFilePath = previousPath;
         PreservePreviousSnapshot();
         OpenWriter(append: true);
     }
 
-    // Copia DataLog.csv -> .previous solo si hay datos reales y no pisamos
+    // Ownship (XPLM 0): mismos nombres historicos — no romper compat con
+    // scripts / skill caja-negra que buscan DataLog.csv junto al exe.
+    public static DataLogger ForOwnship() =>
+        new(Path.Combine(AppContext.BaseDirectory, "DataLog.csv"),
+            Path.Combine(AppContext.BaseDirectory, "DataLog.previous.csv"));
+
+    // IA N (XPLM 1..19): DataLog.plane{N}.csv (+ .previous).
+    public static DataLogger ForPlane(int n) =>
+        new(Path.Combine(AppContext.BaseDirectory, $"DataLog.plane{n}.csv"),
+            Path.Combine(AppContext.BaseDirectory, $"DataLog.plane{n}.previous.csv"));
+
+    // Copia el CSV activo -> .previous solo si hay datos reales y no pisamos
     // un snapshot anterior mas grande (dos restarts seguidos sin grabar
     // no deben borrar el vuelo que quedo en .previous tras el primero).
-    private static void PreservePreviousSnapshot()
+    private void PreservePreviousSnapshot()
     {
         try
         {
             var info = new FileInfo(LogFilePath);
             if (!info.Exists || info.Length <= Header.Length + 4) return;
 
-            var prev = new FileInfo(PreviousLogFilePath);
+            var prev = new FileInfo(_previousLogFilePath);
             if (prev.Exists && prev.Length > info.Length) return;
 
-            File.Copy(LogFilePath, PreviousLogFilePath, overwrite: true);
+            File.Copy(LogFilePath, _previousLogFilePath, overwrite: true);
         }
         catch (IOException)
         {
@@ -200,7 +213,7 @@ public sealed class DataLogger
         _markers.Clear();
         CloseWriter();
         TryDelete(LogFilePath);
-        TryDelete(PreviousLogFilePath);
+        TryDelete(_previousLogFilePath);
         OpenWriter(append: false);
     }
 
@@ -242,10 +255,10 @@ public sealed class DataLogger
             _writer?.Dispose();
             _writer = null;
             var info = new FileInfo(LogFilePath);
-            var prev = new FileInfo(PreviousLogFilePath);
+            var prev = new FileInfo(_previousLogFilePath);
             // Misma regla que al arrancar: no pisar un previous mas grande.
             if (info.Exists && (!prev.Exists || info.Length >= prev.Length))
-                File.Copy(LogFilePath, PreviousLogFilePath, overwrite: true);
+                File.Copy(LogFilePath, _previousLogFilePath, overwrite: true);
         }
         catch (IOException)
         {

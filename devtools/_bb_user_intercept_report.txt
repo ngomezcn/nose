@@ -1,0 +1,726 @@
+=== ROWS=3988 samples_in_window=3729 series=3729
+WINDOW start_i=226 end_i=3981
+
+=== MARCAS ===
+16:11:38.343 | Inicio: grabacion
+16:12:01.782 | Fin: despegue combate listo para interceptar — ALT=649ft IAS=253kt | IAS=253 ALT=649 AGL=790 VS=7945 pitch=18.7 bank=-0.1 hdg=246 G=0.85 AoA=0.6 Q=-5.9 P=-0.0 Mach=0.40
+16:12:01.801 | Inicio: interceptar Airbus A330-300 tras despegue combate — Cola alta | 200 m detras / 40 m por encima | cfg dist=200m lat=100m vert=40m · Gsoft=6.0 sueloAGL=600ft · umbrales cierre<3500m formacion<200m salida>500m | IAS=253 ALT=649 AGL=790 VS=7945 pitch=18.7 bank=-0.1 hdg=246 G=0.85 AoA=0.6 Q=-5.9 P=-0.0 Mach=0.40
+16:13:07.718 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Acercamiento | planner: Transit, a 3191 m, ETA 82 s | limites fase bank≤50° VS≤4000 fpm lead≤15s | rango=3191m/1.72NM sep=3100m cierre=+229kt err long=-1354 lat=-2721 vert=+972m blancoGS=228kt (en el aire) IASobj=486 bankObj=11.8 VSobj=-5906 | IAS=477 ALT=5066 AGL=3707 G=1.26 bank=10.4 pitch=-8.5
+16:13:22.085 | Fase: Airbus A330-300 Acercamiento → Persecucion (cierre rapido) | planner: Transit, a 5418 m, ETA 76 s | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=5418m/2.93NM sep=5570m cierre=-780kt err long=+4122 lat=-3510 vert=+209m blancoGS=355kt (en el aire) IASobj=650 bankObj=39.3 VSobj=1479 | IAS=602 ALT=4208 AGL=2595 G=2.49 bank=40.3 pitch=2.4
+16:14:44.454 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Acercamiento | planner: Transit, a 5479 m, ETA 77 s | limites fase bank≤50° VS≤4000 fpm lead≤15s | rango=5479m/2.96NM sep=5649m cierre=+385kt err long=+4591 lat=+2982 vert=-226m blancoGS=215kt (en el aire) IASobj=519 bankObj=64.2 VSobj=-424 SB=41% | IAS=551 ALT=4094 AGL=4029 G=2.66 bank=67.0 pitch=-1.0
+16:15:41.496 | Fase: Airbus A330-300 Acercamiento → Persecucion (cierre rapido) | planner: Transit, a 1649 m, ETA 78 s | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=1649m/0.89NM sep=1588m cierre=+242kt err long=-677 lat=-1452 vert=-391m blancoGS=230kt (en el aire) IASobj=554 bankObj=-50.0 VSobj=-1141 | IAS=553 ALT=1570 AGL=1571 G=1.62 bank=-50.1 pitch=-1.1
+16:15:48.405 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Esperando a que despegue | limites fase bank≤25° VS≤1500 fpm lead≤0s | rango=1219m/0.66NM sep=1048m cierre=-95kt err long=-1150 lat=+123 vert=-385m blancoGS=146kt (en tierra) IASobj=552 bankObj=-69.8 VSobj=-266 SB=4% | IAS=566 ALT=1420 AGL=1417 G=3.53 bank=-70.8 pitch=-0.4
+16:15:48.850 | Fase: Airbus A330-300 Esperando a que despegue → Persecucion (cierre rapido) | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=1244m/0.67NM sep=1075m cierre=-141kt err long=-1159 lat=+240 vert=-382m blancoGS=141kt (en el aire) IASobj=280 bankObj=-49.9 VSobj=0 | IAS=566 ALT=1411 AGL=1410 G=3.83 bank=-65.2 pitch=0.2
+16:15:49.391 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Esperando a que despegue | limites fase bank≤25° VS≤1500 fpm lead≤0s | rango=1286m/0.69NM sep=1123m cierre=-202kt err long=-1164 lat=+391 vert=-383m blancoGS=122kt (en tierra) IASobj=540 bankObj=-63.5 VSobj=-293 SB=27% | IAS=565 ALT=1400 AGL=1405 G=3.25 bank=-60.9 pitch=0.8
+16:16:11.666 | Fase: Airbus A330-300 Esperando a que despegue → Persecucion (cierre rapido) | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=6960m/3.76NM sep=6886m cierre=-398kt err long=-2066 lat=+5980 vert=+2900m blancoGS=1kt (en el aire) IASobj=280 bankObj=20.0 VSobj=0 | IAS=435 ALT=1617 AGL=1633 G=1.05 bank=20.5 pitch=-0.7
+16:16:12.103 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Esperando a que despegue | limites fase bank≤25° VS≤1500 fpm lead≤0s | rango=7049m/3.81NM sep=6975m cierre=-394kt err long=-2103 lat=+6072 vert=+2899m blancoGS=13kt (en tierra) IASobj=529 bankObj=9.0 VSobj=5906 | IAS=433 ALT=1616 AGL=1633 G=1.99 bank=17.0 pitch=0.9
+16:16:12.141 | Fase: Airbus A330-300 Esperando a que despegue → Persecucion (cierre rapido) | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=7056m/3.81NM sep=6982m cierre=-389kt err long=-2105 lat=+6079 vert=+2899m blancoGS=70kt (en el aire) IASobj=280 bankObj=10.5 VSobj=0 | IAS=433 ALT=1616 AGL=1633 G=2.17 bank=16.6 pitch=1.1
+16:16:48.007 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Acercamiento | planner: Transit, a 5590 m, ETA 75 s | limites fase bank≤50° VS≤4000 fpm lead≤15s | rango=5590m/3.02NM sep=5753m cierre=-460kt err long=+4956 lat=+1303 vert=+2234m blancoGS=234kt (en el aire) IASobj=650 bankObj=-69.9 VSobj=5906 | IAS=637 ALT=3530 AGL=3632 G=-0.69 bank=-0.3 pitch=7.0
+16:17:41.169 | Fase: Airbus A330-300 Acercamiento → Persecucion (cierre rapido) | planner: Transit, a 1366 m, ETA 78 s | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=1366m/0.74NM sep=1390m cierre=-408kt err long=+143 lat=+1295 vert=+411m blancoGS=233kt (en el aire) IASobj=509 bankObj=-50.0 VSobj=2564 | IAS=507 ALT=6622 AGL=6681 G=1.51 bank=-50.1 pitch=2.4
+16:18:53.863 | Fin: despegue abortado — fase era 'Secuencia completada' | IAS=650 ALT=6499 AGL=6476 VS=-2528 pitch=-1.9 bank=-51.6 hdg=188 G=1.49 AoA=1.0 Q=1.4 P=0.4 Mach=1.08
+
+=== ACCIONES UNICAS ===
+  Interceptar Airbus A330-300 · Acercamiento [Cola alta]
+  Interceptar Airbus A330-300 · Esperando a que despegue [Cola alta]
+  Interceptar Airbus A330-300 · Persecucion (cierre rapido) [Cola alta]
+
+=== FASES ===
+16:13:07.718 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Acercamiento | planner: Transit, a 3191 m, ETA 82 s | limites fase bank≤50° VS≤4000 fpm lead≤15s | rango=3191m/1.72NM sep=3100m cierre=+229kt err long=-1354 lat=-2721 vert=+972m blancoGS=228kt (en el aire) IASobj=486 bankObj=11.8 VSobj=-5906 | IAS=477 ALT=5066 AGL=3707 G=1.26 bank=10.4 pitch=-8.5
+16:13:22.085 | Fase: Airbus A330-300 Acercamiento → Persecucion (cierre rapido) | planner: Transit, a 5418 m, ETA 76 s | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=5418m/2.93NM sep=5570m cierre=-780kt err long=+4122 lat=-3510 vert=+209m blancoGS=355kt (en el aire) IASobj=650 bankObj=39.3 VSobj=1479 | IAS=602 ALT=4208 AGL=2595 G=2.49 bank=40.3 pitch=2.4
+16:14:44.454 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Acercamiento | planner: Transit, a 5479 m, ETA 77 s | limites fase bank≤50° VS≤4000 fpm lead≤15s | rango=5479m/2.96NM sep=5649m cierre=+385kt err long=+4591 lat=+2982 vert=-226m blancoGS=215kt (en el aire) IASobj=519 bankObj=64.2 VSobj=-424 SB=41% | IAS=551 ALT=4094 AGL=4029 G=2.66 bank=67.0 pitch=-1.0
+16:15:41.496 | Fase: Airbus A330-300 Acercamiento → Persecucion (cierre rapido) | planner: Transit, a 1649 m, ETA 78 s | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=1649m/0.89NM sep=1588m cierre=+242kt err long=-677 lat=-1452 vert=-391m blancoGS=230kt (en el aire) IASobj=554 bankObj=-50.0 VSobj=-1141 | IAS=553 ALT=1570 AGL=1571 G=1.62 bank=-50.1 pitch=-1.1
+16:15:48.405 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Esperando a que despegue | limites fase bank≤25° VS≤1500 fpm lead≤0s | rango=1219m/0.66NM sep=1048m cierre=-95kt err long=-1150 lat=+123 vert=-385m blancoGS=146kt (en tierra) IASobj=552 bankObj=-69.8 VSobj=-266 SB=4% | IAS=566 ALT=1420 AGL=1417 G=3.53 bank=-70.8 pitch=-0.4
+16:15:48.850 | Fase: Airbus A330-300 Esperando a que despegue → Persecucion (cierre rapido) | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=1244m/0.67NM sep=1075m cierre=-141kt err long=-1159 lat=+240 vert=-382m blancoGS=141kt (en el aire) IASobj=280 bankObj=-49.9 VSobj=0 | IAS=566 ALT=1411 AGL=1410 G=3.83 bank=-65.2 pitch=0.2
+16:15:49.391 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Esperando a que despegue | limites fase bank≤25° VS≤1500 fpm lead≤0s | rango=1286m/0.69NM sep=1123m cierre=-202kt err long=-1164 lat=+391 vert=-383m blancoGS=122kt (en tierra) IASobj=540 bankObj=-63.5 VSobj=-293 SB=27% | IAS=565 ALT=1400 AGL=1405 G=3.25 bank=-60.9 pitch=0.8
+16:16:11.666 | Fase: Airbus A330-300 Esperando a que despegue → Persecucion (cierre rapido) | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=6960m/3.76NM sep=6886m cierre=-398kt err long=-2066 lat=+5980 vert=+2900m blancoGS=1kt (en el aire) IASobj=280 bankObj=20.0 VSobj=0 | IAS=435 ALT=1617 AGL=1633 G=1.05 bank=20.5 pitch=-0.7
+16:16:12.103 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Esperando a que despegue | limites fase bank≤25° VS≤1500 fpm lead≤0s | rango=7049m/3.81NM sep=6975m cierre=-394kt err long=-2103 lat=+6072 vert=+2899m blancoGS=13kt (en tierra) IASobj=529 bankObj=9.0 VSobj=5906 | IAS=433 ALT=1616 AGL=1633 G=1.99 bank=17.0 pitch=0.9
+16:16:12.141 | Fase: Airbus A330-300 Esperando a que despegue → Persecucion (cierre rapido) | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=7056m/3.81NM sep=6982m cierre=-389kt err long=-2105 lat=+6079 vert=+2899m blancoGS=70kt (en el aire) IASobj=280 bankObj=10.5 VSobj=0 | IAS=433 ALT=1616 AGL=1633 G=2.17 bank=16.6 pitch=1.1
+16:16:48.007 | Fase: Airbus A330-300 Persecucion (cierre rapido) → Acercamiento | planner: Transit, a 5590 m, ETA 75 s | limites fase bank≤50° VS≤4000 fpm lead≤15s | rango=5590m/3.02NM sep=5753m cierre=-460kt err long=+4956 lat=+1303 vert=+2234m blancoGS=234kt (en el aire) IASobj=650 bankObj=-69.9 VSobj=5906 | IAS=637 ALT=3530 AGL=3632 G=-0.69 bank=-0.3 pitch=7.0
+16:17:41.169 | Fase: Airbus A330-300 Acercamiento → Persecucion (cierre rapido) | planner: Transit, a 1366 m, ETA 78 s | limites fase bank≤72° VS≤9000 fpm lead≤120s | rango=1366m/0.74NM sep=1390m cierre=-408kt err long=+143 lat=+1295 vert=+411m blancoGS=233kt (en el aire) IASobj=509 bankObj=-50.0 VSobj=2564 | IAS=507 ALT=6622 AGL=6681 G=1.51 bank=-50.1 pitch=2.4
+
+=== Formation/Station? ===
+marks: [('16:12:01.801', 'Inicio: interceptar Airbus A330-300 tras despegue combate — Cola alta | 200 m detras / 40 m por encima | cfg dist=200m lat=100m vert=40m · Gsoft=6.0 sueloAGL=600ft · umbrales cierre<3500m formacion<200m salida>500m | IAS=253 ALT=649 AGL=790 VS=7945 pitch=18.7 bank=-0.1 hdg=246 G=0.85 AoA=0.6 Q=-5.9 P=-0.0 Mach=0.40')]
+acciones: []
+
+=== SIDE LOCK ===
+lk count=3729 min=1.0 max=1.0 unique=[1.0]
+lk==1: 3729/3729 (100.0%)
+side unique=[1.0] count=3729
+side transitions: 0
+
+=== HOT: rng<5000 & IAS>350 ===
+count=1500
+16:12:59.269 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=432 iasObj=427.0 tgtGS=131.0 cl=482.0 rng=4977.0 al=-3561.0 cr=-3038.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-6.1 hdg=296 ThrObj=47
+16:13:00.040 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=430 iasObj=429.0 tgtGS=137.0 cl=473.0 rng=4786.0 al=-3401.0 cr=-2952.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-5.5 hdg=296 ThrObj=54
+16:13:01.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=428 iasObj=433.0 tgtGS=145.0 cl=460.0 rng=4550.0 al=-3198.0 cr=-2850.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-4.8 hdg=296 ThrObj=71
+16:13:02.004 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=427 iasObj=437.0 tgtGS=155.0 cl=445.0 rng=4321.0 al=-2979.0 cr=-2777.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-3.9 hdg=296 ThrObj=80
+16:13:03.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=428 iasObj=442.0 tgtGS=166.0 cl=425.0 rng=4069.0 al=-2701.0 cr=-2730.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-2.3 hdg=295 ThrObj=92
+16:13:04.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=433 iasObj=448.0 tgtGS=178.0 cl=403.0 rng=3855.0 al=-2437.0 cr=-2709.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-0.4 hdg=295 ThrObj=98
+16:13:05.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=441 iasObj=455.0 tgtGS=190.0 cl=374.0 rng=3652.0 al=-2163.0 cr=-2697.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=2.0 hdg=295 ThrObj=99
+16:13:06.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=453 iasObj=466.0 tgtGS=204.0 cl=331.0 rng=3458.0 al=-1872.0 cr=-2694.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=4.9 hdg=295 ThrObj=100
+16:13:07.049 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=467 iasObj=478.0 tgtGS=218.0 cl=276.0 rng=3293.0 al=-1577.0 cr=-2705.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=8.1 hdg=296 ThrObj=98
+16:13:08.051 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=482 iasObj=484.0 tgtGS=233.0 cl=204.0 rng=3149.0 al=-1246.0 cr=-2732.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=11.5 hdg=296 ThrObj=91
+16:13:09.033 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=496 iasObj=470.0 tgtGS=248.0 cl=128.0 rng=3043.0 al=-912.0 cr=-2769.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=14.5 hdg=298 ThrObj=36
+16:13:10.019 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=500 iasObj=473.0 tgtGS=254.0 cl=89.0 rng=3007.0 al=-758.0 cr=-2787.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=16.7 hdg=298 ThrObj=29
+16:13:11.006 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=505 iasObj=494.0 tgtGS=269.0 cl=-6.0 rng=2959.0 al=-406.0 cr=-2833.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=19.9 hdg=298 ThrObj=54
+16:13:12.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=505 iasObj=512.0 tgtGS=283.0 cl=-108.0 rng=2961.0 al=-57.0 cr=-2884.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.5 hdg=299 ThrObj=90
+16:13:13.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=505 iasObj=525.0 tgtGS=300.0 cl=-234.0 rng=3033.0 al=379.0 cr=-2953.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=25.7 hdg=300 ThrObj=100
+16:13:14.067 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=507 iasObj=537.0 tgtGS=306.0 cl=-283.0 rng=3083.0 al=559.0 cr=-2982.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=27.7 hdg=301 ThrObj=100
+16:13:15.053 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=516 iasObj=549.0 tgtGS=318.0 cl=-383.0 rng=3230.0 al=955.0 cr=-3048.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=30.6 hdg=302 ThrObj=100
+16:13:16.033 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=528 iasObj=564.0 tgtGS=329.0 cl=-474.0 rng=3427.0 al=1362.0 cr=-3116.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=32.8 hdg=303 ThrObj=100
+16:13:17.019 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=540 iasObj=580.0 tgtGS=338.0 cl=-553.0 rng=3670.0 al=1782.0 cr=-3186.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=34.8 hdg=304 ThrObj=100
+16:13:18.006 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=554 iasObj=598.0 tgtGS=345.0 cl=-622.0 rng=3956.0 al=2220.0 cr=-3258.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=36.7 hdg=306 ThrObj=100
+16:13:19.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=568 iasObj=616.0 tgtGS=351.0 cl=-682.0 rng=4305.0 al=2708.0 cr=-3335.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=38.4 hdg=309 ThrObj=100
+16:13:20.080 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=580 iasObj=634.0 tgtGS=354.0 cl=-723.0 rng=4653.0 al=3166.0 cr=-3400.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=39.4 hdg=311 ThrObj=100
+16:14:46.972 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=522 iasObj=485.0 tgtGS=208.0 cl=348.0 rng=4999.0 al=4296.0 cr=2549.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=50.9 hdg=197 ThrObj=0
+16:14:47.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=521 iasObj=483.0 tgtGS=208.0 cl=346.0 rng=4978.0 al=4284.0 cr=2528.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=50.8 hdg=197 ThrObj=0
+16:14:48.065 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=510 iasObj=471.0 tgtGS=206.0 cl=327.0 rng=4805.0 al=4190.0 cr=2345.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=50.3 hdg=198 ThrObj=0
+16:14:49.055 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=500 iasObj=459.0 tgtGS=204.0 cl=309.0 rng=4641.0 al=4104.0 cr=2159.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=49.0 hdg=200 ThrObj=0
+16:14:50.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=490 iasObj=447.0 tgtGS=202.0 cl=290.0 rng=4488.0 al=4026.0 cr=1975.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=46.2 hdg=201 ThrObj=0
+16:14:51.019 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=480 iasObj=434.0 tgtGS=201.0 cl=269.0 rng=4344.0 al=3955.0 cr=1790.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=42.8 hdg=203 ThrObj=0
+16:14:52.006 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=470 iasObj=422.0 tgtGS=200.0 cl=246.0 rng=4210.0 al=3890.0 cr=1603.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=38.6 hdg=204 ThrObj=0
+16:14:53.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=460 iasObj=408.0 tgtGS=199.0 cl=219.0 rng=4076.0 al=3826.0 cr=1395.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=32.9 hdg=206 ThrObj=0
+16:14:54.082 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=451 iasObj=395.0 tgtGS=199.0 cl=194.0 rng=3968.0 al=3776.0 cr=1209.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=27.3 hdg=207 ThrObj=0
+16:14:55.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=442 iasObj=382.0 tgtGS=199.0 cl=170.0 rng=3874.0 al=3733.0 cr=1026.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.9 hdg=208 ThrObj=0
+16:14:56.055 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=433 iasObj=367.0 tgtGS=199.0 cl=145.0 rng=3792.0 al=3694.0 cr=844.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=16.6 hdg=209 ThrObj=0
+16:14:57.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=424 iasObj=350.0 tgtGS=200.0 cl=120.0 rng=3723.0 al=3661.0 cr=665.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=11.5 hdg=209 ThrObj=0
+16:14:58.020 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=415 iasObj=333.0 tgtGS=201.0 cl=97.0 rng=3667.0 al=3632.0 cr=487.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=6.4 hdg=210 ThrObj=0
+16:14:59.003 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=407 iasObj=331.0 tgtGS=202.0 cl=75.0 rng=3623.0 al=3606.0 cr=316.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=1.7 hdg=210 ThrObj=0
+16:15:00.104 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=398 iasObj=332.0 tgtGS=203.0 cl=52.0 rng=3586.0 al=3581.0 cr=126.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-3.5 hdg=210 ThrObj=0
+16:15:01.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=390 iasObj=334.0 tgtGS=205.0 cl=33.0 rng=3565.0 al=3562.0 cr=-39.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-7.9 hdg=210 ThrObj=0
+16:15:02.068 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=383 iasObj=336.0 tgtGS=207.0 cl=16.0 rng=3553.0 al=3544.0 cr=-202.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-12.1 hdg=209 ThrObj=0
+16:15:03.049 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=377 iasObj=339.0 tgtGS=209.0 cl=1.0 rng=3549.0 al=3527.0 cr=-359.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-16.2 hdg=208 ThrObj=0
+16:15:04.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=372 iasObj=355.0 tgtGS=211.0 cl=-10.0 rng=3552.0 al=3512.0 cr=-511.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-20.0 hdg=208 ThrObj=0
+16:15:05.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=368 iasObj=370.0 tgtGS=213.0 cl=-19.0 rng=3561.0 al=3495.0 cr=-662.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-23.6 hdg=206 ThrObj=6
+16:15:06.005 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=365 iasObj=386.0 tgtGS=216.0 cl=-26.0 rng=3574.0 al=3477.0 cr=-808.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-27.0 hdg=205 ThrObj=49
+16:15:07.104 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=364 iasObj=401.0 tgtGS=219.0 cl=-30.0 rng=3593.0 al=3454.0 cr=-967.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-30.5 hdg=203 ThrObj=92
+16:15:08.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=366 iasObj=407.0 tgtGS=222.0 cl=-29.0 rng=3610.0 al=3429.0 cr=-1106.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-33.2 hdg=201 ThrObj=100
+16:15:09.068 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=373 iasObj=412.0 tgtGS=225.0 cl=-24.0 rng=3625.0 al=3398.0 cr=-1244.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-35.7 hdg=199 ThrObj=100
+16:15:10.056 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=384 iasObj=420.0 tgtGS=228.0 cl=-16.0 rng=3638.0 al=3357.0 cr=-1382.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-37.7 hdg=197 ThrObj=99
+16:15:11.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=398 iasObj=430.0 tgtGS=231.0 cl=-8.0 rng=3647.0 al=3307.0 cr=-1515.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-39.4 hdg=195 ThrObj=99
+16:15:12.019 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=412 iasObj=441.0 tgtGS=233.0 cl=1.0 rng=3652.0 al=3248.0 cr=-1647.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-41.0 hdg=193 ThrObj=98
+16:15:13.005 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=426 iasObj=452.0 tgtGS=236.0 cl=10.0 rng=3653.0 al=3177.0 cr=-1779.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-42.5 hdg=190 ThrObj=97
+16:15:14.101 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=442 iasObj=464.0 tgtGS=240.0 cl=20.0 rng=3648.0 al=3088.0 cr=-1918.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-43.9 hdg=188 ThrObj=100
+16:15:15.080 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=456 iasObj=475.0 tgtGS=242.0 cl=30.0 rng=3640.0 al=2998.0 cr=-2038.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-45.1 hdg=186 ThrObj=100
+16:15:16.067 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=470 iasObj=486.0 tgtGS=245.0 cl=41.0 rng=3626.0 al=2898.0 cr=-2153.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-46.0 hdg=183 ThrObj=99
+16:15:17.054 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=483 iasObj=495.0 tgtGS=247.0 cl=52.0 rng=3607.0 al=2788.0 cr=-2260.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-46.8 hdg=181 ThrObj=94
+16:15:18.052 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=496 iasObj=505.0 tgtGS=249.0 cl=63.0 rng=3583.0 al=2669.0 cr=-2361.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-47.5 hdg=178 ThrObj=92
+16:15:19.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=508 iasObj=511.0 tgtGS=251.0 cl=74.0 rng=3554.0 al=2544.0 cr=-2451.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-48.1 hdg=176 ThrObj=82
+16:15:20.018 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=518 iasObj=518.0 tgtGS=252.0 cl=84.0 rng=3519.0 al=2411.0 cr=-2533.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-48.7 hdg=174 ThrObj=79
+16:15:21.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=524 iasObj=524.0 tgtGS=254.0 cl=93.0 rng=3485.0 al=2290.0 cr=-2596.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-49.3 hdg=171 ThrObj=78
+16:15:22.005 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=529 iasObj=529.0 tgtGS=254.0 cl=101.0 rng=3453.0 al=2184.0 cr=-2643.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=170 ThrObj=80
+16:15:23.105 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=535 iasObj=534.0 tgtGS=255.0 cl=114.0 rng=3399.0 al=2021.0 cr=-2701.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.8 hdg=167 ThrObj=76
+16:15:24.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=539 iasObj=537.0 tgtGS=256.0 cl=125.0 rng=3346.0 al=1872.0 cr=-2741.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.8 hdg=164 ThrObj=74
+16:15:25.068 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=542 iasObj=540.0 tgtGS=256.0 cl=136.0 rng=3285.0 al=1718.0 cr=-2768.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.8 hdg=162 ThrObj=72
+16:15:26.054 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=545 iasObj=542.0 tgtGS=255.0 cl=147.0 rng=3221.0 al=1563.0 cr=-2783.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.7 hdg=159 ThrObj=71
+16:15:27.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=547 iasObj=544.0 tgtGS=255.0 cl=159.0 rng=3150.0 al=1408.0 cr=-2786.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.6 hdg=157 ThrObj=70
+16:15:28.066 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=546.0 tgtGS=254.0 cl=170.0 rng=3071.0 al=1245.0 cr=-2775.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.6 hdg=154 ThrObj=70
+16:15:29.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=549 iasObj=547.0 tgtGS=253.0 cl=180.0 rng=2995.0 al=1098.0 cr=-2753.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.5 hdg=152 ThrObj=68
+16:15:30.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=550 iasObj=547.0 tgtGS=252.0 cl=192.0 rng=2898.0 al=924.0 cr=-2714.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=149 ThrObj=67
+16:15:31.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=550 iasObj=547.0 tgtGS=250.0 cl=202.0 rng=2806.0 al=769.0 cr=-2665.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=147 ThrObj=67
+16:15:32.065 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=549 iasObj=548.0 tgtGS=249.0 cl=211.0 rng=2710.0 al=617.0 cr=-2605.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=144 ThrObj=67
+16:15:33.051 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=549 iasObj=548.0 tgtGS=247.0 cl=221.0 rng=2609.0 al=467.0 cr=-2533.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=142 ThrObj=68
+16:15:34.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=548.0 tgtGS=245.0 cl=229.0 rng=2507.0 al=322.0 cr=-2451.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=140 ThrObj=68
+16:15:35.018 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=548.0 tgtGS=243.0 cl=237.0 rng=2397.0 al=176.0 cr=-2355.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=137 ThrObj=69
+16:15:36.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=549.0 tgtGS=241.0 cl=244.0 rng=2286.0 al=36.0 cr=-2249.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=135 ThrObj=72
+16:15:37.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=549.0 tgtGS=239.0 cl=250.0 rng=2160.0 al=-116.0 cr=-2119.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=132 ThrObj=73
+16:15:38.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=550.0 tgtGS=237.0 cl=254.0 rng=2045.0 al=-247.0 cr=-1991.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=130 ThrObj=74
+16:15:39.066 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=549 iasObj=551.0 tgtGS=235.0 cl=256.0 rng=1930.0 al=-375.0 cr=-1851.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=127 ThrObj=74
+16:15:40.050 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=550 iasObj=551.0 tgtGS=234.0 cl=255.0 rng=1856.0 al=-456.0 cr=-1756.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.1 hdg=126 ThrObj=74
+16:15:41.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=552 iasObj=553.0 tgtGS=231.0 cl=247.0 rng=1699.0 al=-624.0 cr=-1532.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.1 hdg=122 ThrObj=74
+16:15:42.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=554 iasObj=555.0 tgtGS=229.0 cl=235.0 rng=1597.0 al=-735.0 cr=-1363.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-54.0 hdg=120 ThrObj=77
+16:15:43.003 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=556 iasObj=557.0 tgtGS=228.0 cl=220.0 rng=1498.0 al=-844.0 cr=-1175.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-64.3 hdg=116 ThrObj=77
+16:15:44.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=558 iasObj=559.0 tgtGS=226.0 cl=202.0 rng=1401.0 al=-950.0 cr=-954.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-69.8 hdg=111 ThrObj=77
+16:15:45.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=560 iasObj=561.0 tgtGS=225.0 cl=176.0 rng=1321.0 al=-1032.0 cr=-728.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.2 hdg=106 ThrObj=77
+16:15:46.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=562 iasObj=563.0 tgtGS=224.0 cl=137.0 rng=1259.0 al=-1091.0 cr=-495.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.3 hdg=100 ThrObj=81
+16:15:47.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=564 iasObj=565.0 tgtGS=223.0 cl=77.0 rng=1216.0 al=-1126.0 cr=-244.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.1 hdg=94 ThrObj=79
+16:15:48.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=565 iasObj=557.0 tgtGS=168.0 cl=-43.0 rng=1206.0 al=-1142.0 cr=24.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.9 hdg=88 ThrObj=55
+16:15:49.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=566 iasObj=547.0 tgtGS=139.0 cl=-159.0 rng=1257.0 al=-1162.0 cr=289.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-62.3 hdg=82 ThrObj=0
+16:15:50.006 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=563 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-52.5 hdg=77 ThrObj=0
+16:15:51.097 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=555 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-11.2 hdg=75 ThrObj=0
+16:15:52.083 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=547 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=17.0 hdg=75 ThrObj=0
+16:15:53.067 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=538 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=23.1 hdg=75 ThrObj=0
+16:15:54.055 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=531 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=24.2 hdg=76 ThrObj=0
+16:15:55.036 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=524 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=24.1 hdg=77 ThrObj=0
+16:15:56.021 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=517 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=23.7 hdg=77 ThrObj=0
+16:15:57.006 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=511 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=23.3 hdg=78 ThrObj=0
+16:15:58.097 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=504 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.9 hdg=79 ThrObj=0
+16:15:59.084 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=498 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.6 hdg=80 ThrObj=0
+16:16:00.066 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=492 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.3 hdg=81 ThrObj=0
+16:16:01.050 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=487 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.0 hdg=82 ThrObj=0
+16:16:02.034 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=481 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.8 hdg=82 ThrObj=0
+16:16:03.020 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=476 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.6 hdg=83 ThrObj=0
+16:16:04.006 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=471 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.4 hdg=84 ThrObj=0
+16:16:05.103 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=465 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.2 hdg=85 ThrObj=0
+16:16:06.082 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=461 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.1 hdg=86 ThrObj=0
+16:16:07.065 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=456 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.9 hdg=87 ThrObj=0
+16:16:08.066 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=451 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.8 hdg=88 ThrObj=0
+16:16:09.050 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=447 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.7 hdg=89 ThrObj=0
+16:16:10.040 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=442 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.7 hdg=90 ThrObj=0
+16:16:11.021 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=438 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.6 hdg=90 ThrObj=0
+16:16:48.207 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=638 iasObj=649.0 tgtGS=235.0 cl=-521.0 rng=4821.0 al=4259.0 cr=386.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-0.3 hdg=-68 ThrObj=100
+16:16:49.191 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=639 iasObj=631.0 tgtGS=237.0 cl=329.0 rng=4984.0 al=4498.0 cr=140.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-0.1 hdg=-162 ThrObj=79
+16:16:50.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=638 iasObj=619.0 tgtGS=240.0 cl=437.0 rng=4796.0 al=4325.0 cr=42.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-54.0 hdg=170 ThrObj=51
+16:16:51.054 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=507 iasObj=637.0 tgtGS=242.0 cl=130.0 rng=4689.0 al=4236.0 cr=0.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=0.1 hdg=170 ThrObj=100
+16:16:59.190 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=350 iasObj=491.0 tgtGS=267.0 cl=111.0 rng=4249.0 al=3955.0 cr=-402.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=5.3 hdg=180 ThrObj=100
+16:17:00.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=359 iasObj=469.0 tgtGS=270.0 cl=113.0 rng=4198.0 al=3915.0 cr=-465.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=1.0 hdg=181 ThrObj=100
+16:17:01.051 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=369 iasObj=445.0 tgtGS=273.0 cl=115.0 rng=4141.0 al=3865.0 cr=-538.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-3.6 hdg=181 ThrObj=100
+16:17:02.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=379 iasObj=436.0 tgtGS=275.0 cl=118.0 rng=4082.0 al=3811.0 cr=-612.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-7.8 hdg=180 ThrObj=100
+16:17:03.022 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=389 iasObj=439.0 tgtGS=277.0 cl=121.0 rng=4021.0 al=3752.0 cr=-689.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-11.9 hdg=180 ThrObj=100
+16:17:04.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=400 iasObj=442.0 tgtGS=279.0 cl=125.0 rng=3960.0 al=3689.0 cr=-765.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-15.6 hdg=180 ThrObj=100
+16:17:05.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=411 iasObj=444.0 tgtGS=281.0 cl=130.0 rng=3889.0 al=3612.0 cr=-850.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-19.4 hdg=179 ThrObj=100
+16:17:06.082 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=422 iasObj=447.0 tgtGS=283.0 cl=135.0 rng=3823.0 al=3537.0 cr=-925.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-22.6 hdg=178 ThrObj=100
+16:17:07.066 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=432 iasObj=449.0 tgtGS=284.0 cl=141.0 rng=3755.0 al=3456.0 cr=-1000.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-25.5 hdg=178 ThrObj=100
+16:17:08.053 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=443 iasObj=452.0 tgtGS=285.0 cl=147.0 rng=3684.0 al=3369.0 cr=-1072.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-28.2 hdg=177 ThrObj=100
+16:17:09.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=454 iasObj=455.0 tgtGS=285.0 cl=155.0 rng=3604.0 al=3268.0 cr=-1147.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-30.9 hdg=175 ThrObj=92
+16:17:10.068 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=465 iasObj=460.0 tgtGS=285.0 cl=161.0 rng=3526.0 al=3167.0 cr=-1214.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-33.1 hdg=174 ThrObj=85
+16:17:11.055 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=473 iasObj=466.0 tgtGS=285.0 cl=166.0 rng=3444.0 al=3060.0 cr=-1277.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-35.2 hdg=173 ThrObj=75
+16:17:12.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=478 iasObj=471.0 tgtGS=285.0 cl=169.0 rng=3363.0 al=2952.0 cr=-1333.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-36.9 hdg=171 ThrObj=73
+16:17:13.050 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=480 iasObj=475.0 tgtGS=284.0 cl=174.0 rng=3276.0 al=2836.0 cr=-1384.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-38.6 hdg=170 ThrObj=73
+16:17:14.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=482 iasObj=478.0 tgtGS=283.0 cl=178.0 rng=3191.0 al=2723.0 cr=-1427.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-40.2 hdg=168 ThrObj=74
+16:17:15.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=483 iasObj=475.0 tgtGS=281.0 cl=184.0 rng=3100.0 al=2604.0 cr=-1462.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-41.6 hdg=166 ThrObj=64
+16:17:16.003 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=483 iasObj=474.0 tgtGS=280.0 cl=189.0 rng=3009.0 al=2486.0 cr=-1489.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-42.9 hdg=164 ThrObj=60
+16:17:17.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=482 iasObj=474.0 tgtGS=278.0 cl=194.0 rng=2905.0 al=2353.0 cr=-1509.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-44.2 hdg=162 ThrObj=57
+16:17:18.082 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=479 iasObj=473.0 tgtGS=276.0 cl=199.0 rng=2808.0 al=2233.0 cr=-1517.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-45.3 hdg=160 ThrObj=58
+16:17:19.067 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=476 iasObj=471.0 tgtGS=274.0 cl=205.0 rng=2710.0 al=2114.0 cr=-1515.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-46.3 hdg=158 ThrObj=59
+16:17:20.053 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=473 iasObj=469.0 tgtGS=271.0 cl=211.0 rng=2607.0 al=1995.0 cr=-1503.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-47.2 hdg=156 ThrObj=60
+16:17:21.041 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=470 iasObj=468.0 tgtGS=269.0 cl=218.0 rng=2501.0 al=1877.0 cr=-1481.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-48.0 hdg=153 ThrObj=62
+16:17:22.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=466 iasObj=465.0 tgtGS=267.0 cl=225.0 rng=2393.0 al=1762.0 cr=-1449.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-48.8 hdg=151 ThrObj=62
+16:17:23.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=463 iasObj=464.0 tgtGS=264.0 cl=233.0 rng=2280.0 al=1649.0 cr=-1407.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-49.4 hdg=148 ThrObj=63
+16:17:24.098 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=461 iasObj=462.0 tgtGS=261.0 cl=242.0 rng=2149.0 al=1524.0 cr=-1347.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.1 hdg=145 ThrObj=66
+16:17:25.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=459 iasObj=461.0 tgtGS=259.0 cl=251.0 rng=2028.0 al=1414.0 cr=-1282.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.7 hdg=143 ThrObj=70
+16:17:26.070 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=458 iasObj=460.0 tgtGS=256.0 cl=259.0 rng=1901.0 al=1307.0 cr=-1206.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.9 hdg=140 ThrObj=72
+16:17:27.052 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=457 iasObj=460.0 tgtGS=254.0 cl=267.0 rng=1768.0 al=1200.0 cr=-1117.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.8 hdg=137 ThrObj=74
+16:17:28.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=457 iasObj=460.0 tgtGS=251.0 cl=274.0 rng=1629.0 al=1095.0 cr=-1016.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.7 hdg=134 ThrObj=76
+16:17:29.020 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=457 iasObj=461.0 tgtGS=249.0 cl=279.0 rng=1490.0 al=997.0 cr=-906.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.7 hdg=132 ThrObj=78
+16:17:30.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=458 iasObj=462.0 tgtGS=247.0 cl=281.0 rng=1348.0 al=901.0 cr=-785.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.6 hdg=129 ThrObj=80
+16:17:31.099 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=460 iasObj=464.0 tgtGS=245.0 cl=278.0 rng=1193.0 al=801.0 cr=-641.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.5 hdg=126 ThrObj=82
+16:17:32.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=462 iasObj=467.0 tgtGS=243.0 cl=268.0 rng=1054.0 al=714.0 cr=-498.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.5 hdg=124 ThrObj=83
+16:17:33.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=465 iasObj=470.0 tgtGS=241.0 cl=246.0 rng=924.0 al=631.0 cr=-346.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=121 ThrObj=85
+16:17:34.056 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=469 iasObj=473.0 tgtGS=240.0 cl=206.0 rng=809.0 al=552.0 cr=-182.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=119 ThrObj=86
+16:17:35.040 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=473 iasObj=477.0 tgtGS=238.0 cl=139.0 rng=726.0 al=478.0 cr=-8.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=116 ThrObj=87
+16:17:36.020 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=477 iasObj=481.0 tgtGS=237.0 cl=43.0 rng=690.0 al=409.0 cr=174.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=114 ThrObj=88
+16:17:37.006 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=482 iasObj=486.0 tgtGS=236.0 cl=-74.0 rng=717.0 al=345.0 cr=370.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=111 ThrObj=89
+16:17:38.099 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=488 iasObj=491.0 tgtGS=235.0 cl=-196.0 rng=816.0 al=282.0 cr=592.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=109 ThrObj=90
+16:17:39.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=494 iasObj=497.0 tgtGS=234.0 cl=-286.0 rng=961.0 al=230.0 cr=810.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=106 ThrObj=90
+16:17:40.067 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=500 iasObj=503.0 tgtGS=234.0 cl=-353.0 rng=1136.0 al=186.0 cr=1031.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=104 ThrObj=91
+16:17:41.051 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=507 iasObj=509.0 tgtGS=233.0 cl=-403.0 rng=1341.0 al=147.0 cr=1267.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.1 hdg=102 ThrObj=97
+16:17:42.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=513 iasObj=515.0 tgtGS=233.0 cl=-447.0 rng=1561.0 al=118.0 cr=1508.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-57.5 hdg=98 ThrObj=95
+16:17:43.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=520 iasObj=521.0 tgtGS=233.0 cl=-482.0 rng=1802.0 al=100.0 cr=1763.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-63.8 hdg=96 ThrObj=94
+16:17:44.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=528 iasObj=528.0 tgtGS=233.0 cl=-508.0 rng=2057.0 al=91.0 cr=2028.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-69.5 hdg=95 ThrObj=92
+16:17:45.101 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=537 iasObj=537.0 tgtGS=234.0 cl=-531.0 rng=2351.0 al=88.0 cr=2329.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-72.1 hdg=93 ThrObj=94
+16:17:46.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=544 iasObj=545.0 tgtGS=234.0 cl=-552.0 rng=2624.0 al=93.0 cr=2606.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-72.4 hdg=90 ThrObj=94
+16:17:47.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=552 iasObj=554.0 tgtGS=235.0 cl=-576.0 rng=2912.0 al=110.0 cr=2896.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-72.0 hdg=86 ThrObj=99
+16:17:48.052 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=560 iasObj=563.0 tgtGS=235.0 cl=-603.0 rng=3211.0 al=146.0 cr=3197.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.4 hdg=80 ThrObj=100
+16:17:49.035 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=567 iasObj=571.0 tgtGS=236.0 cl=-629.0 rng=3518.0 al=208.0 cr=3502.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.9 hdg=74 ThrObj=100
+16:17:50.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=575 iasObj=579.0 tgtGS=237.0 cl=-652.0 rng=3840.0 al=303.0 cr=3821.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=68 ThrObj=100
+16:17:51.004 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=582 iasObj=588.0 tgtGS=238.0 cl=-671.0 rng=4172.0 al=432.0 cr=4143.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=62 ThrObj=100
+16:17:52.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=593 iasObj=600.0 tgtGS=240.0 cl=-686.0 rng=4539.0 al=610.0 cr=4493.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=56 ThrObj=100
+16:17:53.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=606 iasObj=620.0 tgtGS=241.0 cl=-694.0 rng=4888.0 al=811.0 cr=4817.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=50 ThrObj=100
+
+=== TIMELINE SERIES (~1s, with rng or intercept Accion) ===
+16:12:01.851 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=253 iasObj=254.0 tgtGS=245.0 cl=217.0 rng=19569.0 al=4944.0 cr=-18601.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-0.1 hdg=246 Thr=100/100
+16:12:02.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=254 iasObj=259.0 tgtGS=251.0 cl=222.0 rng=19549.0 al=4484.0 cr=-18707.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=0.4 hdg=246 Thr=100/100
+16:12:03.055 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=261 iasObj=279.0 tgtGS=277.0 cl=243.0 rng=19449.0 al=2620.0 cr=-18998.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=7.0 hdg=246 Thr=100/100
+16:12:04.033 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=268 iasObj=293.0 tgtGS=303.0 cl=264.0 rng=19338.0 al=1137.0 cr=-19070.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=17.6 hdg=246 Thr=100/100
+16:12:05.018 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=276 iasObj=307.0 tgtGS=331.0 cl=286.0 rng=19209.0 al=-95.0 cr=-19010.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=30.1 hdg=247 Thr=100/100
+16:12:06.002 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=284 iasObj=321.0 tgtGS=357.0 cl=309.0 rng=19070.0 al=-1060.0 cr=-18870.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=41.0 hdg=250 Thr=100/100
+16:12:07.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=295 iasObj=336.0 tgtGS=385.0 cl=335.0 rng=18898.0 al=-1917.0 cr=-18658.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=45.3 hdg=250 Thr=100/100
+16:12:08.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=306 iasObj=350.0 tgtGS=409.0 cl=357.0 rng=18728.0 al=-2531.0 cr=-18435.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=47.2 hdg=252 Thr=100/100
+16:12:09.066 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=314 iasObj=362.0 tgtGS=427.0 cl=375.0 rng=18581.0 al=-2932.0 cr=-18243.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=48.5 hdg=253 Thr=100/100
+16:12:10.053 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=320 iasObj=377.0 tgtGS=437.0 cl=386.0 rng=18484.0 al=-3152.0 cr=-18116.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=52.8 hdg=255 Thr=100/100
+16:12:11.033 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=332 iasObj=392.0 tgtGS=456.0 cl=407.0 rng=18285.0 al=-3511.0 cr=-17862.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=54.8 hdg=256 Thr=100/100
+16:12:12.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=343 iasObj=407.0 tgtGS=471.0 cl=428.0 rng=18078.0 al=-3791.0 cr=-17604.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=54.1 hdg=257 Thr=100/100
+16:12:13.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=356 iasObj=423.0 tgtGS=484.0 cl=447.0 rng=17859.0 al=-4014.0 cr=-17339.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=54.1 hdg=259 Thr=100/100
+16:12:14.095 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=370 iasObj=441.0 tgtGS=494.0 cl=467.0 rng=17605.0 al=-4205.0 cr=-17040.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=54.1 hdg=261 Thr=100/100
+16:12:15.081 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=384 iasObj=458.0 tgtGS=500.0 cl=484.0 rng=17364.0 al=-4339.0 cr=-16761.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=54.1 hdg=262 Thr=100/100
+16:12:16.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=399 iasObj=475.0 tgtGS=502.0 cl=499.0 rng=17117.0 al=-4443.0 cr=-16480.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=53.9 hdg=265 Thr=100/100
+16:12:17.053 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=413 iasObj=492.0 tgtGS=500.0 cl=524.0 rng=16863.0 al=-4531.0 cr=-16194.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=51.3 hdg=272 Thr=100/100
+16:12:18.041 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=424 iasObj=510.0 tgtGS=494.0 cl=554.0 rng=16589.0 al=-4626.0 cr=-15881.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=44.0 hdg=282 Thr=100/100
+16:12:19.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=432 iasObj=534.0 tgtGS=484.0 cl=570.0 rng=16308.0 al=-4738.0 cr=-15556.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=34.2 hdg=287 Thr=100/100
+16:12:20.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=442 iasObj=556.0 tgtGS=470.0 cl=581.0 rng=16013.0 al=-4867.0 cr=-15206.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=27.7 hdg=288 Thr=100/100
+16:12:21.103 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=452 iasObj=573.0 tgtGS=450.0 cl=592.0 rng=15686.0 al=-5001.0 cr=-14817.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=24.8 hdg=288 Thr=100/100
+16:12:22.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=461 iasObj=587.0 tgtGS=429.0 cl=600.0 rng=15388.0 al=-5123.0 cr=-14457.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.7 hdg=289 Thr=100/100
+16:12:23.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=471 iasObj=602.0 tgtGS=407.0 cl=606.0 rng=15086.0 al=-5252.0 cr=-14084.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.7 hdg=289 Thr=100/100
+16:12:24.055 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=480 iasObj=616.0 tgtGS=383.0 cl=612.0 rng=14780.0 al=-5391.0 cr=-13697.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=18.5 hdg=290 Thr=100/100
+16:12:25.033 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=490 iasObj=631.0 tgtGS=358.0 cl=617.0 rng=14473.0 al=-5544.0 cr=-13296.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=16.4 hdg=290 Thr=100/100
+16:12:26.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=500 iasObj=645.0 tgtGS=333.0 cl=621.0 rng=14167.0 al=-5711.0 cr=-12881.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=14.3 hdg=291 Thr=100/100
+16:12:27.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=511 iasObj=643.0 tgtGS=307.0 cl=625.0 rng=13852.0 al=-5898.0 cr=-12437.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=12.2 hdg=291 Thr=100/100
+16:12:28.097 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=522 iasObj=625.0 tgtGS=280.0 cl=629.0 rng=13507.0 al=-6121.0 cr=-11927.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=10.3 hdg=292 Thr=100/100
+16:12:29.081 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=533 iasObj=608.0 tgtGS=257.0 cl=633.0 rng=13192.0 al=-6335.0 cr=-11440.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=8.9 hdg=292 Thr=100/100
+16:12:30.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=543 iasObj=592.0 tgtGS=236.0 cl=637.0 rng=12874.0 al=-6548.0 cr=-10933.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=7.7 hdg=292 Thr=100/100
+16:12:31.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=553 iasObj=575.0 tgtGS=216.0 cl=641.0 rng=12559.0 al=-6744.0 cr=-10420.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=8.0 hdg=293 Thr=100/100
+16:12:32.039 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=563 iasObj=559.0 tgtGS=199.0 cl=644.0 rng=12240.0 al=-6923.0 cr=-9894.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=11.8 hdg=293 Thr=73/70
+16:12:33.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=571 iasObj=548.0 tgtGS=183.0 cl=640.0 rng=11920.0 al=-7081.0 cr=-9360.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=11.4 hdg=293 Thr=31/31
+16:12:34.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=572 iasObj=538.0 tgtGS=169.0 cl=628.0 rng=11601.0 al=-7215.0 cr=-8824.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=7.0 hdg=294 Thr=1/1
+16:12:35.095 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=564 iasObj=524.0 tgtGS=156.0 cl=610.0 rng=11265.0 al=-7326.0 cr=-8260.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=5.0 hdg=294 Thr=0/0
+16:12:36.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=553 iasObj=510.0 tgtGS=146.0 cl=592.0 rng=10962.0 al=-7393.0 cr=-7760.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=5.2 hdg=294 Thr=0/0
+16:12:37.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=539 iasObj=494.0 tgtGS=137.0 cl=575.0 rng=10673.0 al=-7426.0 cr=-7294.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=6.2 hdg=294 Thr=0/0
+16:12:38.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=524 iasObj=477.0 tgtGS=130.0 cl=559.0 rng=10391.0 al=-7424.0 cr=-6860.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=7.2 hdg=295 Thr=0/0
+16:12:39.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=509 iasObj=460.0 tgtGS=123.0 cl=543.0 rng=10113.0 al=-7388.0 cr=-6457.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=8.1 hdg=295 Thr=0/0
+16:12:40.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=494 iasObj=443.0 tgtGS=117.0 cl=528.0 rng=9843.0 al=-7321.0 cr=-6092.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=8.6 hdg=295 Thr=0/0
+16:12:41.002 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=480 iasObj=425.0 tgtGS=113.0 cl=514.0 rng=9585.0 al=-7228.0 cr=-5773.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=8.4 hdg=296 Thr=0/0
+16:12:42.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=464 iasObj=406.0 tgtGS=108.0 cl=500.0 rng=9300.0 al=-7093.0 cr=-5457.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=7.6 hdg=296 Thr=0/0
+16:12:43.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=450 iasObj=388.0 tgtGS=105.0 cl=487.0 rng=9051.0 al=-6947.0 cr=-5215.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=6.8 hdg=296 Thr=0/0
+16:12:44.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=436 iasObj=391.0 tgtGS=102.0 cl=476.0 rng=8810.0 al=-6783.0 cr=-5014.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=6.8 hdg=297 Thr=0/0
+16:12:45.049 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=423 iasObj=403.0 tgtGS=100.0 cl=467.0 rng=8569.0 al=-6597.0 cr=-4845.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=8.6 hdg=297 Thr=29/25
+16:12:46.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=411 iasObj=417.0 tgtGS=99.0 cl=462.0 rng=8334.0 al=-6398.0 cr=-4706.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=10.8 hdg=298 Thr=76/70
+16:12:47.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=403 iasObj=429.0 tgtGS=98.0 cl=462.0 rng=8101.0 al=-6192.0 cr=-4585.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=7.6 hdg=298 Thr=100/100
+16:12:48.003 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=400 iasObj=438.0 tgtGS=97.0 cl=467.0 rng=7863.0 al=-5978.0 cr=-4469.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-1.6 hdg=298 Thr=100/100
+16:12:49.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=403 iasObj=434.0 tgtGS=97.0 cl=477.0 rng=7599.0 al=-5748.0 cr=-4334.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-7.5 hdg=298 Thr=100/100
+16:12:50.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=410 iasObj=432.0 tgtGS=98.0 cl=487.0 rng=7354.0 al=-5558.0 cr=-4184.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-8.8 hdg=298 Thr=100/100
+16:12:51.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=418 iasObj=433.0 tgtGS=99.0 cl=496.0 rng=7105.0 al=-5386.0 cr=-4004.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-8.9 hdg=297 Thr=94/94
+16:12:52.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=426 iasObj=435.0 tgtGS=101.0 cl=504.0 rng=6854.0 al=-5227.0 cr=-3806.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-8.5 hdg=297 Thr=86/86
+16:12:53.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=433 iasObj=436.0 tgtGS=103.0 cl=508.0 rng=6598.0 al=-5065.0 cr=-3607.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-8.0 hdg=297 Thr=78/78
+16:12:54.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=438 iasObj=436.0 tgtGS=105.0 cl=511.0 rng=6340.0 al=-4880.0 cr=-3439.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-7.7 hdg=297 Thr=67/70
+16:12:55.003 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=440 iasObj=434.0 tgtGS=108.0 cl=510.0 rng=6080.0 al=-4659.0 cr=-3322.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-7.8 hdg=296 Thr=60/60
+16:12:56.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=440 iasObj=431.0 tgtGS=113.0 cl=506.0 rng=5796.0 al=-4375.0 cr=-3252.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-8.0 hdg=296 Thr=51/51
+16:12:57.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=438 iasObj=428.0 tgtGS=118.0 cl=500.0 rng=5531.0 al=-4094.0 cr=-3208.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-7.8 hdg=296 Thr=43/45
+16:12:58.065 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=436 iasObj=426.0 tgtGS=123.0 cl=493.0 rng=5276.0 al=-3834.0 cr=-3149.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-7.1 hdg=296 Thr=42/43
+16:12:59.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=433 iasObj=427.0 tgtGS=130.0 cl=484.0 rng=5028.0 al=-3606.0 cr=-3060.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-6.3 hdg=296 Thr=46/46
+16:13:00.040 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=430 iasObj=429.0 tgtGS=137.0 cl=473.0 rng=4786.0 al=-3401.0 cr=-2952.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-5.5 hdg=296 Thr=54/54
+16:13:01.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=428 iasObj=433.0 tgtGS=145.0 cl=460.0 rng=4550.0 al=-3198.0 cr=-2850.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-4.8 hdg=296 Thr=71/66
+16:13:02.004 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=427 iasObj=437.0 tgtGS=155.0 cl=445.0 rng=4321.0 al=-2979.0 cr=-2777.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-3.9 hdg=296 Thr=80/82
+16:13:03.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=428 iasObj=442.0 tgtGS=166.0 cl=425.0 rng=4069.0 al=-2701.0 cr=-2730.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-2.3 hdg=295 Thr=92/92
+16:13:04.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=433 iasObj=448.0 tgtGS=178.0 cl=403.0 rng=3855.0 al=-2437.0 cr=-2709.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-0.4 hdg=295 Thr=98/100
+16:13:05.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=441 iasObj=455.0 tgtGS=190.0 cl=374.0 rng=3652.0 al=-2163.0 cr=-2697.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=2.0 hdg=295 Thr=99/100
+16:13:06.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=453 iasObj=466.0 tgtGS=204.0 cl=331.0 rng=3458.0 al=-1872.0 cr=-2694.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=4.9 hdg=295 Thr=100/99
+16:13:07.049 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=467 iasObj=478.0 tgtGS=218.0 cl=276.0 rng=3293.0 al=-1577.0 cr=-2705.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=8.1 hdg=296 Thr=98/99
+16:13:08.051 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=482 iasObj=484.0 tgtGS=233.0 cl=204.0 rng=3149.0 al=-1246.0 cr=-2732.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=11.5 hdg=296 Thr=91/96
+16:13:09.033 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=496 iasObj=470.0 tgtGS=248.0 cl=128.0 rng=3043.0 al=-912.0 cr=-2769.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=14.5 hdg=298 Thr=36/37
+16:13:10.019 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=500 iasObj=473.0 tgtGS=254.0 cl=89.0 rng=3007.0 al=-758.0 cr=-2787.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=16.7 hdg=298 Thr=29/29
+16:13:11.006 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=505 iasObj=494.0 tgtGS=269.0 cl=-6.0 rng=2959.0 al=-406.0 cr=-2833.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=19.9 hdg=298 Thr=54/53
+16:13:12.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=505 iasObj=512.0 tgtGS=283.0 cl=-108.0 rng=2961.0 al=-57.0 cr=-2884.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.5 hdg=299 Thr=90/90
+16:13:13.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=505 iasObj=525.0 tgtGS=300.0 cl=-234.0 rng=3033.0 al=379.0 cr=-2953.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=25.7 hdg=300 Thr=100/100
+16:13:14.067 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=507 iasObj=537.0 tgtGS=306.0 cl=-283.0 rng=3083.0 al=559.0 cr=-2982.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=27.7 hdg=301 Thr=100/100
+16:13:15.053 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=516 iasObj=549.0 tgtGS=318.0 cl=-383.0 rng=3230.0 al=955.0 cr=-3048.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=30.6 hdg=302 Thr=100/100
+16:13:16.033 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=528 iasObj=564.0 tgtGS=329.0 cl=-474.0 rng=3427.0 al=1362.0 cr=-3116.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=32.8 hdg=303 Thr=100/100
+16:13:17.019 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=540 iasObj=580.0 tgtGS=338.0 cl=-553.0 rng=3670.0 al=1782.0 cr=-3186.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=34.8 hdg=304 Thr=100/100
+16:13:18.006 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=554 iasObj=598.0 tgtGS=345.0 cl=-622.0 rng=3956.0 al=2220.0 cr=-3258.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=36.7 hdg=306 Thr=100/100
+16:13:19.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=568 iasObj=616.0 tgtGS=351.0 cl=-682.0 rng=4305.0 al=2708.0 cr=-3335.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=38.4 hdg=309 Thr=100/100
+16:13:20.080 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=580 iasObj=634.0 tgtGS=354.0 cl=-723.0 rng=4653.0 al=3166.0 cr=-3400.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=39.4 hdg=311 Thr=100/100
+16:13:21.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=591 iasObj=650.0 tgtGS=356.0 cl=-755.0 rng=5021.0 al=3632.0 cr=-3458.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=39.9 hdg=314 Thr=100/100
+16:13:22.053 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=601 iasObj=650.0 tgtGS=355.0 cl=-779.0 rng=5403.0 al=4104.0 cr=-3508.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=40.3 hdg=316 Thr=100/100
+16:13:23.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=611 iasObj=650.0 tgtGS=352.0 cl=-797.0 rng=5793.0 al=4574.0 cr=-3550.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=41.4 hdg=319 Thr=100/100
+16:13:24.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=627 iasObj=650.0 tgtGS=348.0 cl=-810.0 rng=6193.0 al=5047.0 cr=-3585.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=45.0 hdg=322 Thr=100/100
+16:13:25.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=628 iasObj=650.0 tgtGS=342.0 cl=-821.0 rng=6609.0 al=5531.0 cr=-3614.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=49.6 hdg=323 Thr=100/100
+16:13:26.103 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=630 iasObj=650.0 tgtGS=333.0 cl=-823.0 rng=7068.0 al=6058.0 cr=-3637.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=55.0 hdg=327 Thr=100/100
+16:13:27.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=633 iasObj=650.0 tgtGS=325.0 cl=-818.0 rng=7480.0 al=6529.0 cr=-3646.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=58.9 hdg=330 Thr=100/100
+16:13:28.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=637 iasObj=650.0 tgtGS=315.0 cl=-816.0 rng=7892.0 al=6998.0 cr=-3645.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=62.8 hdg=332 Thr=100/100
+16:13:29.050 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=642 iasObj=650.0 tgtGS=306.0 cl=-814.0 rng=8301.0 al=7461.0 cr=-3634.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=67.1 hdg=334 Thr=100/100
+16:13:30.037 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=647 iasObj=650.0 tgtGS=295.0 cl=-811.0 rng=8713.0 al=7925.0 cr=-3616.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=71.3 hdg=336 Thr=100/100
+16:13:31.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=285.0 cl=-806.0 rng=9118.0 al=8378.0 cr=-3591.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=72.8 hdg=338 Thr=95/95
+16:13:32.003 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=656 iasObj=650.0 tgtGS=275.0 cl=-791.0 rng=9518.0 al=8826.0 cr=-3555.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=72.9 hdg=342 Thr=84/84
+16:13:33.095 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=657 iasObj=650.0 tgtGS=263.0 cl=-763.0 rng=9953.0 al=9314.0 cr=-3498.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=72.5 hdg=346 Thr=80/80
+16:13:34.081 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=653 iasObj=650.0 tgtGS=253.0 cl=-727.0 rng=10328.0 al=9737.0 cr=-3428.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=72.1 hdg=352 Thr=87/86
+16:13:35.064 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=647 iasObj=650.0 tgtGS=244.0 cl=-684.0 rng=10688.0 al=10148.0 cr=-3337.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=71.7 hdg=357 Thr=100/100
+16:13:36.051 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=641 iasObj=650.0 tgtGS=235.0 cl=-637.0 rng=11024.0 al=10536.0 cr=-3222.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=71.3 hdg=3 Thr=100/100
+16:13:37.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=637 iasObj=650.0 tgtGS=226.0 cl=-588.0 rng=11331.0 al=10895.0 cr=-3085.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=71.1 hdg=9 Thr=100/100
+16:13:38.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=634 iasObj=650.0 tgtGS=218.0 cl=-537.0 rng=11619.0 al=11236.0 cr=-2920.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.9 hdg=15 Thr=100/100
+16:13:39.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=633 iasObj=650.0 tgtGS=211.0 cl=-486.0 rng=11875.0 al=11545.0 cr=-2737.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.9 hdg=21 Thr=100/100
+16:13:40.095 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=632 iasObj=650.0 tgtGS=203.0 cl=-431.0 rng=12132.0 al=11859.0 cr=-2509.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.8 hdg=27 Thr=100/100
+16:13:41.081 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=631 iasObj=650.0 tgtGS=197.0 cl=-384.0 rng=12335.0 al=12110.0 cr=-2289.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.8 hdg=32 Thr=100/100
+16:13:42.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=631 iasObj=650.0 tgtGS=191.0 cl=-338.0 rng=12519.0 al=12338.0 cr=-2053.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.8 hdg=37 Thr=100/100
+16:13:43.049 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=631 iasObj=650.0 tgtGS=186.0 cl=-296.0 rng=12678.0 al=12536.0 cr=-1809.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.8 hdg=41 Thr=100/100
+16:13:44.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=632 iasObj=650.0 tgtGS=182.0 cl=-255.0 rng=12817.0 al=12711.0 cr=-1552.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.8 hdg=46 Thr=100/100
+16:13:45.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=633 iasObj=649.0 tgtGS=178.0 cl=-217.0 rng=12937.0 al=12861.0 cr=-1284.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.9 hdg=50 Thr=100/100
+16:13:46.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=634 iasObj=646.0 tgtGS=175.0 cl=-181.0 rng=13036.0 al=12985.0 cr=-1010.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.9 hdg=54 Thr=100/100
+16:13:47.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=636 iasObj=644.0 tgtGS=172.0 cl=-143.0 rng=13126.0 al=13097.0 cr=-699.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.8 hdg=59 Thr=100/100
+16:13:48.081 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=638 iasObj=643.0 tgtGS=170.0 cl=-110.0 rng=13189.0 al=13172.0 cr=-416.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=70.8 hdg=63 Thr=100/100
+16:13:49.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=640 iasObj=642.0 tgtGS=168.0 cl=-77.0 rng=13237.0 al=13226.0 cr=-130.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=70.8 hdg=67 Thr=98/98
+16:13:50.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=640 iasObj=642.0 tgtGS=168.0 cl=-66.0 rng=13249.0 al=13240.0 cr=-30.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=70.8 hdg=68 Thr=97/97
+16:13:51.051 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=642 iasObj=641.0 tgtGS=167.0 cl=-44.0 rng=13273.0 al=13263.0 cr=225.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=71.1 hdg=71 Thr=93/93
+16:13:52.045 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=644 iasObj=642.0 tgtGS=166.0 cl=-29.0 rng=13292.0 al=13274.0 cr=511.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=71.2 hdg=73 Thr=89/89
+16:13:53.036 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=645 iasObj=643.0 tgtGS=167.0 cl=-21.0 rng=13304.0 al=13273.0 cr=795.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=71.4 hdg=74 Thr=88/90
+16:13:54.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=646 iasObj=645.0 tgtGS=167.0 cl=-13.0 rng=13313.0 al=13263.0 cr=1077.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=71.4 hdg=77 Thr=89/91
+16:13:55.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=646 iasObj=646.0 tgtGS=168.0 cl=1.0 rng=13317.0 al=13241.0 cr=1361.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=71.3 hdg=80 Thr=92/92
+16:13:56.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=646 iasObj=648.0 tgtGS=170.0 cl=22.0 rng=13311.0 al=13204.0 cr=1649.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=71.0 hdg=84 Thr=95/95
+16:13:57.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=647 iasObj=649.0 tgtGS=173.0 cl=49.0 rng=13293.0 al=13146.0 cr=1935.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.7 hdg=88 Thr=98/98
+16:13:58.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=648 iasObj=650.0 tgtGS=175.0 cl=78.0 rng=13261.0 al=13075.0 cr=2190.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.6 hdg=92 Thr=98/98
+16:13:59.050 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=179.0 cl=109.0 rng=13214.0 al=12984.0 cr=2437.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.5 hdg=97 Thr=95/95
+16:14:00.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=181.0 cl=127.0 rng=13182.0 al=12927.0 cr=2565.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.8 hdg=100 Thr=94/94
+16:14:01.037 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=183.0 cl=146.0 rng=13142.0 al=12861.0 cr=2694.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.9 hdg=103 Thr=94/94
+16:14:02.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=187.0 cl=181.0 rng=13058.0 al=12727.0 cr=2911.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.6 hdg=108 Thr=96/96
+16:14:03.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=648 iasObj=650.0 tgtGS=191.0 cl=215.0 rng=12958.0 al=12579.0 cr=3104.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=70.2 hdg=113 Thr=100/100
+16:14:04.099 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=647 iasObj=650.0 tgtGS=197.0 cl=249.0 rng=12828.0 al=12397.0 cr=3294.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=67.9 hdg=117 Thr=100/100
+16:14:05.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=202.0 cl=274.0 rng=12695.0 al=12218.0 cr=3446.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=64.8 hdg=121 Thr=98/98
+16:14:06.066 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=207.0 cl=293.0 rng=12550.0 al=12029.0 cr=3580.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=62.1 hdg=124 Thr=93/93
+16:14:07.051 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=654 iasObj=650.0 tgtGS=213.0 cl=304.0 rng=12401.0 al=11836.0 cr=3699.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=60.0 hdg=126 Thr=87/87
+16:14:08.037 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=655 iasObj=650.0 tgtGS=219.0 cl=311.0 rng=12243.0 al=11635.0 cr=3809.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=58.5 hdg=128 Thr=83/83
+16:14:09.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=655 iasObj=650.0 tgtGS=225.0 cl=313.0 rng=12087.0 al=11437.0 cr=3906.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=57.5 hdg=130 Thr=82/82
+16:14:10.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=653 iasObj=650.0 tgtGS=232.0 cl=313.0 rng=11932.0 al=11241.0 cr=3994.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=56.6 hdg=132 Thr=83/83
+16:14:11.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=239.0 cl=313.0 rng=11753.0 al=11017.0 cr=4085.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=55.6 hdg=134 Thr=86/86
+16:14:12.080 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=245.0 cl=313.0 rng=11595.0 al=10820.0 cr=4158.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=54.7 hdg=136 Thr=88/88
+16:14:13.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=252.0 cl=315.0 rng=11439.0 al=10625.0 cr=4222.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=53.9 hdg=137 Thr=90/90
+16:14:14.049 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=258.0 cl=317.0 rng=11278.0 al=10426.0 cr=4280.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=53.1 hdg=139 Thr=89/89
+16:14:15.039 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=264.0 cl=320.0 rng=11116.0 al=10227.0 cr=4330.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=52.3 hdg=141 Thr=86/86
+16:14:16.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=269.0 cl=323.0 rng=10956.0 al=10033.0 cr=4371.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=51.5 hdg=143 Thr=84/84
+16:14:17.003 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=274.0 cl=325.0 rng=10793.0 al=9838.0 cr=4405.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=50.8 hdg=144 Thr=82/83
+16:14:18.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=279.0 cl=328.0 rng=10608.0 al=9620.0 cr=4434.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=49.5 hdg=146 Thr=83/83
+16:14:19.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=283.0 cl=330.0 rng=10443.0 al=9429.0 cr=4451.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=47.7 hdg=148 Thr=84/84
+16:14:20.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=286.0 cl=333.0 rng=10276.0 al=9237.0 cr=4462.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=45.8 hdg=149 Thr=85/85
+16:14:21.052 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=289.0 cl=336.0 rng=10106.0 al=9043.0 cr=4466.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=44.0 hdg=150 Thr=86/86
+16:14:22.041 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=290.0 cl=341.0 rng=9932.0 al=8849.0 cr=4464.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=42.4 hdg=152 Thr=85/85
+16:14:23.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=291.0 cl=345.0 rng=9759.0 al=8658.0 cr=4456.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=40.9 hdg=153 Thr=84/84
+16:14:24.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=292.0 cl=350.0 rng=9584.0 al=8467.0 cr=4443.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=39.4 hdg=154 Thr=82/82
+16:14:25.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=291.0 cl=354.0 rng=9389.0 al=8256.0 cr=4423.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=38.0 hdg=155 Thr=81/81
+16:14:26.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=290.0 cl=359.0 rng=9207.0 al=8064.0 cr=4399.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=36.7 hdg=156 Thr=81/81
+16:14:27.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=288.0 cl=364.0 rng=9025.0 al=7871.0 cr=4371.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=35.5 hdg=157 Thr=82/82
+16:14:28.051 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=285.0 cl=369.0 rng=8841.0 al=7680.0 cr=4338.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=34.4 hdg=158 Thr=83/83
+16:14:29.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=282.0 cl=376.0 rng=8651.0 al=7485.0 cr=4300.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=33.3 hdg=159 Thr=83/83
+16:14:30.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=279.0 cl=383.0 rng=8459.0 al=7290.0 cr=4256.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=32.1 hdg=161 Thr=84/84
+16:14:31.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=275.0 cl=391.0 rng=8271.0 al=7101.0 cr=4209.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=30.8 hdg=162 Thr=85/85
+16:14:32.100 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=270.0 cl=400.0 rng=8036.0 al=6868.0 cr=4142.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=29.1 hdg=163 Thr=86/86
+16:14:33.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=649.0 tgtGS=265.0 cl=407.0 rng=7834.0 al=6671.0 cr=4080.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=27.9 hdg=164 Thr=84/84
+16:14:34.068 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=639.0 tgtGS=261.0 cl=413.0 rng=7627.0 al=6471.0 cr=4012.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=26.6 hdg=165 Thr=57/63
+16:14:35.055 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=646 iasObj=632.0 tgtGS=256.0 cl=413.0 rng=7417.0 al=6270.0 cr=3940.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=25.3 hdg=166 Thr=44/50
+16:14:36.036 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=640 iasObj=623.0 tgtGS=251.0 cl=409.0 rng=7210.0 al=6073.0 cr=3865.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=25.8 hdg=166 Thr=39/39
+16:14:37.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=632 iasObj=614.0 tgtGS=246.0 cl=404.0 rng=7004.0 al=5877.0 cr=3790.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=30.8 hdg=167 Thr=27/27
+16:14:38.002 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=626 iasObj=607.0 tgtGS=242.0 cl=403.0 rng=6799.0 al=5685.0 cr=3712.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=37.1 hdg=168 Thr=17/18
+16:14:39.101 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=610 iasObj=588.0 tgtGS=236.0 cl=401.0 rng=6572.0 al=5477.0 cr=3617.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=43.8 hdg=170 Thr=6/4
+16:14:40.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=599 iasObj=574.0 tgtGS=232.0 cl=400.0 rng=6373.0 al=5299.0 cr=3526.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=49.5 hdg=172 Thr=0/0
+16:14:41.065 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=588 iasObj=562.0 tgtGS=228.0 cl=399.0 rng=6169.0 al=5123.0 cr=3424.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=55.0 hdg=175 Thr=0/0
+16:14:42.055 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=578 iasObj=549.0 tgtGS=224.0 cl=397.0 rng=5967.0 al=4956.0 cr=3312.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=60.0 hdg=178 Thr=0/0
+16:14:43.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=567 iasObj=537.0 tgtGS=220.0 cl=395.0 rng=5768.0 al=4799.0 cr=3189.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=64.4 hdg=182 Thr=0/0
+16:14:44.018 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=556 iasObj=524.0 tgtGS=217.0 cl=389.0 rng=5567.0 al=4652.0 cr=3049.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=67.3 hdg=186 Thr=0/0
+16:14:45.005 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=544 iasObj=511.0 tgtGS=214.0 cl=379.0 rng=5369.0 al=4518.0 cr=2893.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=61.6 hdg=191 Thr=0/0
+16:14:46.103 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=532 iasObj=496.0 tgtGS=211.0 cl=363.0 rng=5160.0 al=4388.0 cr=2706.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=52.6 hdg=194 Thr=0/0
+16:14:47.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=521 iasObj=483.0 tgtGS=208.0 cl=346.0 rng=4978.0 al=4284.0 cr=2528.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=50.8 hdg=197 Thr=0/0
+16:14:48.065 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=510 iasObj=471.0 tgtGS=206.0 cl=327.0 rng=4805.0 al=4190.0 cr=2345.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=50.3 hdg=198 Thr=0/0
+16:14:49.055 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=500 iasObj=459.0 tgtGS=204.0 cl=309.0 rng=4641.0 al=4104.0 cr=2159.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=49.0 hdg=200 Thr=0/0
+16:14:50.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=490 iasObj=447.0 tgtGS=202.0 cl=290.0 rng=4488.0 al=4026.0 cr=1975.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=46.2 hdg=201 Thr=0/0
+16:14:51.019 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=480 iasObj=434.0 tgtGS=201.0 cl=269.0 rng=4344.0 al=3955.0 cr=1790.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=42.8 hdg=203 Thr=0/0
+16:14:52.006 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=470 iasObj=422.0 tgtGS=200.0 cl=246.0 rng=4210.0 al=3890.0 cr=1603.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=38.6 hdg=204 Thr=0/0
+16:14:53.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=460 iasObj=408.0 tgtGS=199.0 cl=219.0 rng=4076.0 al=3826.0 cr=1395.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=32.9 hdg=206 Thr=0/0
+16:14:54.082 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=451 iasObj=395.0 tgtGS=199.0 cl=194.0 rng=3968.0 al=3776.0 cr=1209.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=27.3 hdg=207 Thr=0/0
+16:14:55.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=442 iasObj=382.0 tgtGS=199.0 cl=170.0 rng=3874.0 al=3733.0 cr=1026.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.9 hdg=208 Thr=0/0
+16:14:56.055 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=433 iasObj=367.0 tgtGS=199.0 cl=145.0 rng=3792.0 al=3694.0 cr=844.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=16.6 hdg=209 Thr=0/0
+16:14:57.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=424 iasObj=350.0 tgtGS=200.0 cl=120.0 rng=3723.0 al=3661.0 cr=665.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=11.5 hdg=209 Thr=0/0
+16:14:58.020 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=415 iasObj=333.0 tgtGS=201.0 cl=97.0 rng=3667.0 al=3632.0 cr=487.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=6.4 hdg=210 Thr=0/0
+16:14:59.003 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=407 iasObj=331.0 tgtGS=202.0 cl=75.0 rng=3623.0 al=3606.0 cr=316.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=1.7 hdg=210 Thr=0/0
+16:15:00.104 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=398 iasObj=332.0 tgtGS=203.0 cl=52.0 rng=3586.0 al=3581.0 cr=126.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-3.5 hdg=210 Thr=0/0
+16:15:01.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=390 iasObj=334.0 tgtGS=205.0 cl=33.0 rng=3565.0 al=3562.0 cr=-39.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-7.9 hdg=210 Thr=0/0
+16:15:02.068 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=383 iasObj=336.0 tgtGS=207.0 cl=16.0 rng=3553.0 al=3544.0 cr=-202.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-12.1 hdg=209 Thr=0/0
+16:15:03.049 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=377 iasObj=339.0 tgtGS=209.0 cl=1.0 rng=3549.0 al=3527.0 cr=-359.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-16.2 hdg=208 Thr=0/0
+16:15:04.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=372 iasObj=355.0 tgtGS=211.0 cl=-10.0 rng=3552.0 al=3512.0 cr=-511.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-20.0 hdg=208 Thr=0/0
+16:15:05.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=368 iasObj=370.0 tgtGS=213.0 cl=-19.0 rng=3561.0 al=3495.0 cr=-662.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-23.6 hdg=206 Thr=6/7
+16:15:06.005 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=365 iasObj=386.0 tgtGS=216.0 cl=-26.0 rng=3574.0 al=3477.0 cr=-808.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-27.0 hdg=205 Thr=49/51
+16:15:07.104 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=364 iasObj=401.0 tgtGS=219.0 cl=-30.0 rng=3593.0 al=3454.0 cr=-967.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-30.5 hdg=203 Thr=92/92
+16:15:08.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=366 iasObj=407.0 tgtGS=222.0 cl=-29.0 rng=3610.0 al=3429.0 cr=-1106.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-33.2 hdg=201 Thr=100/100
+16:15:09.068 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=373 iasObj=412.0 tgtGS=225.0 cl=-24.0 rng=3625.0 al=3398.0 cr=-1244.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-35.7 hdg=199 Thr=100/100
+16:15:10.056 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=384 iasObj=420.0 tgtGS=228.0 cl=-16.0 rng=3638.0 al=3357.0 cr=-1382.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-37.7 hdg=197 Thr=99/99
+16:15:11.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=398 iasObj=430.0 tgtGS=231.0 cl=-8.0 rng=3647.0 al=3307.0 cr=-1515.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-39.4 hdg=195 Thr=99/99
+16:15:12.019 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=412 iasObj=441.0 tgtGS=233.0 cl=1.0 rng=3652.0 al=3248.0 cr=-1647.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-41.0 hdg=193 Thr=98/100
+16:15:13.005 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=426 iasObj=452.0 tgtGS=236.0 cl=10.0 rng=3653.0 al=3177.0 cr=-1779.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-42.5 hdg=190 Thr=97/97
+16:15:14.101 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=442 iasObj=464.0 tgtGS=240.0 cl=20.0 rng=3648.0 al=3088.0 cr=-1918.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-43.9 hdg=188 Thr=100/95
+16:15:15.080 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=456 iasObj=475.0 tgtGS=242.0 cl=30.0 rng=3640.0 al=2998.0 cr=-2038.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-45.1 hdg=186 Thr=100/96
+16:15:16.067 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=470 iasObj=486.0 tgtGS=245.0 cl=41.0 rng=3626.0 al=2898.0 cr=-2153.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-46.0 hdg=183 Thr=99/98
+16:15:17.054 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=483 iasObj=495.0 tgtGS=247.0 cl=52.0 rng=3607.0 al=2788.0 cr=-2260.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-46.8 hdg=181 Thr=94/98
+16:15:18.052 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=496 iasObj=505.0 tgtGS=249.0 cl=63.0 rng=3583.0 al=2669.0 cr=-2361.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-47.5 hdg=178 Thr=92/93
+16:15:19.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=508 iasObj=511.0 tgtGS=251.0 cl=74.0 rng=3554.0 al=2544.0 cr=-2451.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-48.1 hdg=176 Thr=82/84
+16:15:20.018 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=518 iasObj=518.0 tgtGS=252.0 cl=84.0 rng=3519.0 al=2411.0 cr=-2533.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-48.7 hdg=174 Thr=79/79
+16:15:21.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=524 iasObj=524.0 tgtGS=254.0 cl=93.0 rng=3485.0 al=2290.0 cr=-2596.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-49.3 hdg=171 Thr=78/78
+16:15:22.005 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=529 iasObj=529.0 tgtGS=254.0 cl=101.0 rng=3453.0 al=2184.0 cr=-2643.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=170 Thr=80/79
+16:15:23.105 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=535 iasObj=534.0 tgtGS=255.0 cl=114.0 rng=3399.0 al=2021.0 cr=-2701.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.8 hdg=167 Thr=76/78
+16:15:24.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=539 iasObj=537.0 tgtGS=256.0 cl=125.0 rng=3346.0 al=1872.0 cr=-2741.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.8 hdg=164 Thr=74/76
+16:15:25.068 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=542 iasObj=540.0 tgtGS=256.0 cl=136.0 rng=3285.0 al=1718.0 cr=-2768.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.8 hdg=162 Thr=72/73
+16:15:26.054 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=545 iasObj=542.0 tgtGS=255.0 cl=147.0 rng=3221.0 al=1563.0 cr=-2783.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.7 hdg=159 Thr=71/71
+16:15:27.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=547 iasObj=544.0 tgtGS=255.0 cl=159.0 rng=3150.0 al=1408.0 cr=-2786.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.6 hdg=157 Thr=70/70
+16:15:28.066 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=546.0 tgtGS=254.0 cl=170.0 rng=3071.0 al=1245.0 cr=-2775.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.6 hdg=154 Thr=70/69
+16:15:29.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=549 iasObj=547.0 tgtGS=253.0 cl=180.0 rng=2995.0 al=1098.0 cr=-2753.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.5 hdg=152 Thr=68/68
+16:15:30.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=550 iasObj=547.0 tgtGS=252.0 cl=192.0 rng=2898.0 al=924.0 cr=-2714.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=149 Thr=67/67
+16:15:31.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=550 iasObj=547.0 tgtGS=250.0 cl=202.0 rng=2806.0 al=769.0 cr=-2665.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=147 Thr=67/67
+16:15:32.065 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=549 iasObj=548.0 tgtGS=249.0 cl=211.0 rng=2710.0 al=617.0 cr=-2605.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=144 Thr=67/67
+16:15:33.051 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=549 iasObj=548.0 tgtGS=247.0 cl=221.0 rng=2609.0 al=467.0 cr=-2533.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=142 Thr=68/68
+16:15:34.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=548.0 tgtGS=245.0 cl=229.0 rng=2507.0 al=322.0 cr=-2451.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=140 Thr=68/68
+16:15:35.018 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=548.0 tgtGS=243.0 cl=237.0 rng=2397.0 al=176.0 cr=-2355.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=137 Thr=69/69
+16:15:36.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=549.0 tgtGS=241.0 cl=244.0 rng=2286.0 al=36.0 cr=-2249.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=135 Thr=72/72
+16:15:37.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=549.0 tgtGS=239.0 cl=250.0 rng=2160.0 al=-116.0 cr=-2119.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=132 Thr=73/73
+16:15:38.081 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=548 iasObj=550.0 tgtGS=237.0 cl=254.0 rng=2045.0 al=-247.0 cr=-1991.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=130 Thr=74/75
+16:15:39.066 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=549 iasObj=551.0 tgtGS=235.0 cl=256.0 rng=1930.0 al=-375.0 cr=-1851.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=127 Thr=74/75
+16:15:40.050 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=550 iasObj=551.0 tgtGS=234.0 cl=255.0 rng=1856.0 al=-456.0 cr=-1756.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.1 hdg=126 Thr=74/74
+16:15:41.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=552 iasObj=553.0 tgtGS=231.0 cl=247.0 rng=1699.0 al=-624.0 cr=-1532.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.1 hdg=122 Thr=74/74
+16:15:42.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=554 iasObj=555.0 tgtGS=229.0 cl=235.0 rng=1597.0 al=-735.0 cr=-1363.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-54.0 hdg=120 Thr=77/77
+16:15:43.003 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=556 iasObj=557.0 tgtGS=228.0 cl=220.0 rng=1498.0 al=-844.0 cr=-1175.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-64.3 hdg=116 Thr=77/77
+16:15:44.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=558 iasObj=559.0 tgtGS=226.0 cl=202.0 rng=1401.0 al=-950.0 cr=-954.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-69.8 hdg=111 Thr=77/77
+16:15:45.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=560 iasObj=561.0 tgtGS=225.0 cl=176.0 rng=1321.0 al=-1032.0 cr=-728.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.2 hdg=106 Thr=77/77
+16:15:46.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=562 iasObj=563.0 tgtGS=224.0 cl=137.0 rng=1259.0 al=-1091.0 cr=-495.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.3 hdg=100 Thr=81/78
+16:15:47.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=564 iasObj=565.0 tgtGS=223.0 cl=77.0 rng=1216.0 al=-1126.0 cr=-244.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.1 hdg=94 Thr=79/81
+16:15:48.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=565 iasObj=557.0 tgtGS=168.0 cl=-43.0 rng=1206.0 al=-1142.0 cr=24.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.9 hdg=88 Thr=55/60
+16:15:49.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=566 iasObj=547.0 tgtGS=139.0 cl=-159.0 rng=1257.0 al=-1162.0 cr=289.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-62.3 hdg=82 Thr=0/0
+16:15:50.006 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=563 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-52.5 hdg=77 Thr=0/0
+16:15:51.097 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=555 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-11.2 hdg=75 Thr=0/0
+16:15:52.083 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=547 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=17.0 hdg=75 Thr=0/0
+16:15:53.067 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=538 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=23.1 hdg=75 Thr=0/0
+16:15:54.055 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=531 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=24.2 hdg=76 Thr=0/0
+16:15:55.036 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=524 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=24.1 hdg=77 Thr=0/0
+16:15:56.021 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=517 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=23.7 hdg=77 Thr=0/0
+16:15:57.006 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=511 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=23.3 hdg=78 Thr=0/0
+16:15:58.097 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=504 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.9 hdg=79 Thr=0/0
+16:15:59.084 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=498 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.6 hdg=80 Thr=0/0
+16:16:00.066 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=492 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.3 hdg=81 Thr=0/0
+16:16:01.050 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=487 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=22.0 hdg=82 Thr=0/0
+16:16:02.034 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=481 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.8 hdg=82 Thr=0/0
+16:16:03.020 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=476 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.6 hdg=83 Thr=0/0
+16:16:04.006 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=471 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.4 hdg=84 Thr=0/0
+16:16:05.103 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=465 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.2 hdg=85 Thr=0/0
+16:16:06.082 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=461 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=21.1 hdg=86 Thr=0/0
+16:16:07.065 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=456 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.9 hdg=87 Thr=0/0
+16:16:08.066 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=451 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.8 hdg=88 Thr=0/0
+16:16:09.050 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=447 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.7 hdg=89 Thr=0/0
+16:16:10.040 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=442 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.7 hdg=90 Thr=0/0
+16:16:11.021 Acc=Interceptar Airbus A330-300 · Esperando a que desp IAS=438 iasObj=540.0 tgtGS=123.0 cl=-202.0 rng=1286.0 al=-1164.0 cr=391.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=20.6 hdg=90 Thr=0/0
+16:16:12.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=434 iasObj=531.0 tgtGS=1.0 cl=-395.0 rng=7033.0 al=-2096.0 cr=6055.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=18.3 hdg=92 Thr=100/51
+16:16:13.096 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=429 iasObj=539.0 tgtGS=308.0 cl=-315.0 rng=7211.0 al=-2051.0 cr=6278.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-1.3 hdg=93 Thr=100/100
+16:16:14.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=425 iasObj=559.0 tgtGS=304.0 cl=-306.0 rng=7358.0 al=-1978.0 cr=6480.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-26.8 hdg=90 Thr=100/100
+16:16:15.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=426 iasObj=567.0 tgtGS=299.0 cl=-314.0 rng=7506.0 al=-1904.0 cr=6683.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-52.5 hdg=90 Thr=100/100
+16:16:16.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=433 iasObj=576.0 tgtGS=294.0 cl=-335.0 rng=7669.0 al=-1829.0 cr=6896.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.6 hdg=89 Thr=100/100
+16:16:17.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=441 iasObj=588.0 tgtGS=289.0 cl=-359.0 rng=7841.0 al=-1754.0 cr=7111.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-75.0 hdg=87 Thr=100/100
+16:16:18.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=452 iasObj=601.0 tgtGS=284.0 cl=-384.0 rng=8030.0 al=-1674.0 cr=7341.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-75.2 hdg=86 Thr=100/100
+16:16:19.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=463 iasObj=615.0 tgtGS=279.0 cl=-409.0 rng=8229.0 al=-1593.0 cr=7576.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-74.9 hdg=84 Thr=100/100
+16:16:20.097 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=476 iasObj=631.0 tgtGS=274.0 cl=-436.0 rng=8465.0 al=-1500.0 cr=7847.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-74.5 hdg=82 Thr=100/100
+16:16:21.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=489 iasObj=648.0 tgtGS=269.0 cl=-459.0 rng=8692.0 al=-1409.0 cr=8103.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-73.7 hdg=77 Thr=100/100
+16:16:22.066 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=501 iasObj=650.0 tgtGS=264.0 cl=-478.0 rng=8926.0 al=-1301.0 cr=8364.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-72.7 hdg=70 Thr=100/100
+16:16:23.051 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=513 iasObj=650.0 tgtGS=259.0 cl=-488.0 rng=9168.0 al=-1165.0 cr=8635.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.8 hdg=62 Thr=100/100
+16:16:24.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=524 iasObj=650.0 tgtGS=255.0 cl=-490.0 rng=9411.0 al=-996.0 cr=8909.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.2 hdg=55 Thr=100/100
+16:16:25.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=534 iasObj=650.0 tgtGS=251.0 cl=-485.0 rng=9650.0 al=-794.0 cr=9177.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=47 Thr=100/100
+16:16:26.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=545 iasObj=650.0 tgtGS=247.0 cl=-476.0 rng=9888.0 al=-555.0 cr=9442.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.1 hdg=40 Thr=100/100
+16:16:27.100 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=556 iasObj=650.0 tgtGS=243.0 cl=-462.0 rng=10145.0 al=-251.0 cr=9724.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-69.9 hdg=33 Thr=100/100
+16:16:28.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=566 iasObj=650.0 tgtGS=240.0 cl=-449.0 rng=10373.0 al=57.0 cr=9966.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.1 hdg=27 Thr=100/100
+16:16:29.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=577 iasObj=650.0 tgtGS=237.0 cl=-437.0 rng=10590.0 al=385.0 cr=10187.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=22 Thr=100/100
+16:16:30.051 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=586 iasObj=650.0 tgtGS=234.0 cl=-427.0 rng=10800.0 al=733.0 cr=10389.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.0 hdg=17 Thr=100/100
+16:16:31.042 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=596 iasObj=650.0 tgtGS=231.0 cl=-415.0 rng=11010.0 al=1109.0 cr=10578.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.1 hdg=11 Thr=100/100
+16:16:32.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=605 iasObj=650.0 tgtGS=229.0 cl=-402.0 rng=11207.0 al=1493.0 cr=10742.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.0 hdg=6 Thr=100/100
+16:16:33.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=614 iasObj=650.0 tgtGS=227.0 cl=-388.0 rng=11403.0 al=1902.0 cr=10887.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.0 hdg=2 Thr=100/100
+16:16:34.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=623 iasObj=650.0 tgtGS=226.0 cl=-373.0 rng=11608.0 al=2367.0 cr=11018.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.9 hdg=356 Thr=100/100
+16:16:35.081 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=638 iasObj=650.0 tgtGS=225.0 cl=-365.0 rng=11786.0 al=2793.0 cr=11112.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.1 hdg=352 Thr=86/86
+16:16:36.065 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=647 iasObj=650.0 tgtGS=224.0 cl=-348.0 rng=11957.0 al=3227.0 cr=11184.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.0 hdg=347 Thr=73/73
+16:16:37.054 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=641 iasObj=650.0 tgtGS=223.0 cl=-318.0 rng=12119.0 al=3672.0 cr=11228.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.7 hdg=342 Thr=90/89
+16:16:38.035 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=630 iasObj=650.0 tgtGS=223.0 cl=-289.0 rng=12265.0 al=4113.0 cr=11241.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=337 Thr=100/100
+16:16:39.019 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=632 iasObj=650.0 tgtGS=223.0 cl=-270.0 rng=12399.0 al=4556.0 cr=11225.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.7 hdg=332 Thr=100/100
+16:16:40.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=642 iasObj=650.0 tgtGS=223.0 cl=-253.0 rng=12524.0 al=4995.0 cr=11185.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.8 hdg=328 Thr=88/88
+16:16:41.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=646 iasObj=650.0 tgtGS=224.0 cl=-228.0 rng=12648.0 al=5473.0 cr=11111.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.7 hdg=322 Thr=85/85
+16:16:42.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=643 iasObj=650.0 tgtGS=224.0 cl=-197.0 rng=12754.0 al=5927.0 cr=11009.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.2 hdg=317 Thr=95/94
+16:16:43.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=635 iasObj=650.0 tgtGS=226.0 cl=-168.0 rng=12839.0 al=6346.0 cr=10883.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.4 hdg=312 Thr=100/100
+16:16:44.050 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=640 iasObj=650.0 tgtGS=227.0 cl=-147.0 rng=12910.0 al=6746.0 cr=10736.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=308 Thr=99/99
+16:16:45.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=643 iasObj=650.0 tgtGS=228.0 cl=-124.0 rng=12972.0 al=7150.0 cr=10559.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=303 Thr=100/98
+16:16:46.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=636 iasObj=650.0 tgtGS=230.0 cl=-102.0 rng=13022.0 al=7531.0 cr=10365.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=299 Thr=100/100
+16:16:47.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=635 iasObj=650.0 tgtGS=232.0 cl=-83.0 rng=13063.0 al=7906.0 cr=10147.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=295 Thr=100/100
+16:16:48.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=638 iasObj=649.0 tgtGS=235.0 cl=-491.0 rng=5086.0 al=4502.0 cr=789.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-0.3 hdg=-68 Thr=100/100
+16:16:49.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=638 iasObj=634.0 tgtGS=237.0 cl=310.0 rng=5001.0 al=4512.0 cr=162.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-0.1 hdg=-159 Thr=85/86
+16:16:50.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=638 iasObj=619.0 tgtGS=240.0 cl=437.0 rng=4796.0 al=4325.0 cr=42.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-54.0 hdg=170 Thr=51/52
+16:16:51.054 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=507 iasObj=637.0 tgtGS=242.0 cl=130.0 rng=4689.0 al=4236.0 cr=0.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=0.1 hdg=170 Thr=100/100
+16:16:52.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=348 iasObj=650.0 tgtGS=245.0 cl=95.0 rng=4638.0 al=4208.0 cr=-30.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=9.3 hdg=171 Thr=100/100
+16:16:53.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=301 iasObj=645.0 tgtGS=248.0 cl=98.0 rng=4588.0 al=4181.0 cr=-62.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=34.0 hdg=173 Thr=100/100
+16:16:54.052 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=299 iasObj=620.0 tgtGS=251.0 cl=103.0 rng=4534.0 al=4150.0 cr=-101.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=40.1 hdg=174 Thr=100/100
+16:16:55.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=307 iasObj=595.0 tgtGS=254.0 cl=105.0 rng=4482.0 al=4117.0 cr=-145.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=34.3 hdg=176 Thr=100/100
+16:16:56.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=318 iasObj=570.0 tgtGS=258.0 cl=104.0 rng=4427.0 al=4082.0 cr=-197.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=26.4 hdg=179 Thr=100/100
+16:16:57.004 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=328 iasObj=545.0 tgtGS=261.0 cl=105.0 rng=4373.0 al=4045.0 cr=-256.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=18.4 hdg=179 Thr=100/100
+16:16:58.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=339 iasObj=518.0 tgtGS=264.0 cl=109.0 rng=4311.0 al=4003.0 cr=-327.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=11.5 hdg=180 Thr=100/100
+16:16:59.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=349 iasObj=493.0 tgtGS=267.0 cl=111.0 rng=4255.0 al=3960.0 cr=-395.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=5.9 hdg=180 Thr=100/100
+16:17:00.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=359 iasObj=469.0 tgtGS=270.0 cl=113.0 rng=4198.0 al=3915.0 cr=-465.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=1.0 hdg=181 Thr=100/100
+16:17:01.051 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=369 iasObj=445.0 tgtGS=273.0 cl=115.0 rng=4141.0 al=3865.0 cr=-538.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-3.6 hdg=181 Thr=100/100
+16:17:02.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=379 iasObj=436.0 tgtGS=275.0 cl=118.0 rng=4082.0 al=3811.0 cr=-612.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-7.8 hdg=180 Thr=100/100
+16:17:03.022 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=389 iasObj=439.0 tgtGS=277.0 cl=121.0 rng=4021.0 al=3752.0 cr=-689.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-11.9 hdg=180 Thr=100/100
+16:17:04.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=400 iasObj=442.0 tgtGS=279.0 cl=125.0 rng=3960.0 al=3689.0 cr=-765.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-15.6 hdg=180 Thr=100/100
+16:17:05.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=411 iasObj=444.0 tgtGS=281.0 cl=130.0 rng=3889.0 al=3612.0 cr=-850.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-19.4 hdg=179 Thr=100/100
+16:17:06.082 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=422 iasObj=447.0 tgtGS=283.0 cl=135.0 rng=3823.0 al=3537.0 cr=-925.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-22.6 hdg=178 Thr=100/100
+16:17:07.066 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=432 iasObj=449.0 tgtGS=284.0 cl=141.0 rng=3755.0 al=3456.0 cr=-1000.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-25.5 hdg=178 Thr=100/100
+16:17:08.053 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=443 iasObj=452.0 tgtGS=285.0 cl=147.0 rng=3684.0 al=3369.0 cr=-1072.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-28.2 hdg=177 Thr=100/100
+16:17:09.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=454 iasObj=455.0 tgtGS=285.0 cl=155.0 rng=3604.0 al=3268.0 cr=-1147.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-30.9 hdg=175 Thr=92/92
+16:17:10.068 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=465 iasObj=460.0 tgtGS=285.0 cl=161.0 rng=3526.0 al=3167.0 cr=-1214.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-33.1 hdg=174 Thr=85/80
+16:17:11.055 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=473 iasObj=466.0 tgtGS=285.0 cl=166.0 rng=3444.0 al=3060.0 cr=-1277.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-35.2 hdg=173 Thr=75/77
+16:17:12.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=478 iasObj=471.0 tgtGS=285.0 cl=169.0 rng=3363.0 al=2952.0 cr=-1333.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-36.9 hdg=171 Thr=73/73
+16:17:13.050 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=480 iasObj=475.0 tgtGS=284.0 cl=174.0 rng=3276.0 al=2836.0 cr=-1384.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-38.6 hdg=170 Thr=73/73
+16:17:14.035 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=482 iasObj=478.0 tgtGS=283.0 cl=178.0 rng=3191.0 al=2723.0 cr=-1427.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-40.2 hdg=168 Thr=74/74
+16:17:15.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=483 iasObj=475.0 tgtGS=281.0 cl=184.0 rng=3100.0 al=2604.0 cr=-1462.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-41.6 hdg=166 Thr=64/64
+16:17:16.003 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=483 iasObj=474.0 tgtGS=280.0 cl=189.0 rng=3009.0 al=2486.0 cr=-1489.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-42.9 hdg=164 Thr=60/60
+16:17:17.097 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=482 iasObj=474.0 tgtGS=278.0 cl=194.0 rng=2905.0 al=2353.0 cr=-1509.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-44.2 hdg=162 Thr=57/58
+16:17:18.082 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=479 iasObj=473.0 tgtGS=276.0 cl=199.0 rng=2808.0 al=2233.0 cr=-1517.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-45.3 hdg=160 Thr=58/56
+16:17:19.067 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=476 iasObj=471.0 tgtGS=274.0 cl=205.0 rng=2710.0 al=2114.0 cr=-1515.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-46.3 hdg=158 Thr=59/59
+16:17:20.053 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=473 iasObj=469.0 tgtGS=271.0 cl=211.0 rng=2607.0 al=1995.0 cr=-1503.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-47.2 hdg=156 Thr=60/60
+16:17:21.041 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=470 iasObj=468.0 tgtGS=269.0 cl=218.0 rng=2501.0 al=1877.0 cr=-1481.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-48.0 hdg=153 Thr=62/62
+16:17:22.021 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=466 iasObj=465.0 tgtGS=267.0 cl=225.0 rng=2393.0 al=1762.0 cr=-1449.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-48.8 hdg=151 Thr=62/64
+16:17:23.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=463 iasObj=464.0 tgtGS=264.0 cl=233.0 rng=2280.0 al=1649.0 cr=-1407.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-49.4 hdg=148 Thr=63/66
+16:17:24.098 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=461 iasObj=462.0 tgtGS=261.0 cl=242.0 rng=2149.0 al=1524.0 cr=-1347.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.1 hdg=145 Thr=66/68
+16:17:25.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=459 iasObj=461.0 tgtGS=259.0 cl=251.0 rng=2028.0 al=1414.0 cr=-1282.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.7 hdg=143 Thr=70/70
+16:17:26.070 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=458 iasObj=460.0 tgtGS=256.0 cl=259.0 rng=1901.0 al=1307.0 cr=-1206.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.9 hdg=140 Thr=72/72
+16:17:27.052 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=457 iasObj=460.0 tgtGS=254.0 cl=267.0 rng=1768.0 al=1200.0 cr=-1117.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.8 hdg=137 Thr=74/74
+16:17:28.034 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=457 iasObj=460.0 tgtGS=251.0 cl=274.0 rng=1629.0 al=1095.0 cr=-1016.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.7 hdg=134 Thr=76/77
+16:17:29.020 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=457 iasObj=461.0 tgtGS=249.0 cl=279.0 rng=1490.0 al=997.0 cr=-906.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.7 hdg=132 Thr=78/79
+16:17:30.007 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=458 iasObj=462.0 tgtGS=247.0 cl=281.0 rng=1348.0 al=901.0 cr=-785.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.6 hdg=129 Thr=80/80
+16:17:31.099 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=460 iasObj=464.0 tgtGS=245.0 cl=278.0 rng=1193.0 al=801.0 cr=-641.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.5 hdg=126 Thr=82/84
+16:17:32.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=462 iasObj=467.0 tgtGS=243.0 cl=268.0 rng=1054.0 al=714.0 cr=-498.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.5 hdg=124 Thr=83/85
+16:17:33.069 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=465 iasObj=470.0 tgtGS=241.0 cl=246.0 rng=924.0 al=631.0 cr=-346.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=121 Thr=85/87
+16:17:34.056 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=469 iasObj=473.0 tgtGS=240.0 cl=206.0 rng=809.0 al=552.0 cr=-182.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.4 hdg=119 Thr=86/86
+16:17:35.040 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=473 iasObj=477.0 tgtGS=238.0 cl=139.0 rng=726.0 al=478.0 cr=-8.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=116 Thr=87/87
+16:17:36.020 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=477 iasObj=481.0 tgtGS=237.0 cl=43.0 rng=690.0 al=409.0 cr=174.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=114 Thr=88/88
+16:17:37.006 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=482 iasObj=486.0 tgtGS=236.0 cl=-74.0 rng=717.0 al=345.0 cr=370.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.3 hdg=111 Thr=89/89
+16:17:38.099 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=488 iasObj=491.0 tgtGS=235.0 cl=-196.0 rng=816.0 al=282.0 cr=592.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=109 Thr=90/90
+16:17:39.083 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=494 iasObj=497.0 tgtGS=234.0 cl=-286.0 rng=961.0 al=230.0 cr=810.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=106 Thr=90/91
+16:17:40.067 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=500 iasObj=503.0 tgtGS=234.0 cl=-353.0 rng=1136.0 al=186.0 cr=1031.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.2 hdg=104 Thr=91/91
+16:17:41.051 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a IAS=507 iasObj=509.0 tgtGS=233.0 cl=-403.0 rng=1341.0 al=147.0 cr=1267.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-50.1 hdg=102 Thr=97/91
+16:17:42.034 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=513 iasObj=515.0 tgtGS=233.0 cl=-447.0 rng=1561.0 al=118.0 cr=1508.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-57.5 hdg=98 Thr=95/95
+16:17:43.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=520 iasObj=521.0 tgtGS=233.0 cl=-482.0 rng=1802.0 al=100.0 cr=1763.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-63.8 hdg=96 Thr=94/94
+16:17:44.005 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=528 iasObj=528.0 tgtGS=233.0 cl=-508.0 rng=2057.0 al=91.0 cr=2028.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-69.5 hdg=95 Thr=92/94
+16:17:45.101 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=537 iasObj=537.0 tgtGS=234.0 cl=-531.0 rng=2351.0 al=88.0 cr=2329.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-72.1 hdg=93 Thr=94/96
+16:17:46.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=544 iasObj=545.0 tgtGS=234.0 cl=-552.0 rng=2624.0 al=93.0 cr=2606.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-72.4 hdg=90 Thr=94/97
+16:17:47.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=552 iasObj=554.0 tgtGS=235.0 cl=-576.0 rng=2912.0 al=110.0 cr=2896.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-72.0 hdg=86 Thr=99/99
+16:17:48.052 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=560 iasObj=563.0 tgtGS=235.0 cl=-603.0 rng=3211.0 al=146.0 cr=3197.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-71.4 hdg=80 Thr=100/100
+16:17:49.035 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=567 iasObj=571.0 tgtGS=236.0 cl=-629.0 rng=3518.0 al=208.0 cr=3502.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.9 hdg=74 Thr=100/100
+16:17:50.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=575 iasObj=579.0 tgtGS=237.0 cl=-652.0 rng=3840.0 al=303.0 cr=3821.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=68 Thr=100/100
+16:17:51.004 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=582 iasObj=588.0 tgtGS=238.0 cl=-671.0 rng=4172.0 al=432.0 cr=4143.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=62 Thr=100/100
+16:17:52.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=593 iasObj=600.0 tgtGS=240.0 cl=-686.0 rng=4539.0 al=610.0 cr=4493.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=56 Thr=100/100
+16:17:53.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=606 iasObj=620.0 tgtGS=241.0 cl=-694.0 rng=4888.0 al=811.0 cr=4817.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=50 Thr=100/100
+16:17:54.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=611 iasObj=631.0 tgtGS=242.0 cl=-698.0 rng=5238.0 al=1042.0 cr=5131.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=44 Thr=100/100
+16:17:55.052 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=610 iasObj=635.0 tgtGS=244.0 cl=-700.0 rng=5585.0 al=1302.0 cr=5430.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=38 Thr=100/100
+16:17:56.035 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=603 iasObj=627.0 tgtGS=245.0 cl=-701.0 rng=5928.0 al=1587.0 cr=5711.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=33 Thr=100/100
+16:17:57.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=602 iasObj=627.0 tgtGS=247.0 cl=-702.0 rng=6279.0 al=1905.0 cr=5983.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=28 Thr=100/100
+16:17:58.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=604 iasObj=630.0 tgtGS=248.0 cl=-703.0 rng=6631.0 al=2247.0 cr=6238.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=24 Thr=100/100
+16:17:59.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=607 iasObj=635.0 tgtGS=250.0 cl=-702.0 rng=7010.0 al=2642.0 cr=6493.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=18 Thr=100/100
+16:18:00.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=610 iasObj=640.0 tgtGS=251.0 cl=-701.0 rng=7362.0 al=3030.0 cr=6709.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=14 Thr=100/100
+16:18:01.070 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=613 iasObj=647.0 tgtGS=253.0 cl=-699.0 rng=7715.0 al=3439.0 cr=6906.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=9 Thr=100/100
+16:18:02.055 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=616 iasObj=650.0 tgtGS=254.0 cl=-697.0 rng=8063.0 al=3860.0 cr=7079.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=5 Thr=100/100
+16:18:03.036 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=619 iasObj=650.0 tgtGS=255.0 cl=-693.0 rng=8406.0 al=4290.0 cr=7228.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=1 Thr=100/100
+16:18:04.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=622 iasObj=650.0 tgtGS=256.0 cl=-688.0 rng=8750.0 al=4737.0 cr=7356.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=356 Thr=100/100
+16:18:05.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=625 iasObj=650.0 tgtGS=257.0 cl=-682.0 rng=9091.0 al=5194.0 cr=7460.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=352 Thr=100/100
+16:18:06.104 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=629 iasObj=650.0 tgtGS=258.0 cl=-674.0 rng=9469.0 al=5715.0 cr=7547.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=347 Thr=100/100
+16:18:07.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=632 iasObj=650.0 tgtGS=259.0 cl=-666.0 rng=9797.0 al=6181.0 cr=7598.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=343 Thr=100/100
+16:18:08.070 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=635 iasObj=650.0 tgtGS=260.0 cl=-655.0 rng=10127.0 al=6661.0 cr=7624.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=339 Thr=100/100
+16:18:09.051 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=638 iasObj=650.0 tgtGS=260.0 cl=-644.0 rng=10452.0 al=7144.0 cr=7625.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=335 Thr=100/100
+16:18:10.036 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=640 iasObj=650.0 tgtGS=260.0 cl=-630.0 rng=10772.0 al=7629.0 cr=7599.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=330 Thr=100/100
+16:18:11.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=643 iasObj=650.0 tgtGS=260.0 cl=-616.0 rng=11081.0 al=8107.0 cr=7547.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=326 Thr=100/100
+16:18:12.006 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=646 iasObj=650.0 tgtGS=260.0 cl=-599.0 rng=11382.0 al=8582.0 cr=7470.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.6 hdg=322 Thr=100/100
+16:18:13.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=648 iasObj=650.0 tgtGS=260.0 cl=-580.0 rng=11710.0 al=9107.0 cr=7353.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=317 Thr=98/98
+16:18:14.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=260.0 cl=-560.0 rng=11995.0 al=9570.0 cr=7221.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=313 Thr=94/94
+16:18:15.067 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=260.0 cl=-538.0 rng=12270.0 al=10024.0 cr=7065.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=309 Thr=93/93
+16:18:16.052 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=259.0 cl=-514.0 rng=12533.0 al=10464.0 cr=6885.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=304 Thr=93/92
+16:18:17.039 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=258.0 cl=-488.0 rng=12786.0 al=10893.0 cr=6682.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=300 Thr=95/95
+16:18:18.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=648 iasObj=650.0 tgtGS=258.0 cl=-461.0 rng=13023.0 al=11300.0 cr=6460.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=296 Thr=98/98
+16:18:19.007 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=648 iasObj=650.0 tgtGS=257.0 cl=-434.0 rng=13245.0 al=11686.0 cr=6219.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=291 Thr=100/100
+16:18:20.101 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=256.0 cl=-403.0 rng=13479.0 al=12098.0 cr=5926.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=286 Thr=99/99
+16:18:21.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=254.0 cl=-375.0 rng=13673.0 al=12444.0 cr=5645.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=282 Thr=96/96
+16:18:22.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=253.0 cl=-345.0 rng=13854.0 al=12771.0 cr=5346.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=278 Thr=94/94
+16:18:23.053 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=252.0 cl=-315.0 rng=14018.0 al=13072.0 cr=5037.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=274 Thr=94/94
+16:18:24.036 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=251.0 cl=-285.0 rng=14167.0 al=13350.0 cr=4715.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=270 Thr=93/93
+16:18:25.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=250.0 cl=-254.0 rng=14300.0 al=13601.0 cr=4386.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=266 Thr=95/95
+16:18:26.008 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=248.0 cl=-221.0 rng=14421.0 al=13834.0 cr=4039.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=261 Thr=97/97
+16:18:27.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=247.0 cl=-185.0 rng=14533.0 al=14055.0 cr=3657.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=257 Thr=98/98
+16:18:28.083 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=245.0 cl=-152.0 rng=14618.0 al=14229.0 cr=3302.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=252 Thr=97/98
+16:18:29.066 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=244.0 cl=-119.0 rng=14685.0 al=14375.0 cr=2948.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=248 Thr=96/96
+16:18:30.056 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=243.0 cl=-86.0 rng=14736.0 al=14496.0 cr=2588.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=244 Thr=94/94
+16:18:31.035 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=242.0 cl=-53.0 rng=14770.0 al=14588.0 cr=2237.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=240 Thr=94/93
+16:18:32.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=241.0 cl=-20.0 rng=14787.0 al=14655.0 cr=1885.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=236 Thr=94/94
+16:18:33.007 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=240.0 cl=13.0 rng=14789.0 al=14696.0 cr=1540.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=232 Thr=96/96
+16:18:34.104 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=238.0 cl=50.0 rng=14770.0 al=14712.0 cr=1160.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=227 Thr=98/98
+16:18:35.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=649 iasObj=650.0 tgtGS=237.0 cl=83.0 rng=14736.0 al=14699.0 cr=835.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-70.5 hdg=223 Thr=98/98
+16:18:36.069 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=237.0 cl=116.0 rng=14685.0 al=14663.0 cr=516.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-70.5 hdg=218 Thr=96/96
+16:18:37.052 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=236.0 cl=148.0 rng=14617.0 al=14602.0 cr=207.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-69.5 hdg=214 Thr=94/94
+16:18:38.035 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=235.0 cl=175.0 rng=14535.0 al=14520.0 cr=-88.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-66.7 hdg=211 Thr=93/93
+16:18:39.021 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=234.0 cl=198.0 rng=14439.0 al=14419.0 cr=-373.0 reg=Transit side=1.0 lk=1.0 cor=0.0 bank=-63.5 hdg=208 Thr=91/91
+16:18:40.007 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=234.0 cl=215.0 rng=14335.0 al=14305.0 cr=-640.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-60.8 hdg=206 Thr=90/90
+16:18:41.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=653 iasObj=650.0 tgtGS=234.0 cl=228.0 rng=14210.0 al=14163.0 cr=-930.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-58.5 hdg=204 Thr=88/88
+16:18:42.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=653 iasObj=650.0 tgtGS=233.0 cl=237.0 rng=14091.0 al=14025.0 cr=-1180.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-57.0 hdg=202 Thr=86/86
+16:18:43.070 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=653 iasObj=650.0 tgtGS=233.0 cl=244.0 rng=13971.0 al=13881.0 cr=-1417.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-56.0 hdg=200 Thr=85/85
+16:18:44.052 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=653 iasObj=650.0 tgtGS=233.0 cl=250.0 rng=13845.0 al=13728.0 cr=-1651.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-55.2 hdg=198 Thr=84/84
+16:18:45.035 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=652 iasObj=650.0 tgtGS=233.0 cl=256.0 rng=13716.0 al=13568.0 cr=-1877.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-54.5 hdg=197 Thr=84/84
+16:18:46.020 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=651 iasObj=650.0 tgtGS=233.0 cl=263.0 rng=13585.0 al=13404.0 cr=-2091.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-53.8 hdg=195 Thr=86/86
+16:18:47.007 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=233.0 cl=269.0 rng=13451.0 al=13233.0 cr=-2297.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-53.2 hdg=193 Thr=87/87
+16:18:48.098 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=233.0 cl=278.0 rng=13297.0 al=13036.0 cr=-2515.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-52.6 hdg=191 Thr=88/88
+16:18:49.082 Acc=Interceptar Airbus A330-300 · Persecucion (cierre  IAS=650 iasObj=650.0 tgtGS=234.0 cl=285.0 rng=13157.0 al=12856.0 cr=-2699.0 reg=Transit side=1.0 lk=1.0 cor=1.0 bank=-52.1 hdg=189 Thr=88/88
+
+MAX IAS within 5km: 16:16:49.631 IAS=639.1 iasObj=624.0 rng=4897.0 ThrObj=68.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+MIN rng: 16:17:36.020 rng=690.0 IAS=477.3 iasObj=481.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a ThrObj=88.3
+
+=== iasObj when rng<3000 (1s) ===
+16:13:10.129 rng=2999.0 IAS=501 iasObj=476.0 tgtGS=256.0 cl=79.0 ThrObj=32 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:13:11.006 rng=2959.0 IAS=505 iasObj=494.0 tgtGS=269.0 cl=-6.0 ThrObj=54 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:13:12.097 rng=2961.0 IAS=505 iasObj=512.0 tgtGS=283.0 cl=-108.0 ThrObj=90 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:29.007 rng=2995.0 IAS=549 iasObj=547.0 tgtGS=253.0 cl=180.0 ThrObj=68 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:30.097 rng=2898.0 IAS=550 iasObj=547.0 tgtGS=252.0 cl=192.0 ThrObj=67 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:31.081 rng=2806.0 IAS=550 iasObj=547.0 tgtGS=250.0 cl=202.0 ThrObj=67 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:32.065 rng=2710.0 IAS=549 iasObj=548.0 tgtGS=249.0 cl=211.0 ThrObj=67 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:33.051 rng=2609.0 IAS=549 iasObj=548.0 tgtGS=247.0 cl=221.0 ThrObj=68 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:34.034 rng=2507.0 IAS=548 iasObj=548.0 tgtGS=245.0 cl=229.0 ThrObj=68 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:35.018 rng=2397.0 IAS=548 iasObj=548.0 tgtGS=243.0 cl=237.0 ThrObj=69 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:36.007 rng=2286.0 IAS=548 iasObj=549.0 tgtGS=241.0 cl=244.0 ThrObj=72 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:37.097 rng=2160.0 IAS=548 iasObj=549.0 tgtGS=239.0 cl=250.0 ThrObj=73 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:38.081 rng=2045.0 IAS=548 iasObj=550.0 tgtGS=237.0 cl=254.0 ThrObj=74 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:39.066 rng=1930.0 IAS=549 iasObj=551.0 tgtGS=235.0 cl=256.0 ThrObj=74 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:40.050 rng=1856.0 IAS=550 iasObj=551.0 tgtGS=234.0 cl=255.0 ThrObj=74 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:41.034 rng=1699.0 IAS=552 iasObj=553.0 tgtGS=231.0 cl=247.0 ThrObj=74 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:15:42.020 rng=1597.0 IAS=554 iasObj=555.0 tgtGS=229.0 cl=235.0 ThrObj=77 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:15:43.003 rng=1498.0 IAS=556 iasObj=557.0 tgtGS=228.0 cl=220.0 ThrObj=77 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:15:44.098 rng=1401.0 IAS=558 iasObj=559.0 tgtGS=226.0 cl=202.0 ThrObj=77 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:15:45.083 rng=1321.0 IAS=560 iasObj=561.0 tgtGS=225.0 cl=176.0 ThrObj=77 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:15:46.069 rng=1259.0 IAS=562 iasObj=563.0 tgtGS=224.0 cl=137.0 ThrObj=81 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:15:47.054 rng=1216.0 IAS=564 iasObj=565.0 tgtGS=223.0 cl=77.0 ThrObj=79 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:15:48.034 rng=1206.0 IAS=565 iasObj=557.0 tgtGS=168.0 cl=-43.0 ThrObj=55 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:15:49.019 rng=1257.0 IAS=566 iasObj=547.0 tgtGS=139.0 cl=-159.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:15:50.006 rng=1286.0 IAS=563 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:51.097 rng=1286.0 IAS=555 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:52.083 rng=1286.0 IAS=547 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:53.067 rng=1286.0 IAS=538 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:54.055 rng=1286.0 IAS=531 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:55.036 rng=1286.0 IAS=524 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:56.021 rng=1286.0 IAS=517 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:57.006 rng=1286.0 IAS=511 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:58.097 rng=1286.0 IAS=504 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:15:59.084 rng=1286.0 IAS=498 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:00.066 rng=1286.0 IAS=492 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:01.050 rng=1286.0 IAS=487 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:02.034 rng=1286.0 IAS=481 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:03.020 rng=1286.0 IAS=476 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:04.006 rng=1286.0 IAS=471 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:05.103 rng=1286.0 IAS=465 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:06.082 rng=1286.0 IAS=461 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:07.065 rng=1286.0 IAS=456 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:08.066 rng=1286.0 IAS=451 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:09.050 rng=1286.0 IAS=447 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:10.040 rng=1286.0 IAS=442 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:16:11.021 rng=1286.0 IAS=438 iasObj=540.0 tgtGS=123.0 cl=-202.0 ThrObj=0 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Esperando a que desp
+16:17:16.114 rng=2999.0 IAS=483 iasObj=474.0 tgtGS=280.0 cl=189.0 ThrObj=60 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:17.097 rng=2905.0 IAS=482 iasObj=474.0 tgtGS=278.0 cl=194.0 ThrObj=57 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:18.082 rng=2808.0 IAS=479 iasObj=473.0 tgtGS=276.0 cl=199.0 ThrObj=58 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:19.067 rng=2710.0 IAS=476 iasObj=471.0 tgtGS=274.0 cl=205.0 ThrObj=59 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:20.053 rng=2607.0 IAS=473 iasObj=469.0 tgtGS=271.0 cl=211.0 ThrObj=60 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:21.041 rng=2501.0 IAS=470 iasObj=468.0 tgtGS=269.0 cl=218.0 ThrObj=62 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:22.021 rng=2393.0 IAS=466 iasObj=465.0 tgtGS=267.0 cl=225.0 ThrObj=62 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:23.007 rng=2280.0 IAS=463 iasObj=464.0 tgtGS=264.0 cl=233.0 ThrObj=63 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:24.098 rng=2149.0 IAS=461 iasObj=462.0 tgtGS=261.0 cl=242.0 ThrObj=66 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:25.083 rng=2028.0 IAS=459 iasObj=461.0 tgtGS=259.0 cl=251.0 ThrObj=70 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:26.070 rng=1901.0 IAS=458 iasObj=460.0 tgtGS=256.0 cl=259.0 ThrObj=72 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:27.052 rng=1768.0 IAS=457 iasObj=460.0 tgtGS=254.0 cl=267.0 ThrObj=74 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:28.034 rng=1629.0 IAS=457 iasObj=460.0 tgtGS=251.0 cl=274.0 ThrObj=76 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:29.020 rng=1490.0 IAS=457 iasObj=461.0 tgtGS=249.0 cl=279.0 ThrObj=78 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:30.007 rng=1348.0 IAS=458 iasObj=462.0 tgtGS=247.0 cl=281.0 ThrObj=80 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:31.099 rng=1193.0 IAS=460 iasObj=464.0 tgtGS=245.0 cl=278.0 ThrObj=82 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:32.083 rng=1054.0 IAS=462 iasObj=467.0 tgtGS=243.0 cl=268.0 ThrObj=83 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:33.069 rng=924.0 IAS=465 iasObj=470.0 tgtGS=241.0 cl=246.0 ThrObj=85 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:34.056 rng=809.0 IAS=469 iasObj=473.0 tgtGS=240.0 cl=206.0 ThrObj=86 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:35.040 rng=726.0 IAS=473 iasObj=477.0 tgtGS=238.0 cl=139.0 ThrObj=87 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:36.020 rng=690.0 IAS=477 iasObj=481.0 tgtGS=237.0 cl=43.0 ThrObj=88 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:37.006 rng=717.0 IAS=482 iasObj=486.0 tgtGS=236.0 cl=-74.0 ThrObj=89 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:38.099 rng=816.0 IAS=488 iasObj=491.0 tgtGS=235.0 cl=-196.0 ThrObj=90 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:39.083 rng=961.0 IAS=494 iasObj=497.0 tgtGS=234.0 cl=-286.0 ThrObj=90 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:40.067 rng=1136.0 IAS=500 iasObj=503.0 tgtGS=234.0 cl=-353.0 ThrObj=91 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:41.051 rng=1341.0 IAS=507 iasObj=509.0 tgtGS=233.0 cl=-403.0 ThrObj=97 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Acercamiento [Cola a
+16:17:42.034 rng=1561.0 IAS=513 iasObj=515.0 tgtGS=233.0 cl=-447.0 ThrObj=95 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:17:43.020 rng=1802.0 IAS=520 iasObj=521.0 tgtGS=233.0 cl=-482.0 ThrObj=94 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:17:44.005 rng=2057.0 IAS=528 iasObj=528.0 tgtGS=233.0 cl=-508.0 ThrObj=92 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:17:45.101 rng=2351.0 IAS=537 iasObj=537.0 tgtGS=234.0 cl=-531.0 ThrObj=94 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:17:46.083 rng=2624.0 IAS=544 iasObj=545.0 tgtGS=234.0 cl=-552.0 ThrObj=94 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+16:17:47.069 rng=2912.0 IAS=552 iasObj=554.0 tgtGS=235.0 cl=-576.0 ThrObj=99 reg=Transit side=1.0 lk=1.0 Acc=Interceptar Airbus A330-300 · Persecucion (cierre 
+
+=== SAMPLE Adaptacion ===
+early: int rng=19569 sep=19613 cl=217 al=4944 cr=-18601 vt=3536 trkObj=246.0 trkErr=0.4 iasObj=254 vsObj=-5906 tgtGS=245 tgtTrk=352 tgtTurn=0.0 reg=Transit eta=157 ovt=0 minSep=10304 pG=1.0 brk=0.0 wv=0 side=1 lk=1 cor=1
+mid: int rng=3236 sep=3345 cl=145 al=1600 cr=-2781 vt=-426 trkObj=116.1 trkErr=-43.8 iasObj=542 vsObj=-2388 tgtGS=256 tgtTrk=158 tgtTurn=0.0 reg=Transit eta=78 ovt=0 minSep=3347 pG=1.6 brk=0.0 wv=0 side=1 lk=1 cor=1
+hot_last: int rng=4967 sep=5004 cl=-695 al=860 cr=4889 vt=178 trkObj=353.6 trkErr=-58.4 iasObj=623 vsObj=-136 tgtGS=241 tgtTrk=159 tgtTurn=0.0 reg=Transit eta=86 ovt=0 minSep=4167 pG=3.2 brk=0.0 wv=0 side=1 lk=1 cor=1
+first_rng<2km: 16:15:38.520 int rng=1994 sep=1982 cl=255 al=-305 cr=-1930 vt=-398 trkObj=78.0 trkErr=-50.6 iasObj=550 vsObj=-1383 tgtGS=236 tgtTrk=158 tgtTurn=0.0 reg=Transit eta=79 ovt=302 minSep=1947 pG=1.6 brk=0.0 wv=0 side=1 lk=1 cor=1
+
+=== InterceptTrace.csv ===
+trace rows=21308 cols=['t', 'stage', 'regime', 'phase', 'detour', 'side', 'sideLocked', 'corridor', 'ox', 'oy', 'oz', 'ovx', 'ovy', 'ovz', 'tx', 'ty', 'tz', 'tvx', 'tvy', 'tvz', 'thdg', 'tturn', 'range', 'rpRange', 'along', 'cross', 'up', 'ownIas', 'ownBank', 'ownG', 'desTrk', 'filtTrk', 'desGs', 'desIas', 'iasCmd', 'vsCmd', 'bankCmd', 'minSep', 'eta']
+interesting cols: ['t', 'stage', 'regime', 'phase', 'detour', 'side', 'sideLocked', 'tx', 'ty', 'tz', 'tvx', 'tvy', 'tvz', 'thdg', 'tturn', 'range', 'rpRange', 'ownIas', 'ownBank', 'desTrk', 'filtTrk', 'desIas', 'iasCmd', 'bankCmd', 'eta']
+trace_first: t=0.02 | stage=0 | regime=Transit | phase=Pursuit | detour=0 | side=1 | sideLocked=1 | corridor=1 | ox=7217.721 | oy=197.175 | oz=23722.193 | ovx=-116.698 | ovy=40.394 | ovz=52.906 | tx=-11797.317 | ty=3703.315 | tz=20406.957 | tvx=-17.513 | tvy=-212.116 | tvz=-124.497 | thdg=354.173 | tturn=0 | range=19572.586 | rpRange=18600.332 | along=5028.658
+trace_mid: t=203.49 | stage=0 | regime=Transit | phase=Closing | detour=0 | side=1 | sideLocked=1 | corridor=1 | ox=-936.572 | oy=546.827 | oz=29824.094 | ovx=92.06 | ovy=-13.316 | ovz=272.097 | tx=2343.588 | ty=82.772 | tz=30518.369 | tvx=49.88 | tvy=-17.367 | tvz=121.686 | thdg=157.733 | tturn=0 | range=3272.173 | rpRange=2593.333 | along=1685.428
+trace_last: t=385.44 | stage=0 | regime=Transit | phase=Pursuit | detour=0 | side=1 | sideLocked=1 | corridor=1 | ox=3520.744 | oy=1837.728 | oz=41543.965 | ovx=-53.523 | ovy=-12.841 | ovz=356.03 | tx=10747.248 | ty=1056.58 | tz=52585.105 | tvx=42.481 | tvy=-19.156 | tvz=112.547 | thdg=159.327 | tturn=0 | range=13021.747 | rpRange=10293.34 | along=12681.401

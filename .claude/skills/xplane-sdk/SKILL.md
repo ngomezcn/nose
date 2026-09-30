@@ -55,3 +55,8 @@ Comprueba macros de versión frente a la mínima del proyecto
   `devtools/ReloadTrigger` + `tools/build_and_deploy_addon.ps1`.
 - El connector (`src/connector`) es puente dataref/comando/hold; la
   lógica de dominio va en `src/core`.
+- Wrappers ya existentes en este repo (no reinventar sin leerlos):
+  - `AiControl.h` → `XPLMAcquirePlanes` / `DisableAI` / `ReleasePlanes`
+  - `CameraFollow.h` → `XPLMControlCamera` / chase sobre `planeN_*`
+  - `ScenarioPlace.h` → PlaceUser + Place AI
+  Si cambias el payload de un `Op.*`, bump `kVersion` en Protocol.h/.cs.

@@ -1,0 +1,167 @@
+trace rows=21308
+regime: Counter({'Transit': 21308})
+phase: Counter({'Pursuit': 13975, 'Closing': 7333})
+stage: Counter({'0': 21308})
+sideLocked: Counter({'1': 21308})
+side: Counter({'1': 21308})
+near<3km n=3195
+NEAR timeline (range<5km, ~1s):
+t=57s rng=5000 rpR=4914 al=-3581 cr=-3048 ownIAS=433 tgtGS=130 desGs=456 desIas=427 iasCmd=427 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=87
+t=58s rng=4845 rpR=4774 al=-3450 cr=-2979 ownIAS=431 tgtGS=135 desGs=457 desIas=428 iasCmd=428 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=86
+t=59s rng=4602 rpR=4605 al=-3245 cr=-2871 ownIAS=428 tgtGS=143 desGs=461 desIas=431 iasCmd=431 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=86
+t=60s rng=4366 rpR=4440 al=-3025 cr=-2789 ownIAS=427 tgtGS=153 desGs=468 desIas=436 iasCmd=436 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=86
+t=61s rng=4139 rpR=4292 al=-2782 cr=-2740 ownIAS=427 tgtGS=163 desGs=475 desIas=440 iasCmd=440 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=85
+t=62s rng=3917 rpR=4136 al=-2516 cr=-2714 ownIAS=431 tgtGS=174 desGs=484 desIas=446 iasCmd=446 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=85
+t=63s rng=3705 rpR=3979 al=-2237 cr=-2699 ownIAS=439 tgtGS=187 desGs=495 desIas=454 iasCmd=453 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=84
+t=64s rng=3509 rpR=3836 al=-1953 cr=-2693 ownIAS=450 tgtGS=200 desGs=506 desIas=463 iasCmd=463 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=84
+t=65s rng=3333 rpR=3679 al=-1654 cr=-2700 ownIAS=463 tgtGS=214 desGs=518 desIas=475 iasCmd=475 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=83
+t=66s rng=3182 rpR=3491 al=-1332 cr=-2723 ownIAS=478 tgtGS=229 desGs=530 desIas=488 iasCmd=488 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=82
+t=67s rng=3066 rpR=3299 al=-997 cr=-2759 ownIAS=493 tgtGS=244 desGs=512 desIas=472 iasCmd=472 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=82
+t=68s rng=3024 rpR=3361 al=-836 cr=-2778 ownIAS=498 tgtGS=251 desGs=506 desIas=470 iasCmd=470 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=82
+t=69s rng=2965 rpR=3095 al=-483 cr=-2823 ownIAS=505 tgtGS=266 desGs=520 desIas=490 iasCmd=489 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=80
+t=70s rng=2957 rpR=2833 al=-119 cr=-2875 ownIAS=505 tgtGS=281 desGs=538 desIas=510 iasCmd=509 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=71s rng=3008 rpR=2605 al=268 cr=-2935 ownIAS=504 tgtGS=296 desGs=555 desIas=523 iasCmd=522 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=72s rng=3052 rpR=2676 al=454 cr=-2965 ownIAS=506 tgtGS=302 desGs=570 desIas=534 iasCmd=534 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=73s rng=3188 rpR=2564 al=853 cr=-3031 ownIAS=513 tgtGS=315 desGs=588 desIas=546 iasCmd=546 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=77
+t=74s rng=3378 rpR=2533 al=1268 cr=-3101 ownIAS=525 tgtGS=327 desGs=605 desIas=560 iasCmd=560 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=75s rng=3614 rpR=2579 al=1691 cr=-3171 ownIAS=538 tgtGS=336 desGs=622 desIas=577 iasCmd=577 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=76s rng=3891 rpR=2711 al=2124 cr=-3243 ownIAS=551 tgtGS=344 desGs=641 desIas=595 iasCmd=594 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=77s rng=4206 rpR=2910 al=2572 cr=-3314 ownIAS=564 tgtGS=350 desGs=658 desIas=612 iasCmd=611 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=78s rng=4553 rpR=3087 al=3037 cr=-3382 ownIAS=577 tgtGS=354 desGs=675 desIas=630 iasCmd=629 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=79s rng=4918 rpR=3231 al=3503 cr=-3443 ownIAS=588 tgtGS=355 desGs=693 desIas=647 iasCmd=647 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=165s rng=4999 rpR=2966 al=4296 cr=2549 ownIAS=522 tgtGS=208 desGs=499 desIas=485 iasCmd=485 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=166s rng=4853 rpR=2801 al=4215 cr=2396 ownIAS=513 tgtGS=206 desGs=489 desIas=475 iasCmd=475 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=167s rng=4684 rpR=2591 al=4126 cr=2208 ownIAS=502 tgtGS=204 desGs=476 desIas=462 iasCmd=462 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=168s rng=4524 rpR=2393 al=4044 cr=2019 ownIAS=492 tgtGS=203 desGs=463 desIas=450 iasCmd=450 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=169s rng=4375 rpR=2179 al=3970 cr=1831 ownIAS=482 tgtGS=201 desGs=449 desIas=436 iasCmd=437 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=170s rng=4236 rpR=1989 al=3902 cr=1641 ownIAS=472 tgtGS=200 desGs=437 desIas=424 iasCmd=424 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=171s rng=4110 rpR=1808 al=3842 cr=1451 ownIAS=463 tgtGS=200 desGs=424 desIas=412 iasCmd=412 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=172s rng=3999 rpR=1616 al=3791 cr=1265 ownIAS=453 tgtGS=199 desGs=410 desIas=399 iasCmd=399 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=173s rng=3899 rpR=1450 al=3744 cr=1077 ownIAS=444 tgtGS=199 desGs=396 desIas=386 iasCmd=386 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=72
+t=174s rng=3812 rpR=1280 al=3704 cr=891 ownIAS=435 tgtGS=199 desGs=380 desIas=371 iasCmd=371 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=175s rng=3739 rpR=1123 al=3669 cr=708 ownIAS=426 tgtGS=200 desGs=361 desIas=353 iasCmd=354 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=176s rng=3679 rpR=998 al=3638 cr=527 ownIAS=417 tgtGS=201 desGs=345 desIas=337 iasCmd=337 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=73
+t=177s rng=3631 rpR=894 al=3611 cr=352 ownIAS=408 tgtGS=202 desGs=338 desIas=330 iasCmd=330 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=73
+t=178s rng=3595 rpR=814 al=3588 cr=177 ownIAS=400 tgtGS=203 desGs=339 desIas=332 iasCmd=332 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=74
+t=179s rng=3570 rpR=768 al=3567 cr=10 ownIAS=392 tgtGS=204 desGs=340 desIas=333 iasCmd=333 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=75
+t=180s rng=3555 rpR=764 al=3549 cr=-157 ownIAS=385 tgtGS=206 desGs=342 desIas=335 iasCmd=335 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=74
+t=181s rng=3549 rpR=795 al=3532 cr=-316 ownIAS=379 tgtGS=208 desGs=344 desIas=337 iasCmd=337 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=73
+t=182s rng=3551 rpR=852 al=3515 cr=-474 ownIAS=373 tgtGS=210 desGs=359 desIas=351 iasCmd=351 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=73
+t=183s rng=3559 rpR=932 al=3499 cr=-627 ownIAS=368 tgtGS=213 desGs=377 desIas=367 iasCmd=367 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=184s rng=3571 rpR=1023 al=3481 cr=-777 ownIAS=366 tgtGS=215 desGs=394 desIas=382 iasCmd=382 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=71
+t=185s rng=3587 rpR=1125 al=3461 cr=-924 ownIAS=364 tgtGS=218 desGs=412 desIas=398 iasCmd=398 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=72
+t=186s rng=3605 rpR=1238 al=3437 cr=-1066 ownIAS=365 tgtGS=221 desGs=424 desIas=406 iasCmd=406 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=72
+t=187s rng=3621 rpR=1345 al=3407 cr=-1207 ownIAS=370 tgtGS=224 desGs=436 desIas=411 iasCmd=411 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=72
+t=188s rng=3635 rpR=1455 al=3369 cr=-1345 ownIAS=381 tgtGS=227 desGs=447 desIas=418 iasCmd=418 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=189s rng=3645 rpR=1564 al=3320 cr=-1483 ownIAS=394 tgtGS=230 desGs=458 desIas=428 iasCmd=428 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=190s rng=3651 rpR=1672 al=3261 cr=-1619 ownIAS=409 tgtGS=233 desGs=469 desIas=438 iasCmd=438 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=191s rng=3653 rpR=1782 al=3193 cr=-1750 ownIAS=423 tgtGS=236 desGs=480 desIas=449 iasCmd=449 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=192s rng=3650 rpR=1902 al=3114 cr=-1879 ownIAS=438 tgtGS=239 desGs=491 desIas=461 iasCmd=461 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=193s rng=3643 rpR=2009 al=3026 cr=-2003 ownIAS=452 tgtGS=241 desGs=501 desIas=472 iasCmd=472 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=194s rng=3631 rpR=2115 al=2927 cr=-2121 ownIAS=466 tgtGS=244 desGs=511 desIas=482 iasCmd=482 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=195s rng=3613 rpR=2231 al=2819 cr=-2232 ownIAS=480 tgtGS=246 desGs=521 desIas=493 iasCmd=492 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=196s rng=3590 rpR=2334 al=2702 cr=-2335 ownIAS=492 tgtGS=249 desGs=530 desIas=503 iasCmd=502 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=197s rng=3561 rpR=2352 al=2574 cr=-2431 ownIAS=505 tgtGS=250 desGs=534 desIas=509 iasCmd=509 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=198s rng=3527 rpR=2399 al=2443 cr=-2515 ownIAS=515 tgtGS=252 desGs=539 desIas=517 iasCmd=517 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=199s rng=3488 rpR=2449 al=2301 cr=-2591 ownIAS=524 tgtGS=253 desGs=545 desIas=524 iasCmd=524 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=77
+t=200s rng=3462 rpR=2473 al=2215 cr=-2630 ownIAS=528 tgtGS=254 desGs=547 desIas=528 iasCmd=528 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=77
+t=201s rng=3415 rpR=2511 al=2067 cr=-2687 ownIAS=533 tgtGS=255 desGs=550 desIas=532 iasCmd=532 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=77
+t=202s rng=3362 rpR=2545 al=1916 cr=-2730 ownIAS=538 tgtGS=255 desGs=553 desIas=536 iasCmd=536 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=77
+t=203s rng=3303 rpR=2577 al=1761 cr=-2762 ownIAS=541 tgtGS=256 desGs=555 desIas=539 iasCmd=539 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=204s rng=3238 rpR=2609 al=1605 cr=-2780 ownIAS=544 tgtGS=256 desGs=557 desIas=542 iasCmd=542 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=205s rng=3169 rpR=2637 al=1448 cr=-2786 ownIAS=546 tgtGS=255 desGs=558 desIas=544 iasCmd=544 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=206s rng=3093 rpR=2665 al=1288 cr=-2779 ownIAS=548 tgtGS=254 desGs=559 desIas=545 iasCmd=545 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=207s rng=3012 rpR=2694 al=1130 cr=-2759 ownIAS=549 tgtGS=253 desGs=559 desIas=546 iasCmd=546 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=208s rng=2925 rpR=2724 al=970 cr=-2726 ownIAS=549 tgtGS=252 desGs=559 desIas=547 iasCmd=547 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=209s rng=2833 rpR=2759 al=814 cr=-2680 ownIAS=550 tgtGS=251 desGs=559 desIas=547 iasCmd=547 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=210s rng=2738 rpR=2794 al=660 cr=-2623 ownIAS=549 tgtGS=249 desGs=559 desIas=548 iasCmd=548 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=211s rng=2636 rpR=2833 al=506 cr=-2553 ownIAS=549 tgtGS=247 desGs=559 desIas=548 iasCmd=548 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=212s rng=2532 rpR=2883 al=357 cr=-2472 ownIAS=548 tgtGS=245 desGs=558 desIas=548 iasCmd=548 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=213s rng=2423 rpR=2933 al=210 cr=-2378 ownIAS=548 tgtGS=243 desGs=558 desIas=548 iasCmd=548 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=214s rng=2310 rpR=3012 al=65 cr=-2272 ownIAS=548 tgtGS=241 desGs=559 desIas=548 iasCmd=548 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=215s rng=2197 rpR=3092 al=-72 cr=-2158 ownIAS=548 tgtGS=239 desGs=560 desIas=549 iasCmd=549 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=216s rng=2078 rpR=3175 al=-210 cr=-2029 ownIAS=548 tgtGS=237 desGs=561 desIas=550 iasCmd=550 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=217s rng=1960 rpR=3259 al=-343 cr=-1888 ownIAS=549 tgtGS=235 desGs=562 desIas=550 iasCmd=550 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=218s rng=1862 rpR=3338 al=-449 cr=-1763 ownIAS=550 tgtGS=234 desGs=564 desIas=551 iasCmd=551 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=219s rng=1726 rpR=3440 al=-595 cr=-1572 ownIAS=552 tgtGS=231 desGs=565 desIas=553 iasCmd=553 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=79
+t=220s rng=1619 rpR=3526 al=-710 cr=-1402 ownIAS=553 tgtGS=230 desGs=567 desIas=555 iasCmd=555 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=78
+t=221s rng=1519 rpR=3623 al=-821 cr=-1216 ownIAS=555 tgtGS=228 desGs=569 desIas=556 iasCmd=556 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=78
+t=222s rng=1425 rpR=3712 al=-924 cr=-1013 ownIAS=557 tgtGS=226 desGs=570 desIas=558 iasCmd=558 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=78
+t=223s rng=1343 rpR=3814 al=-1010 cr=-796 ownIAS=559 tgtGS=225 desGs=573 desIas=560 iasCmd=560 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=73
+t=224s rng=1275 rpR=3897 al=-1076 cr=-563 ownIAS=561 tgtGS=224 desGs=574 desIas=562 iasCmd=562 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=73
+t=225s rng=1225 rpR=3974 al=-1119 cr=-312 ownIAS=563 tgtGS=223 desGs=576 desIas=564 iasCmd=564 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=74
+t=226s rng=1203 rpR=4044 al=-1137 cr=-47 ownIAS=565 tgtGS=193 desGs=574 desIas=562 iasCmd=562 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=75
+t=227s rng=1274 rpR=4174 al=-1163 cr=352 ownIAS=565 tgtGS=129 desGs=548 desIas=541 iasCmd=542 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=77
+t=263s rng=4998 rpR=1758 al=4423 cr=677 ownIAS=638 tgtGS=235 desGs=672 desIas=649 iasCmd=649 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=264s rng=4909 rpR=1586 al=4380 cr=300 ownIAS=638 tgtGS=236 desGs=666 desIas=645 iasCmd=645 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=74
+t=265s rng=4912 rpR=1655 al=4434 cr=77 ownIAS=639 tgtGS=238 desGs=648 desIas=626 iasCmd=626 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=76
+t=266s rng=4723 rpR=1464 al=4259 cr=18 ownIAS=615 tgtGS=241 desGs=631 desIas=1009 iasCmd=624 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=85
+t=267s rng=4663 rpR=1421 al=4220 cr=-15 ownIAS=413 tgtGS=244 desGs=612 desIas=852 iasCmd=649 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=86
+t=268s rng=4613 rpR=1396 al=4194 cr=-46 ownIAS=315 tgtGS=247 desGs=595 desIas=615 iasCmd=650 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=86
+t=269s rng=4561 rpR=1370 al=4166 cr=-81 ownIAS=297 tgtGS=250 desGs=578 desIas=545 iasCmd=632 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=85
+t=270s rng=4508 rpR=1340 al=4134 cr=-122 ownIAS=303 tgtGS=253 desGs=560 desIas=514 iasCmd=607 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=83
+t=271s rng=4454 rpR=1312 al=4099 cr=-171 ownIAS=313 tgtGS=256 desGs=543 desIas=497 iasCmd=582 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=82
+t=272s rng=4399 rpR=1283 al=4063 cr=-227 ownIAS=323 tgtGS=259 desGs=524 desIas=482 iasCmd=557 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=81
+t=273s rng=4342 rpR=1259 al=4024 cr=-290 ownIAS=333 tgtGS=262 desGs=507 desIas=467 iasCmd=532 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=79
+t=274s rng=4285 rpR=1238 al=3983 cr=-358 ownIAS=344 tgtGS=266 desGs=490 desIas=451 iasCmd=507 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=78
+t=275s rng=4228 rpR=1218 al=3939 cr=-428 ownIAS=354 tgtGS=268 desGs=474 desIas=435 iasCmd=482 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=76
+t=276s rng=4170 rpR=1201 al=3891 cr=-501 ownIAS=364 tgtGS=271 desGs=472 desIas=433 iasCmd=457 reg=Transit ph=Closing st=0 lk=1 side=1 cor=0 eta=75
+t=277s rng=4111 rpR=1187 al=3839 cr=-575 ownIAS=374 tgtGS=274 desGs=475 desIas=435 iasCmd=435 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=278s rng=4051 rpR=1178 al=3781 cr=-652 ownIAS=385 tgtGS=276 desGs=478 desIas=438 iasCmd=438 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=279s rng=3989 rpR=1173 al=3719 cr=-729 ownIAS=395 tgtGS=279 desGs=481 desIas=441 iasCmd=441 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=280s rng=3925 rpR=1173 al=3651 cr=-807 ownIAS=405 tgtGS=280 desGs=484 desIas=443 iasCmd=443 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=281s rng=3860 rpR=1177 al=3579 cr=-883 ownIAS=416 tgtGS=282 desGs=487 desIas=445 iasCmd=445 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=71
+t=282s rng=3791 rpR=1188 al=3499 cr=-961 ownIAS=427 tgtGS=283 desGs=490 desIas=448 iasCmd=448 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=71
+t=283s rng=3720 rpR=1202 al=3414 cr=-1035 ownIAS=437 tgtGS=284 desGs=493 desIas=450 iasCmd=450 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=71
+t=284s rng=3645 rpR=1223 al=3320 cr=-1109 ownIAS=448 tgtGS=285 desGs=496 desIas=453 iasCmd=453 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=71
+t=285s rng=3567 rpR=1252 al=3221 cr=-1179 ownIAS=459 tgtGS=285 desGs=500 desIas=457 iasCmd=457 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=71
+t=286s rng=3487 rpR=1282 al=3117 cr=-1244 ownIAS=469 tgtGS=285 desGs=503 desIas=463 iasCmd=463 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=71
+t=287s rng=3404 rpR=1318 al=3007 cr=-1305 ownIAS=475 tgtGS=285 desGs=506 desIas=469 iasCmd=469 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=72
+t=288s rng=3320 rpR=1362 al=2895 cr=-1359 ownIAS=479 tgtGS=284 desGs=509 desIas=474 iasCmd=474 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=72
+t=289s rng=3233 rpR=1405 al=2779 cr=-1407 ownIAS=481 tgtGS=283 desGs=512 desIas=477 iasCmd=477 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=72
+t=290s rng=3144 rpR=1399 al=2661 cr=-1446 ownIAS=482 tgtGS=282 desGs=512 desIas=477 iasCmd=477 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=72
+t=291s rng=3052 rpR=1402 al=2541 cr=-1478 ownIAS=483 tgtGS=281 desGs=509 desIas=475 iasCmd=475 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=292s rng=2959 rpR=1406 al=2421 cr=-1500 ownIAS=483 tgtGS=279 desGs=508 desIas=474 iasCmd=474 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=293s rng=2861 rpR=1412 al=2298 cr=-1514 ownIAS=481 tgtGS=277 desGs=506 desIas=474 iasCmd=474 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=294s rng=2762 rpR=1421 al=2176 cr=-1517 ownIAS=478 tgtGS=275 desGs=504 desIas=472 iasCmd=472 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=295s rng=2661 rpR=1432 al=2057 cr=-1511 ownIAS=475 tgtGS=273 desGs=502 desIas=470 iasCmd=470 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=296s rng=2554 rpR=1447 al=1936 cr=-1494 ownIAS=471 tgtGS=270 desGs=500 desIas=468 iasCmd=468 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=297s rng=2447 rpR=1465 al=1819 cr=-1466 ownIAS=468 tgtGS=268 desGs=499 desIas=466 iasCmd=466 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=298s rng=2333 rpR=1487 al=1702 cr=-1428 ownIAS=465 tgtGS=265 desGs=498 desIas=465 iasCmd=465 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=299s rng=2217 rpR=1515 al=1588 cr=-1379 ownIAS=462 tgtGS=263 desGs=497 desIas=463 iasCmd=463 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=300s rng=2094 rpR=1553 al=1473 cr=-1318 ownIAS=460 tgtGS=260 desGs=496 desIas=461 iasCmd=461 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=301s rng=1968 rpR=1595 al=1363 cr=-1247 ownIAS=458 tgtGS=258 desGs=496 desIas=460 iasCmd=460 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=302s rng=1834 rpR=1645 al=1252 cr=-1162 ownIAS=457 tgtGS=255 desGs=496 desIas=460 iasCmd=460 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=303s rng=1698 rpR=1703 al=1146 cr=-1067 ownIAS=457 tgtGS=253 desGs=497 desIas=460 iasCmd=460 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=304s rng=1559 rpR=1772 al=1045 cr=-961 ownIAS=457 tgtGS=250 desGs=498 desIas=460 iasCmd=460 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=305s rng=1415 rpR=1859 al=946 cr=-843 ownIAS=458 tgtGS=248 desGs=501 desIas=462 iasCmd=462 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=306s rng=1273 rpR=1947 al=852 cr=-716 ownIAS=459 tgtGS=246 desGs=503 desIas=463 iasCmd=463 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=307s rng=1129 rpR=2047 al=761 cr=-577 ownIAS=461 tgtGS=244 desGs=506 desIas=465 iasCmd=465 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=308s rng=991 rpR=2156 al=674 cr=-428 ownIAS=464 tgtGS=242 desGs=510 desIas=468 iasCmd=468 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=309s rng=865 rpR=2273 al=592 cr=-267 ownIAS=467 tgtGS=240 desGs=514 desIas=471 iasCmd=471 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=310s rng=762 rpR=2417 al=514 cr=-95 ownIAS=471 tgtGS=239 desGs=519 desIas=475 iasCmd=475 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=73
+t=311s rng=700 rpR=2557 al=441 cr=86 ownIAS=475 tgtGS=237 desGs=525 desIas=479 iasCmd=479 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=312s rng=696 rpR=2705 al=375 cr=276 ownIAS=480 tgtGS=236 desGs=530 desIas=484 iasCmd=484 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=74
+t=313s rng=757 rpR=2858 al=313 cr=478 ownIAS=485 tgtGS=235 desGs=536 desIas=488 iasCmd=488 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=75
+t=314s rng=876 rpR=3040 al=258 cr=689 ownIAS=491 tgtGS=234 desGs=543 desIas=494 iasCmd=494 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=76
+t=315s rng=1038 rpR=3218 al=209 cr=911 ownIAS=497 tgtGS=234 desGs=550 desIas=500 iasCmd=500 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=77
+t=316s rng=1233 rpR=3391 al=166 cr=1145 ownIAS=503 tgtGS=233 desGs=556 desIas=506 iasCmd=506 reg=Transit ph=Closing st=0 lk=1 side=1 cor=1 eta=78
+t=317s rng=1448 rpR=3573 al=131 cr=1385 ownIAS=510 tgtGS=233 desGs=563 desIas=512 iasCmd=512 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=79
+t=318s rng=1685 rpR=3764 al=107 cr=1640 ownIAS=517 tgtGS=233 desGs=571 desIas=519 iasCmd=519 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=79
+t=319s rng=1934 rpR=3962 al=95 cr=1901 ownIAS=524 tgtGS=233 desGs=579 desIas=525 iasCmd=525 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=80
+t=320s rng=2198 rpR=4166 al=89 cr=2172 ownIAS=532 tgtGS=233 desGs=587 desIas=532 iasCmd=532 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=81
+t=321s rng=2474 rpR=4384 al=90 cr=2454 ownIAS=540 tgtGS=234 desGs=596 desIas=541 iasCmd=541 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=82
+t=322s rng=2759 rpR=4601 al=99 cr=2742 ownIAS=548 tgtGS=234 desGs=605 desIas=549 iasCmd=549 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=83
+t=323s rng=3053 rpR=4829 al=125 cr=3038 ownIAS=556 tgtGS=235 desGs=614 desIas=558 iasCmd=558 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=83
+t=324s rng=3360 rpR=5058 al=173 cr=3345 ownIAS=564 tgtGS=236 desGs=623 desIas=567 iasCmd=567 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=84
+t=325s rng=3686 rpR=5300 al=254 cr=3669 ownIAS=571 tgtGS=237 desGs=633 desIas=576 iasCmd=575 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=85
+t=326s rng=4013 rpR=5476 al=366 cr=3989 ownIAS=579 tgtGS=238 desGs=640 desIas=583 iasCmd=583 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=85
+t=327s rng=4356 rpR=5678 al=517 cr=4320 ownIAS=586 tgtGS=239 desGs=649 desIas=592 iasCmd=592 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=85
+t=328s rng=4700 rpR=5838 al=699 cr=4643 ownIAS=600 tgtGS=240 desGs=659 desIas=611 iasCmd=610 reg=Transit ph=Pursuit st=0 lk=1 side=1 cor=1 eta=86
+BUCKETS desGs excess:
+  rng[0,1000) n=399 avgDesGs=527kt avgTgtGS=237kt excess=289kt avgIasCmd=481 avgRpRange=2612
+  rng[1000,2000) n=1285 avgDesGs=545kt avgTgtGS=232kt excess=313kt avgIasCmd=516 avgRpRange=3059
+  rng[2000,3500) n=2811 avgDesGs=542kt avgTgtGS=260kt excess=283kt avgIasCmd=513 avgRpRange=2570
+  rng[3500,5000) n=4276 avgDesGs=494kt avgTgtGS=238kt excess=256kt avgIasCmd=475 avgRpRange=2067
+  rng[5000,8000) n=2666 avgDesGs=591kt avgTgtGS=227kt excess=364kt avgIasCmd=561 avgRpRange=5930
+MIN rng t=311.57 rng=689.816 rpR=2638.432 al=403.141 cr=191.719 desGs=528 iasCmd=481.571 tgtGS=237 reg=Transit ph=Closing

@@ -44,7 +44,7 @@ namespace proto {
 // rechaza (y loguea) un HELLO con una version distinta en vez de
 // interpretar bytes con el layout equivocado, que es la clase de bug que
 // se manifiesta como "el avion hace cosas raras" en vez de como un error.
-constexpr uint16_t kVersion = 5;
+constexpr uint16_t kVersion = 9;
 
 constexpr const char* kPipeName = "\\\\.\\pipe\\AICopilot.v1";
 
@@ -70,7 +70,6 @@ enum class Op : uint8_t {
     // Payload:
     //   u8  flags   bit0=ownLabel bit1=otherLabels bit2=lines
     //               bit3=markers bit4=path
-    //               bit5=interceptPath
     //   u8  font    0=Basic 1=Proportional
     //   f32 r,g,b   color 0..1
     //   f32 scale   tamano relativo (marcador / grosor de linea)
@@ -83,14 +82,19 @@ enum class Op : uint8_t {
     //   f64 aiLat, aiLon, aiElevMsl, aiHdgTrue, aiSpeedMps
     //   str aiAircraftRelPath  (relativo a la raiz de X-Plane; vacio = C172)
     PlaceScenario = 0x0D,
-    // Ruta de interceptacion dibujada en el mundo 3D (flag bit5 de
-    // GraphicsConfig). Coordenadas locales OGL absolutas (+X este, +Y arriba,
-    // +Z sur). El core la reenvia a <=10 Hz; el connector la da por caducada
-    // si pasa >1 s sin actualizar. count=0 la borra.
+    // Exclusive access a un avion IA (AcquirePlanes + DisableAIForPlane).
+    // El core escribe posiciones via Hold; el connector solo otorga/suelta.
     // Payload:
-    //   u8  count   0..64
-    //   count x (f64 x, f64 y, f64 z)
-    InterceptPath = 0x0E,
+    //   u8 action      0 = Release (XPLMReleasePlanes si teniamos acquire)
+    //                  1 = Take    (AcquirePlanes NULL + DisableAIForPlane)
+    //   u8 planeIndex  indice XPLM 1..19 (nunca 0)
+    AiControl = 0x0E,
+    // Camara via XPLMControlCamera. Sin logica de dominio: el core decide.
+    // Payload:
+    //   u8 planeIndex  0   = soltar camara (DontControlCamera)
+    //                  1..19 = chase detras de esa IA (indice XPLM)
+    //                  255 = vista aerea: enmarca ownship + IAs activas
+    CameraFollow = 0x0F,
 
     // --- connector -> core ---
     HelloAck = 0x81,

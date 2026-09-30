@@ -37,7 +37,9 @@
 #include "XPLMProcessing.h"
 #include "XPLMUtilities.h"
 
+#include "AiControl.h"
 #include "AiLabel.h"
+#include "CameraFollow.h"
 #include "DatarefRegistry.h"
 #include "Holds.h"
 #include "Logger.h"
@@ -88,6 +90,9 @@ void SendEvent(proto::EventKind kind, const std::string& text) {
 // Suelta todo y avisa al core. Se usa desde los mensajes de X-Plane
 // (choque, aeropuerto nuevo, avion recargado) y desde XPluginDisable.
 void ReleaseEverything(const char* reason, bool notifyCore) {
+    camera_follow::Stop();
+    ai_control::Release();
+    scenario::CancelPending();
     if (!g_guard || !g_holds || !g_registry) return;
     g_guard->ReleaseAll(reason, *g_holds, *g_registry);
     if (notifyCore) {
@@ -279,16 +284,6 @@ void HandleMessage(const uint8_t* data, size_t size) {
             break;
         }
 
-        case proto::Op::InterceptPath: {
-            uint8_t n = r.U8();
-            if (!r.Ok() || n > 64) return;
-            double pts[64 * 3];
-            for (int i = 0; i < n * 3; ++i) pts[i] = r.F64();
-            if (!r.Ok()) return;
-            if (g_label) g_label->SetInterceptPath(pts, n);
-            break;
-        }
-
         case proto::Op::PlaceScenario: {
             double userLat = r.F64();
             double userLon = r.F64();
@@ -310,6 +305,73 @@ void HandleMessage(const uint8_t* data, size_t size) {
                             aiLat, aiLon, aiElev, aiHdg, aiSpd, aiPath);
             SendEvent(proto::EventKind::Info,
                       "Reset simulacion: usuario colocado; IA en cuanto cargue el escenario.");
+            break;
+        }
+
+        case proto::Op::AiControl: {
+            uint8_t action = r.U8();
+            uint8_t planeIndex = r.U8();
+            if (!r.Ok()) return;
+
+            if (action == 0) {
+                ai_control::Release();
+                SendEvent(proto::EventKind::Info, "AiControl: Release ok.");
+                break;
+            }
+            if (action == 1) {
+                if (planeIndex < 1 || planeIndex > 19) {
+                    LogWarn("AiControl: Take con planeIndex=%u invalido (1..19).",
+                            static_cast<unsigned>(planeIndex));
+                    SendEvent(proto::EventKind::Warning,
+                              "AiControl: Take rechazo (planeIndex fuera de 1..19).");
+                    break;
+                }
+                if (ai_control::Take(planeIndex)) {
+                    SendEvent(proto::EventKind::Info, "AiControl: Take ok.");
+                } else {
+                    SendEvent(proto::EventKind::Warning,
+                              "AiControl: Take fallo (AcquirePlanes).");
+                }
+                break;
+            }
+            LogWarn("AiControl: action=%u desconocida.",
+                    static_cast<unsigned>(action));
+            SendEvent(proto::EventKind::Warning, "AiControl: action desconocida.");
+            break;
+        }
+
+        case proto::Op::CameraFollow: {
+            uint8_t planeIndex = r.U8();
+            if (!r.Ok()) return;
+
+            if (planeIndex == 0) {
+                camera_follow::Stop();
+                SendEvent(proto::EventKind::Info, "CameraFollow: Stop ok.");
+                break;
+            }
+            if (planeIndex == camera_follow::kOverviewIndex) {
+                if (camera_follow::StartOverview()) {
+                    SendEvent(proto::EventKind::Info,
+                              "CameraFollow: Overview ok.");
+                } else {
+                    SendEvent(proto::EventKind::Warning,
+                              "CameraFollow: Overview fallo (datarefs).");
+                }
+                break;
+            }
+            if (planeIndex > 19) {
+                LogWarn("CameraFollow: planeIndex=%u invalido (0..19|255).",
+                        static_cast<unsigned>(planeIndex));
+                SendEvent(proto::EventKind::Warning,
+                          "CameraFollow: rechazo (planeIndex fuera de rango).");
+                break;
+            }
+            if (camera_follow::Start(planeIndex)) {
+                SendEvent(proto::EventKind::Info, "CameraFollow: Start ok.");
+            } else {
+                SendEvent(proto::EventKind::Warning,
+                          "CameraFollow: Start fallo (datarefs).");
+            }
             break;
         }
 

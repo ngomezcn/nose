@@ -35,17 +35,28 @@ PitchRate_dps;RollRate_dps;Adaptacion;Proteccion
 Filas de **evento**: telemetría vacía, texto en `Nota`. Filas de **muestra**:
 `Nota` vacío, números rellenos.
 
+## Un fichero por avión
+
+| Índice XPLM | Fichero | Notas |
+|---|---|---|
+| 0 (ownship) | `DataLog.csv` | Telemetría completa; off hasta Empezar |
+| 1..19 (IA) | `DataLog.plane{N}.csv` | Telemetría reducida; off hasta Empezar con esa nave en foco |
+
+Respaldo: mismo stem + `.previous.csv`. Empezar/Detener/Borrar de la UI
+actúan solo sobre el logger del **EN FOCO**; varios pueden grabar a la vez.
+
 ## Rutas de código útiles al diagnosticar
 
 | Pieza | Archivo |
 |---|---|
+| Gestor por avión | `src/core/Domain/FlightDataLogs.cs` |
 | Grabación CSV + markers | `src/core/Domain/DataLogger.cs` |
 | Snapshot tipado | `src/core/Domain/BlackBoxSample.cs` |
 | Marca tipada | `src/core/Domain/BlackBoxMarker.cs` |
 | Texto de contexto en marcas | `src/core/Domain/BlackBoxSnap.cs` |
-| Quién emite Inicio/Fin/Fase | `ManeuverSequence`, `InterceptSequence`, `TakeoffSequence` → `ActionLogged` |
-| Cableado a UI | `App.xaml.cs` (`Append(..., markBlackBox: true)`), `ShellWindow` |
-| Gráficos | `Ui/BlackBoxView.cs`, `Ui/TimeSeriesChart.cs` |
+| Quién emite Inicio/Fin/Fase | `ManeuverSequence`, `InterceptSequence`, `TakeoffSequence`, `AiStraightHold` → `ActionLogged` |
+| Cableado a UI | `App.xaml.cs` / `ShellWindow.Append(..., blackBoxIndex)` |
+| Gráficos | `Ui/BlackBoxView.cs`, `Ui/TimeSeriesChart.cs` (muestran el foco) |
 
 ## Ejemplos de marcas enriquecidas
 
@@ -71,9 +82,11 @@ Inicio: interceptar AI — En el 6 | cfg dist=200m lat=0m vert=0m · Gsoft=5.5 �
 
 ## Despliegue
 
-El CSV está **junto al exe desplegado**, no en el repo:
+Los CSV están **junto al exe desplegado**, no en el repo:
 
 `E:\X-Plane 12\Resources\plugins\AICopilot\win_x64\DataLog.csv`
+`E:\X-Plane 12\Resources\plugins\AICopilot\win_x64\DataLog.plane1.csv`
+(etc.)
 
-Tras `tools\build_and_deploy_ui.ps1` la ruta no cambia. Si lees desde el
-workspace y no hay CSV, mira esa carpeta de X-Plane.
+Tras `tools\build_and_deploy_ui.ps1` la carpeta no cambia. Si lees desde
+el workspace y no hay CSV, mira esa carpeta de X-Plane.

@@ -1,11 +1,20 @@
 namespace AICopilotCore.Domain;
 
-// Fachada unica para arrancar/parar las tres secuencias de vuelo.
+// Fachada unica para arrancar/parar las secuencias de vuelo.
 //
 // TakeoffSequence, ManeuverSequence e InterceptSequence comparten los mismos
 // overrides (AircraftControls): si dos corrieran a la vez se pisarian los
 // mandos. La UI pasa por aqui para que la exclusion mutua viva en un solo
 // sitio, no duplicada en cada boton.
+//
+// AiStraightHold es distinto: controla una IA por Holds cinematicos y puede
+// correr EN PARALELO con las secuencias del ownship.
+//
+// FocusedXplmIndex selecciona a quien van StartTakeoff/StartCruise/
+// StartManeuver:
+//   -1     = Global (opciones de zona / camara aerea; sin ordenes de vuelo)
+//    0     = avion local
+//    1..19 = IA (solo crucero / LevelWings).
 //
 // Interceptacion desde tierra: StartIntercept encola el blanco, arranca
 // despegue combate (handoff a minima altura) y Tick() encadena la
@@ -15,9 +24,10 @@ public sealed class FlightDirector
     private readonly TakeoffSequence _takeoff;
     private readonly ManeuverSequence _maneuvers;
     private readonly InterceptSequence _intercept;
+    private readonly AiStraightHold _aiHold;
     private readonly Connector.ConnectorClient _client;
 
-    // Ultimas lineas de ActionLogged de cualquiera de las tres secuencias,
+    // Ultimas lineas de ActionLogged de cualquiera de las secuencias,
     // para que el driver las lea sin depender del panel de UI.
     private readonly object _logGate = new();
     private readonly Queue<string> _recentLog = new();
@@ -34,22 +44,47 @@ public sealed class FlightDirector
     }
 
     public FlightDirector(TakeoffSequence takeoff, ManeuverSequence maneuvers,
-                          InterceptSequence intercept,
+                          InterceptSequence intercept, AiStraightHold aiHold,
                           Connector.ConnectorClient client)
     {
         _takeoff = takeoff;
         _maneuvers = maneuvers;
         _intercept = intercept;
+        _aiHold = aiHold;
         _client = client;
 
         _takeoff.ActionLogged += Remember;
         _maneuvers.ActionLogged += Remember;
         _intercept.ActionLogged += Remember;
+        _aiHold.ActionLogged += Remember;
     }
 
     public TakeoffSequence Takeoff => _takeoff;
     public ManeuverSequence Maneuvers => _maneuvers;
     public InterceptSequence Intercept => _intercept;
+    public AiStraightHold AiHold => _aiHold;
+
+    // -1 = Global (por defecto); 0 = ownship; 1..19 = IA bajo foco de la UI.
+    public const int GlobalFocusIndex = -1;
+
+    public int FocusedXplmIndex { get; private set; } = GlobalFocusIndex;
+    public string FocusedLabel { get; private set; } = "Global";
+
+    public bool IsGlobalFocus => FocusedXplmIndex == GlobalFocusIndex;
+
+    public void SetFocus(int xplmIndex, string label)
+    {
+        if (xplmIndex < GlobalFocusIndex) xplmIndex = GlobalFocusIndex;
+        if (xplmIndex > Connector.Datarefs.OtherPlaneSlots)
+            xplmIndex = Connector.Datarefs.OtherPlaneSlots;
+        FocusedXplmIndex = xplmIndex;
+        if (xplmIndex == GlobalFocusIndex)
+            FocusedLabel = string.IsNullOrWhiteSpace(label) ? "Global" : label;
+        else
+            FocusedLabel = string.IsNullOrWhiteSpace(label)
+                ? (xplmIndex == 0 ? "Local" : $"IA {xplmIndex}")
+                : label;
+    }
 
     // Despegue combate en marcha como preludio de una interceptacion.
     public bool IsInterceptPending
@@ -75,6 +110,8 @@ public sealed class FlightDirector
         }
     }
 
+    // Solo secuencias del ownship. El hold cinematico de una IA es independiente:
+    // abortar un despegue/intercept no debe tumbar el Airbus en crucero.
     public void AbortAll()
     {
         ClearPending();
@@ -83,12 +120,60 @@ public sealed class FlightDirector
         _intercept.Abort();
     }
 
+    public void AbortFocused()
+    {
+        if (IsGlobalFocus) AbortAll();
+        else if (FocusedXplmIndex >= 1) _aiHold.Abort();
+        else AbortAll();
+    }
+
     // Cancela interceptacion en curso o el despegue combate pendiente.
     public void AbortInterceptMission()
     {
         bool hadPending = ClearPending();
         if (_intercept.IsRunning) _intercept.Abort();
         else if (hadPending && _takeoff.IsRunning) _takeoff.Abort();
+    }
+
+    // Cambia el puesto de formacion con la mision ya pedida (en vuelo o
+    // pendiente de despegue combate). La UI lo llama al pulsar otro boton
+    // de estacion sin tener que abortar y relanzar.
+    public bool ChangeInterceptStation(InterceptStation station, out string error)
+    {
+        lock (_pendingGate)
+        {
+            if (_pending is not null)
+            {
+                _pending = new PendingIntercept
+                {
+                    Index = _pending.Index,
+                    Station = station,
+                    Label = _pending.Label,
+                };
+                Remember($"Interceptar {_pending.Label}: estacion → " +
+                         $"{InterceptCatalog.Get(station).Label} (tras el despegue).");
+            }
+        }
+
+        if (_intercept.IsRunning)
+        {
+            if (!_intercept.ChangeStation(station, out string refusal))
+            {
+                error = refusal;
+                return false;
+            }
+            error = "";
+            return true;
+        }
+
+        if (IsInterceptPending)
+        {
+            error = "";
+            return true;
+        }
+
+        error = "no hay interceptacion en marcha";
+        return false;
     }
 
     // Arranca un despegue. Corta maniobra/interceptacion si las hubiera.
@@ -100,6 +185,16 @@ public sealed class FlightDirector
             error = "no hay conexion con el plugin";
             return false;
         }
+        if (IsGlobalFocus)
+        {
+            error = "foco global: elige un avion primero";
+            return false;
+        }
+        if (FocusedXplmIndex >= 1)
+        {
+            error = "solo disponible en el avion local por ahora";
+            return false;
+        }
         ClearPending();
         if (_maneuvers.IsRunning) _maneuvers.Abort();
         if (_intercept.IsRunning) _intercept.Abort();
@@ -108,7 +203,8 @@ public sealed class FlightDirector
         return true;
     }
 
-    // Nivelado (crucero): corta despegue/intercept y engancha LevelWings.
+    // Nivelado (crucero): en ownship corta despegue/intercept y engancha
+    // LevelWings; en IA arranca AiStraightHold sin tocar el ownship.
     public bool StartCruise(out string error)
     {
         if (!_client.IsConnected)
@@ -116,6 +212,14 @@ public sealed class FlightDirector
             error = "no hay conexion con el plugin";
             return false;
         }
+        if (IsGlobalFocus)
+        {
+            error = "foco global: elige un avion primero";
+            return false;
+        }
+        if (FocusedXplmIndex >= 1)
+            return StartAiStraightHoldFocused(out error);
+
         ClearPending();
         if (_takeoff.IsRunning) _takeoff.Abort();
         if (_intercept.IsRunning) _intercept.Abort();
@@ -126,12 +230,27 @@ public sealed class FlightDirector
 
     // Arranca una maniobra del catalogo. Si Preview dice Impossible, no arranca.
     // force=true salta el preview (sigue siendo responsabilidad del llamador).
+    // Con foco en IA solo LevelWings (→ AiStraightHold); el resto se niega.
     public bool StartManeuver(ManeuverKind kind, bool force, out string error, out string adaptation)
     {
         adaptation = "";
         if (!_client.IsConnected)
         {
             error = "no hay conexion con el plugin";
+            return false;
+        }
+
+        if (IsGlobalFocus)
+        {
+            error = "foco global: elige un avion primero";
+            return false;
+        }
+
+        if (FocusedXplmIndex >= 1)
+        {
+            if (kind == ManeuverKind.LevelWings)
+                return StartAiStraightHoldFocused(out error);
+            error = "solo disponible en el avion local por ahora";
             return false;
         }
 
@@ -225,10 +344,12 @@ public sealed class FlightDirector
     }
 
     // Aborta secuencias, suelta overrides y pide al connector el escenario
-    // fijo (LEBL 24L + IA a ~15 km). Ver SimScenario. La config idle de
-    // suelo (gases/flaps/freno) se aplica cuando llega ScenarioReady /
+    // fijo (LEBL 24L + A330 a FL210 delante). Ver SimScenario. La config
+    // idle de suelo (gases/flaps/freno) se aplica cuando llega ScenarioReady /
     // AircraftReloaded -- PlaceUser pisa los mandos al cargar el aeropuerto.
+    // PendingAiCruise pide el hold cinematico del A330 tras ScenarioReady.
     public bool PendingGroundIdle { get; private set; }
+    public bool PendingAiCruise { get; private set; }
 
     public bool ResetSimulation(out string error)
     {
@@ -239,8 +360,10 @@ public sealed class FlightDirector
         }
 
         AbortAll();
+        _aiHold.Abort();
         _client.ReleaseAll();
         PendingGroundIdle = true;
+        PendingAiCruise = true;
         _client.PlaceScenario(
             SimScenario.UserLat, SimScenario.UserLon, SimScenario.UserElevMsl,
             SimScenario.UserHdgTrue, SimScenario.UserSpeedMps,
@@ -253,6 +376,45 @@ public sealed class FlightDirector
     }
 
     public void ClearPendingGroundIdle() => PendingGroundIdle = false;
+    public void ClearPendingAiCruise() => PendingAiCruise = false;
+
+    // Tras ScenarioReady: hold cinematico del A330 (indice 1) sin dejar el
+    // foco de UI en la IA — el usuario suele querer despegar/interceptar
+    // con el avion local justo despues del reset.
+    public bool TryStartPendingAiCruise()
+    {
+        if (!PendingAiCruise) return false;
+        PendingAiCruise = false;
+        if (!_client.IsConnected) return false;
+
+        int prevIdx = FocusedXplmIndex;
+        string prevLabel = FocusedLabel;
+        SetFocus(1, "Airbus A330");
+        bool ok = StartAiStraightHoldFocused(out _);
+        SetFocus(prevIdx, prevLabel);
+        return ok;
+    }
+
+    // Crucero cinematico sobre el avion enfocado (IA). Si ya hay hold en
+    // otro slot, lo aborta antes; si es el mismo, no-op.
+    private bool StartAiStraightHoldFocused(out string error)
+    {
+        int idx = FocusedXplmIndex;
+        if (idx < 1 || idx > Connector.Datarefs.OtherPlaneSlots)
+        {
+            error = "hace falta enfocar una IA (1..19)";
+            return false;
+        }
+
+        if (_aiHold.IsRunning && _aiHold.XplmIndex != idx)
+            _aiHold.Abort();
+        if (_aiHold.IsRunning && _aiHold.XplmIndex == idx)
+        {
+            error = "";
+            return true;
+        }
+        return _aiHold.Start(idx, out error);
+    }
 
     private bool ClearPending()
     {

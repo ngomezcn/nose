@@ -187,6 +187,8 @@ public sealed class Datarefs
         // sigue en tierra (ver TargetSnapshot en Domain/Intercept.cs).
         OtherElevMeters = new DataHandle[OtherPlaneSlots];
         OtherHeadingDeg = new DataHandle[OtherPlaneSlots];
+        OtherPitchDeg = new DataHandle[OtherPlaneSlots];
+        OtherBankDeg = new DataHandle[OtherPlaneSlots];
         OtherVelX = new DataHandle[OtherPlaneSlots];
         OtherVelZ = new DataHandle[OtherPlaneSlots];
         OtherLocalX = new DataHandle[OtherPlaneSlots];
@@ -199,6 +201,8 @@ public sealed class Datarefs
             string prefix = $"sim/multiplayer/position/plane{i + 1}_";
             OtherElevMeters[i] = c.Define(prefix + "el");
             OtherHeadingDeg[i] = c.Define(prefix + "psi");
+            OtherPitchDeg[i] = c.Define(prefix + "the");
+            OtherBankDeg[i] = c.Define(prefix + "phi");
             OtherVelX[i] = c.Define(prefix + "v_x");
             OtherVelZ[i] = c.Define(prefix + "v_z");
             OtherLocalX[i] = c.Define(prefix + "x");
@@ -212,13 +216,15 @@ public sealed class Datarefs
         }
     }
 
-    // Los nueve datarefs de una IA, juntos: se suscriben y se re-suscriben
+    // Los once datarefs de una IA, juntos: se suscriben y se re-suscriben
     // siempre como un bloque, asi que enumerarlos en un sitio evita que
     // FocusOtherPlane se olvide de uno y deje el blanco medio actualizado.
     private IEnumerable<DataHandle> OtherPlaneHandles(int slot)
     {
         yield return OtherElevMeters[slot];
         yield return OtherHeadingDeg[slot];
+        yield return OtherPitchDeg[slot];
+        yield return OtherBankDeg[slot];
         yield return OtherVelX[slot];
         yield return OtherVelZ[slot];
         yield return OtherLocalX[slot];
@@ -310,6 +316,8 @@ public sealed class Datarefs
     // Indice 0 de estos arrays = plane1 = primera IA (XPLM index 1).
     public DataHandle[] OtherElevMeters { get; }
     public DataHandle[] OtherHeadingDeg { get; }
+    public DataHandle[] OtherPitchDeg { get; }
+    public DataHandle[] OtherBankDeg { get; }
     public DataHandle[] OtherVelX { get; }
     public DataHandle[] OtherVelZ { get; }
     // Mismo marco local (OGL) que LocalX/Y/Z: restarlos da metros directos.

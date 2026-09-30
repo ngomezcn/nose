@@ -19,9 +19,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
-#include <chrono>
 #include <cstring>
-#include <mutex>
 #include <string>
 
 #if IBM
@@ -84,7 +82,7 @@ public:
     }
 
     // flags: bit0 ownLabel, bit1 otherLabels, bit2 lines, bit3 markers,
-    //        bit4 path (prediccion de trayectoria), bit5 interceptPath.
+    //        bit4 path (prediccion de trayectoria).
     void ApplyConfig(uint8_t flags, uint8_t font,
                      float r, float g, float b, float scale,
                      const std::string& text) {
@@ -103,22 +101,7 @@ public:
         mTextLen = static_cast<int>(std::strlen(mText));
     }
 
-    // Ruta de interceptacion (Op.InterceptPath): coords locales OGL absolutas.
-    // Se llama desde el hilo del pipe/mensajes; Draw lee bajo el mismo mutex.
-    // n=0 borra. Caduca sola si no se refresca en kInterceptPathTtlSec.
-    void SetInterceptPath(const double* xyz, int n) {
-        std::lock_guard<std::mutex> lk(mPathMu);
-        if (n < 0) n = 0;
-        if (n > kMaxPathPts) n = kMaxPathPts;
-        mPathN = n;
-        for (int i = 0; i < n * 3; ++i) mPath[i] = xyz[i];
-        mPathStamp = std::chrono::steady_clock::now();
-    }
-
 private:
-    static constexpr int kMaxPathPts = 64;
-    static constexpr double kInterceptPathTtlSec = 1.0;
-    static constexpr uint8_t kFlagInterceptPath = 1 << 5;
     static constexpr uint8_t kFlagOwnLabel = 1 << 0;
     static constexpr uint8_t kFlagOtherLabels = 1 << 1;
     static constexpr uint8_t kFlagLines = 1 << 2;
@@ -218,8 +201,7 @@ private:
             return;
         }
         const bool any = (mFlags & (kFlagOwnLabel | kFlagOtherLabels |
-                                    kFlagLines | kFlagMarkers | kFlagPath |
-                                    kFlagInterceptPath)) != 0;
+                                    kFlagLines | kFlagMarkers | kFlagPath)) != 0;
         if (!any) return;
 
         float world[16];
@@ -277,8 +259,7 @@ private:
             }
         }
 
-        const bool wantGeom = (mFlags & (kFlagLines | kFlagMarkers | kFlagPath |
-                                         kFlagInterceptPath)) != 0;
+        const bool wantGeom = (mFlags & (kFlagLines | kFlagMarkers | kFlagPath)) != 0;
         if (wantGeom) {
             XPLMSetGraphicsState(0 /*fog*/, 0 /*tex*/, 0 /*light*/,
                                  0 /*alpha test*/, 1 /*blend*/,
@@ -349,10 +330,6 @@ private:
                                       0, 0, 0, /*useAccel=*/false,
                                       world, proj, viewport);
                 }
-            }
-
-            if (mFlags & kFlagInterceptPath) {
-                DrawInterceptPath(world, proj, viewport);
             }
 
             glLineWidth(1.0f);
@@ -430,59 +407,6 @@ private:
         glEnd();
     }
 
-    // Polilinea planificada por el core: cian, grosor 3; rombo cian al
-    // inicio y rombo magenta (mas grande) al final. No dibuja si esta vacia
-    // o caducada (>1 s sin actualizar).
-    void DrawInterceptPath(const float* world, const float* proj,
-                           const int* viewport) {
-        double pts[kMaxPathPts * 3];
-        int n = 0;
-        {
-            std::lock_guard<std::mutex> lk(mPathMu);
-            if (mPathN < 2) return;
-            const double age = std::chrono::duration<double>(
-                std::chrono::steady_clock::now() - mPathStamp).count();
-            if (age > kInterceptPathTtlSec) return;
-            n = mPathN;
-            std::memcpy(pts, mPath, sizeof(double) * 3 * n);
-        }
-        const float vpL = static_cast<float>(viewport[0]);
-        const float vpB = static_cast<float>(viewport[1]);
-        const float vpR = vpL + viewport[2];
-        const float vpT = vpB + viewport[3];
-
-        float sx[kMaxPathPts], sy[kMaxPathPts];
-        bool ok[kMaxPathPts];
-        for (int i = 0; i < n; ++i) {
-            ok[i] = ProjectSoft(pts[i * 3], pts[i * 3 + 1], pts[i * 3 + 2],
-                                world, proj, viewport, sx[i], sy[i]);
-        }
-
-        glColor4f(0.0f, 0.9f, 1.0f, 0.95f);
-        glLineWidth(3.0f);
-        glBegin(GL_LINES);
-        for (int i = 1; i < n; ++i) {
-            if (!ok[i - 1] || !ok[i]) continue;
-            float x0 = sx[i - 1], y0 = sy[i - 1], x1 = sx[i], y1 = sy[i];
-            if (ClipLine(x0, y0, x1, y1, vpL, vpB, vpR, vpT)) {
-                glVertex2f(x0, y0);
-                glVertex2f(x1, y1);
-            }
-        }
-        glEnd();
-
-        auto onScreen = [&](int i) {
-            return ok[i] && sx[i] >= vpL - 40 && sx[i] <= vpR + 40 &&
-                   sy[i] >= vpB - 40 && sy[i] <= vpT + 40;
-        };
-        if (onScreen(0)) DrawDiamond(sx[0], sy[0], 8.0f);
-        if (onScreen(n - 1)) {
-            glColor4f(1.0f, 0.1f, 0.9f, 1.0f);
-            DrawDiamond(sx[n - 1], sy[n - 1], 12.0f);
-            DrawDiamond(sx[n - 1], sy[n - 1], 6.0f);
-        }
-    }
-
     void DrawDistanceLabel(float screenX, float screenY, float distMeters) {
         char buf[32];
         if (distMeters < 10000.0f) {
@@ -526,11 +450,6 @@ private:
         outZ = m[2] * x + m[6] * y + m[10] * z + m[14] * w;
         outW = m[3] * x + m[7] * y + m[11] * z + m[15] * w;
     }
-
-    std::mutex mPathMu;
-    double mPath[kMaxPathPts * 3]{};
-    int mPathN = 0;
-    std::chrono::steady_clock::time_point mPathStamp{};
 
     uint8_t mFlags = kFlagOwnLabel;
     XPLMFontID mFont = xplmFont_Proportional;

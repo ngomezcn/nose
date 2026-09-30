@@ -124,6 +124,10 @@ public sealed class InterceptSequence
     // True si esta mision empezo con despegue combate propio (checklist).
     private bool _didOwnTakeoff;
 
+    // Cambio de estacion en formacion: se pierde un poco de velocidad
+    // respecto al blanco y se recupera al llegar al nuevo puesto.
+    private bool _repositioning;
+
     // Serpenteo: +1 = desviado a la derecha de la linea del blanco.
     private int _weaveSign = 1;
     private float _weaveDeg;
@@ -153,6 +157,7 @@ public sealed class InterceptSequence
     public InterceptPhase Phase => _phase;
     public int TargetIndex => _targetIndex;
     public InterceptStation Station => _station;
+    public bool IsRepositioning => _repositioning;
     public string TargetLabel => _targetLabel;
 
     // --- Lo ultimo medido/pedido, para la telemetria y el panel -----------
@@ -182,7 +187,7 @@ public sealed class InterceptSequence
     public static string PhaseName(InterceptPhase p) => p switch
     {
         InterceptPhase.OwnTakeoff => "Despegue combate",
-        InterceptPhase.WaitingTakeoff => "Esperando a que despegue",
+        InterceptPhase.WaitingTakeoff => "Esperando telemetria del blanco",
         InterceptPhase.Pursuit => "Persecucion (cierre rapido)",
         InterceptPhase.Closing => "Acercamiento",
         InterceptPhase.Station => "En formacion",
@@ -291,6 +296,70 @@ public sealed class InterceptSequence
                 def.Summary(_tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM),
                 InterceptConfigExtras(def),
                 BlackBoxSnap.Of(own)));
+            _repositioning = false;
+            refusal = "";
+            return true;
+        }
+    }
+
+    // Cambia el puesto de formacion con la interceptacion ya en marcha.
+    // En Station/Closing (o cerca) abre una transicion: se vuela un poco mas
+    // despacio que el blanco, se desliza al nuevo puesto y se vuelve a
+    // igualar. Lejos (Pursuit) solo actualiza el objetivo; el planner ya
+    // lleva el avion al sitio nuevo sin el frenado de formacion.
+    public bool ChangeStation(InterceptStation station, out string refusal)
+    {
+        lock (_gate)
+        {
+            if (_phase == InterceptPhase.Idle)
+            {
+                refusal = "no hay interceptacion en marcha";
+                return false;
+            }
+            if (station == _station)
+            {
+                refusal = "";
+                return true;
+            }
+
+            InterceptStation from = _station;
+            _station = station;
+            InterceptStationDef def = InterceptCatalog.Get(station);
+            bool near =
+                _phase is InterceptPhase.Station or InterceptPhase.Closing or
+                          InterceptPhase.WaitingTakeoff ||
+                (!double.IsNaN(RangeM) && RangeM < RepositionArmRangeM);
+
+            if (near)
+            {
+                _repositioning = true;
+                _announced = false;
+                _settledElapsed = 0f;
+                // Formacion, no un re-transito completo: el puesto nuevo suele
+                // estar a cientos de metros, no a kilometros.
+                if (_plannerMem is not null)
+                {
+                    _plannerMem = _plannerMem with
+                    {
+                        Stage = 1,
+                        SideLocked = false,
+                    };
+                }
+                if (_phase == InterceptPhase.Station)
+                    SetPhase(InterceptPhase.Closing,
+                        $"cambio de estacion {InterceptCatalog.Get(from).Label} → {def.Label}");
+            }
+
+            _plan = null;
+            _planTimer = 99f;
+            LogAction(BlackBoxSnap.Join(
+                $"Interceptacion: cambio de estacion → {def.Label}",
+                def.Summary(_tuning.InterceptDistanceM, _tuning.InterceptLateralM,
+                            _tuning.InterceptVerticalM),
+                near
+                    ? $"transicion: {RepositionSlowKt:0} kt por debajo del blanco hasta el puesto"
+                    : "en persecucion: el planificador apunta ya al puesto nuevo",
+                InterceptLiveExtras()));
             refusal = "";
             return true;
         }
@@ -341,6 +410,7 @@ public sealed class InterceptSequence
         _targetIndex = -1;
         _targetLabel = "";
         _didOwnTakeoff = false;
+        _repositioning = false;
         LastPitchTarget = LastBankTarget = LastIasTarget = LastVsTarget = float.NaN;
         RangeM = SeparationM = ClosureKt = AlongM = CrossM = VerticalM = double.NaN;
         TargetSpeedKt = double.NaN;
@@ -357,47 +427,7 @@ public sealed class InterceptSequence
 
     public void Update(float dt)
     {
-        lock (_gate) { UpdateLocked(dt); RefreshPlannedPathLocked(); }
-    }
-
-    // --- Ruta planificada (enchufe para la visualizacion) -------------------
-    // Polilinea en coordenadas locales OGL absolutas (+X este, +Y arriba,
-    // +Z sur) desde nuestra posicion hasta el punto de estacion. Copia
-    // inmutable, se reemplaza entera. null = no hay ruta. PLACEHOLDER: recta;
-    // el planner la sustituira por el camino real que volara el piloto auto.
-    private IReadOnlyList<(double X, double Y, double Z)>? _plannedPath;
-
-    public IReadOnlyList<(double X, double Y, double Z)>? PlannedPath
-    {
-        get { lock (_gate) { return _plannedPath; } }
-    }
-
-    private void RefreshPlannedPathLocked()
-    {
-        _plannedPath = null;
-        if (_phase == InterceptPhase.Idle || _phase == InterceptPhase.Lost) return;
-        if (!_d.LocalX.HasValue || !_d.LocalY.HasValue || !_d.LocalZ.HasValue) return;
-        double ox = _d.LocalX.Value, oy = _d.LocalY.Value, oz = _d.LocalZ.Value;
-
-        // El camino que vuela el planner. El primer punto se repone con la
-        // posicion propia de AHORA: el plan es de hace <=PlanPeriodSec y la
-        // linea tiene que salir pegada al avion.
-        if (_plan is { Path.Count: >= 2 } plan && _phase != InterceptPhase.WaitingTakeoff)
-        {
-            var pts = new (double X, double Y, double Z)[plan.Path.Count];
-            for (int i = 0; i < pts.Length; i++) pts[i] = plan.Path[i];
-            pts[0] = (ox, oy, oz);
-            _plannedPath = pts;
-            return;
-        }
-
-        TargetSnapshot t = TargetSnapshot.Capture(_d, _targetIndex);
-        if (!t.Valid) return;
-        InterceptStationDef def = InterceptCatalog.Get(_station);
-        (float aft, float right, float up) = def.Resolve(
-            _tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM);
-        InterceptGeometry now = InterceptGeometry.Solve(ox, oy, oz, t, aft, right, up, 0.0);
-        _plannedPath = new (double X, double Y, double Z)[] { (ox, oy, oz), (now.Px, now.Py, now.Pz) };
+        lock (_gate) { UpdateLocked(dt); }
     }
 
     private void UpdateLocked(float dt)
@@ -454,34 +484,42 @@ public sealed class InterceptSequence
         TargetState = t.Classify(terrainY, flatM < TerrainReferenceRangeM);
         TargetSpeedKt = t.GroundSpeedKt;
 
-        // --- En tierra: no hay interceptacion que hacer todavia ------------
-        if (TargetState == TargetAirState.OnGround)
+        // --- Blanco en tierra / estado dudoso --------------------------------
+        // En tierra ya no se orbita esperando: se forma encima a ~2 km de
+        // altura con el mismo puesto (y los mismos cambios de estacion) que
+        // en vuelo. Solo "sin determinar" se queda en espera nivelada.
+        if (TargetState == TargetAirState.Unknown)
         {
             if (_phase != InterceptPhase.WaitingTakeoff)
             {
                 SetPhase(InterceptPhase.WaitingTakeoff);
-                LogAction($"Interceptacion: {_targetLabel} esta en tierra " +
-                          $"({t.GroundSpeedKt:0} kt de suelo). Espero a que despegue.");
-            }
-            else if (_statusLogTimer >= StatusLogSeconds)
-            {
-                _statusLogTimer = 0f;
-                LogAction($"Interceptacion: {_targetLabel} sigue en tierra " +
-                          $"({t.GroundSpeedKt:0} kt, a {flatM * TargetSnapshot.MetersToNm:0.0} NM).");
+                LogAction($"Interceptacion: estado de {_targetLabel} sin determinar. " +
+                          "Mantengo vuelo nivelado.");
             }
             MeasureOnly(t, ownX, ownY, ownZ, ownVx, ownVy, ownVz);
             FlyLevelHold(st, dt, HoldingBankDeg);
             return;
         }
-        if (_phase == InterceptPhase.WaitingTakeoff)
+        bool targetOnGround = TargetState == TargetAirState.OnGround;
+        if (targetOnGround && _phase == InterceptPhase.WaitingTakeoff)
         {
-            if (TargetState != TargetAirState.Airborne)
-            {
-                // "No lo se" no es "ha despegado": se sigue esperando.
-                MeasureOnly(t, ownX, ownY, ownZ, ownVx, ownVy, ownVz);
-                FlyLevelHold(st, dt, HoldingBankDeg);
-                return;
-            }
+            // Salimos de la espera antigua (orbita) hacia persecucion/formacion
+            // sobre el puesto a 2 km.
+            LogAction($"Interceptacion: {_targetLabel} en tierra — formacion a " +
+                      $"{GroundFormationAltM:0} m de altura.");
+            SetPhase(InterceptPhase.Pursuit);
+        }
+        else if (targetOnGround && _statusLogTimer >= StatusLogSeconds &&
+                 _phase is InterceptPhase.Pursuit or InterceptPhase.Closing
+                          or InterceptPhase.Station)
+        {
+            _statusLogTimer = 0f;
+            LogAction($"Interceptacion: {_targetLabel} sigue en tierra " +
+                      $"({t.GroundSpeedKt:0} kt, a {flatM * TargetSnapshot.MetersToNm:0.0} NM) — " +
+                      $"puesto a +{GroundFormationAltM:0} m.");
+        }
+        if (!targetOnGround && _phase == InterceptPhase.WaitingTakeoff)
+        {
             LogAction($"Interceptacion: {_targetLabel} esta en el aire " +
                       $"({t.GroundSpeedKt:0} kt). Voy a por el.");
             SetPhase(InterceptPhase.Pursuit);
@@ -491,6 +529,10 @@ public sealed class InterceptSequence
         InterceptStationDef def = InterceptCatalog.Get(_station);
         (float aft, float right, float up) = def.Resolve(
             _tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM);
+        // Blanco parado: el puesto de formacion se eleva a ~2 km para que el
+        // interceptor no intente "formar" a ras de pista.
+        if (targetOnGround)
+            up += GroundFormationAltM;
 
         // Dos geometrias: la de AHORA, que es la que mide y decide de fase, y
         // la adelantada, que es la que se vuela. Mezclarlas haria que en plena
@@ -652,9 +694,11 @@ public sealed class InterceptSequence
             $"tgtGS={t.GroundSpeedKt:0} tgtTrk={t.TrackDeg:0} tgtTurn={tgtTurnDegS:0.0} " +
             $"reg={plan.Regime} eta={(plan.Reaches ? plan.EtaSec.ToString("0") : "-")} " +
             $"ovt={plan.PredictedOvertakeM:0} minSep={plan.PredictedMinSepM:0} pG={plan.PredictedPeakG:0.0} " +
-            $"brk={bankFf:0.0} wv={_weaveDeg:0}");
+            $"brk={bankFf:0.0} wv={_weaveDeg:0} side={plan.ApproachSide} lk={(plan.SideLocked ? 1 : 0)} " +
+            $"cor={(plan.Corridor ? 1 : 0)} sit={plan.Situation}");
 
         _trace.Row(dt, plan.Memory.Stage, plan.Regime, _phase, plan.Detouring ? 1 : 0,
+            plan.ApproachSide, plan.SideLocked ? 1 : 0, plan.Corridor ? 1 : 0,
             ownX, ownY, ownZ, ownVx, ownVy, ownVz,
             t.X, t.Y, t.Z, t.Vx, t.Vy, t.Vz, t.HeadingDeg, tgtTurnDegS,
             now.RangeM, plan.RendezvousRangeM, now.AlongM, now.CrossM, now.UpM,
@@ -663,6 +707,13 @@ public sealed class InterceptSequence
             iasCmd, vsCmd, bankTarget, plan.PredictedMinSepM, plan.EtaSec);
 
         // --- 5. Llegada --------------------------------------------------------
+        if (_repositioning && now.RangeM < RepositionDoneM &&
+            Math.Abs(ClosureKt) < SettledClosureKt)
+        {
+            _repositioning = false;
+            LogAction($"Interceptacion: puesto {def.Label} alcanzado — igualo velocidad.");
+        }
+
         if (_phase == InterceptPhase.Station && now.RangeM < CaptureRangeM &&
             Math.Abs(ClosureKt) < SettledClosureKt)
         {
@@ -670,6 +721,7 @@ public sealed class InterceptSequence
             if (!_announced && _settledElapsed >= SettleSeconds)
             {
                 _announced = true;
+                _repositioning = false;
                 LogAction(BlackBoxSnap.Join(
                     $"Fin: interceptacion establecida sobre {_targetLabel} — {def.Label}",
                     $"{now.SeparationM:0} m sep, blanco {t.GroundSpeedKt:0} kt",
@@ -714,8 +766,15 @@ public sealed class InterceptSequence
         // del blanco a su misma velocidad.
         _desiredAlongGsKt = t.GroundSpeedKt;
         float planIasKt = (float)(plan.DesiredIasMps * TargetSnapshot.MpsToKnots);
-        _iasCmdRamp.MaxRate = IasCmdRateKtPerSec;
+        // Transicion de puesto: rampa algo mas viva para no eternizar el
+        // frenado / la recuperacion, pero sin golpe de gas.
+        _iasCmdRamp.MaxRate = _repositioning ? RepositionIasRateKtPerSec : IasCmdRateKtPerSec;
         float iasCmd = MathF.Min(maxIas, _iasCmdRamp.Update(planIasKt, dt));
+
+        // Cambio de estacion en formacion: se pierde un poco de velocidad
+        // respecto al blanco, se desliza al puesto nuevo y luego se iguala.
+        if (_repositioning)
+            iasCmd = MathF.Min(iasCmd, targetIasEquivalent - RepositionSlowKt);
 
         // Guardia de proximidad: por debajo de esto ya no es una formacion,
         // es un riesgo de colision. Se pide ir mas despacio que el blanco
@@ -1154,12 +1213,21 @@ public sealed class InterceptSequence
     private const float SpeedbrakeSpanKt = 50f;
     private const float SlowControlRefreshSeconds = 1f;
 
-    // Espera con el blanco en tierra: alabeo sostenido para quedarse en la
-    // zona. 20 deg a 280 kt son unas 3 NM de radio -- lo bastante amplio para
-    // no cansar y lo bastante cerrado para no perder de vista el campo.
+    // Espera solo si el estado del blanco es desconocido (alabeo sostenido
+    // para no alejarse del campo). Con blanco en tierra se forma a 2 km.
     private const float HoldingBankDeg = 20f;
     private const float LoiterIasKt = 280f;
     private const float LoiterMaxVsFpm = 1500f;
+    // Altura del puesto sobre un blanco parado (metros sobre su elevacion).
+    private const float GroundFormationAltM = 2000f;
+
+    // Transicion entre puestos de formacion: un poco mas lento que el blanco
+    // (~20 kt) y rampa de IAS mas viva para que el desliz no se eternice
+    // (~8-20 s tipicos entre puestos a 200-400 m).
+    private const float RepositionSlowKt = 20f;
+    private const float RepositionIasRateKtPerSec = 40f;
+    private const double RepositionDoneM = 80.0;
+    private const double RepositionArmRangeM = 2500.0;
 
     // Lazo suave: planner a 10 Hz, rumbo filtrado, alabeo y velocidad
     // con rampa, bajada de morro limitada, vertical protegido de G baja.

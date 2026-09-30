@@ -1,0 +1,339 @@
+n=4756 with_cr=4756
+
+=== LATERAL (cr) ZERO CROSSINGS (sign flip) ===
+
+=== NEAR TRACK ( |cr|<200 ) with rng<5000 ===
+  15:44:22.009 cr=+94 al=+2363 rng=2365 cl=+109 bank=+48/+48 hdg=186/224
+  15:44:24.084 cr=-185 al=+2273 rng=2280 cl=+48 bank=+50/+50 hdg=191/230
+  15:46:35.044 cr=+115 al=+2703 rng=2706 cl=+110 bank=+45/+44 hdg=189/225
+  15:46:36.023 cr=-31 al=+2657 rng=2658 cl=+81 bank=+46/+46 hdg=192/228
+  15:46:37.009 cr=-184 al=+2618 rng=2625 cl=+49 bank=+47/+47 hdg=194/232
+  15:48:44.010 cr=+91 al=+3206 rng=3207 cl=+64 bank=+15/+13 hdg=200/210
+  15:49:32.088 cr=-161 al=+416 rng=471 cl=-39 bank=-50/-50 hdg=71/13
+  15:49:33.073 cr=+117 al=+510 rng=548 cl=-277 bank=-50/-50 hdg=69/11
+
+=== CYCLE1 approach+overshoot 15:44:00-15:45:20 (1Hz) ===
+  15:44:00.070 cr=  +1343 al=  +4665 rng=  4857 cl= +259 bank=  +28/  +28 hdg=  154/  177 trkErr=  +23 ias=392/385 wv=0.0 G=0.77
+  15:44:01.053 cr=  +1335 al=  +4531 rng=  4726 cl= +257 bank=  +27/  +27 hdg=  155/  176 trkErr=  +22 ias=390/381 wv=0.0 G=0.92
+  15:44:02.057 cr=  +1318 al=  +4399 rng=  4594 cl= +256 bank=  +26/  +25 hdg=  156/  176 trkErr=  +21 ias=387/376 wv=0.0 G=1.00
+  15:44:03.056 cr=  +1303 al=  +4267 rng=  4463 cl= +255 bank=  +25/  +24 hdg=  157/  176 trkErr=  +20 ias=385/372 wv=0.0 G=1.03
+  15:44:04.042 cr=  +1289 al=  +4136 rng=  4334 cl= +253 bank=  +23/  +23 hdg=  158/  176 trkErr=  +19 ias=382/368 wv=0.0 G=1.03
+  15:44:04.147 cr=  +1287 al=  +4121 rng=  4319 cl= +253 bank=  +23/  +23 hdg=  158/  176 trkErr=  +19 ias=382/367 wv=0.0 G=1.03
+  15:44:05.060 cr=  +1264 al=  +4005 rng=  4201 cl= +252 bank=  +22/  +22 hdg=  158/  176 trkErr=  +18 ias=380/363 wv=0.0 G=1.03
+  15:44:06.038 cr=  +1232 al=  +3883 rng=  4074 cl= +250 bank=  +21/  +21 hdg=  159/  175 trkErr=  +17 ias=378/359 wv=0.0 G=1.04
+  15:44:06.149 cr=  +1228 al=  +3868 rng=  4059 cl= +249 bank=  +21/  +21 hdg=  159/  176 trkErr=  +17 ias=377/358 wv=0.0 G=1.24
+  15:44:07.021 cr=  +1202 al=  +3759 rng=  3947 cl= +247 bank=  +21/  +22 hdg=  161/  178 trkErr=  +18 ias=374/354 wv=0.0 G=1.89
+  15:44:07.133 cr=  +1198 al=  +3746 rng=  3934 cl= +246 bank=  +21/  +22 hdg=  161/  178 trkErr=  +18 ias=373/353 wv=0.0 G=1.86
+  15:44:08.008 cr=  +1169 al=  +3640 rng=  3823 cl= +243 bank=  +23/  +24 hdg=  162/  181 trkErr=  +20 ias=370/348 wv=0.0 G=1.31
+  15:44:08.115 cr=  +1165 al=  +3626 rng=  3809 cl= +243 bank=  +23/  +24 hdg=  162/  181 trkErr=  +20 ias=369/347 wv=0.0 G=1.23
+  15:44:09.099 cr=  +1121 al=  +3509 rng=  3684 cl= +240 bank=  +26/  +27 hdg=  162/  184 trkErr=  +22 ias=366/342 wv=0.0 G=0.67
+  15:44:10.084 cr=  +1073 al=  +3398 rng=  3564 cl= +236 bank=  +28/  +30 hdg=  162/  187 trkErr=  +25 ias=363/336 wv=0.0 G=0.58
+  15:44:11.070 cr=  +1028 al=  +3288 rng=  3445 cl= +233 bank=  +31/  +32 hdg=  163/  190 trkErr=  +27 ias=360/329 wv=0.0 G=0.79
+  15:44:12.057 cr=   +981 al=  +3179 rng=  3327 cl= +229 bank=  +34/  +35 hdg=  165/  193 trkErr=  +29 ias=357/320 wv=0.0 G=1.04
+  15:44:13.036 cr=   +925 al=  +3076 rng=  3212 cl= +225 bank=  +36/  +37 hdg=  166/  196 trkErr=  +31 ias=354/309 wv=0.0 G=1.20
+  15:44:13.148 cr=   +918 al=  +3064 rng=  3199 cl= +225 bank=  +36/  +37 hdg=  167/  196 trkErr=  +31 ias=354/307 wv=0.0 G=1.23
+  15:44:14.022 cr=   +860 al=  +2977 rng=  3098 cl= +220 bank=  +38/  +38 hdg=  168/  199 trkErr=  +32 ias=350/301 wv=0.0 G=1.31
+  15:44:14.134 cr=   +853 al=  +2966 rng=  3086 cl= +219 bank=  +38/  +39 hdg=  168/  199 trkErr=  +32 ias=350/301 wv=0.0 G=1.32
+  15:44:15.008 cr=   +794 al=  +2881 rng=  2988 cl= +213 bank=  +40/  +40 hdg=  170/  202 trkErr=  +33 ias=346/301 wv=0.0 G=1.38
+  15:44:15.119 cr=   +786 al=  +2870 rng=  2975 cl= +212 bank=  +40/  +40 hdg=  171/  202 trkErr=  +33 ias=345/301 wv=0.0 G=1.39
+  15:44:16.099 cr=   +714 al=  +2780 rng=  2871 cl= +203 bank=  +41/  +41 hdg=  173/  205 trkErr=  +34 ias=341/300 wv=0.0 G=1.42
+  15:44:17.083 cr=   +628 al=  +2696 rng=  2768 cl= +193 bank=  +43/  +43 hdg=  175/  208 trkErr=  +36 ias=337/300 wv=0.0 G=1.42
+  15:44:18.069 cr=   +535 al=  +2618 rng=  2672 cl= +182 bank=  +44/  +44 hdg=  177/  211 trkErr=  +36 ias=333/299 wv=0.0 G=1.43
+  15:44:19.056 cr=   +437 al=  +2545 rng=  2582 cl= +168 bank=  +45/  +45 hdg=  179/  214 trkErr=  +38 ias=329/299 wv=0.0 G=1.41
+  15:44:20.037 cr=   +335 al=  +2478 rng=  2500 cl= +151 bank=  +46/  +46 hdg=  181/  217 trkErr=  +38 ias=326/298 wv=0.0 G=1.43
+  15:44:20.147 cr=   +322 al=  +2470 rng=  2491 cl= +149 bank=  +46/  +46 hdg=  181/  218 trkErr=  +38 ias=325/298 wv=0.0 G=1.45
+  15:44:21.021 cr=   +218 al=  +2417 rng=  2427 cl= +132 bank=  +47/  +47 hdg=  183/  220 trkErr=  +39 ias=322/298 wv=0.0 G=1.44
+  15:44:21.133 cr=   +206 al=  +2411 rng=  2420 cl= +130 bank=  +47/  +47 hdg=  183/  221 trkErr=  +39 ias=322/298 wv=0.0 G=1.44
+  15:44:22.009 cr=    +94 al=  +2363 rng=  2365 cl= +109 bank=  +48/  +48 hdg=  186/  224 trkErr=  +40 ias=320/297 wv=0.0 G=1.46
+  15:44:22.115 cr=    +80 al=  +2358 rng=  2360 cl= +106 bank=  +48/  +48 hdg=  186/  224 trkErr=  +40 ias=319/297 wv=0.0 G=1.47
+  15:44:23.100 cr=    -47 al=  +2312 rng=  2313 cl=  +79 bank=  +49/  +49 hdg=  188/  227 trkErr=  +41 ias=316/297 wv=0.0 G=1.48
+  15:44:24.084 cr=   -185 al=  +2273 rng=  2280 cl=  +48 bank=  +50/  +50 hdg=  191/  230 trkErr=  +42 ias=314/297 wv=0.0 G=1.46
+  15:44:25.068 cr=   -331 al=  +2241 rng=  2266 cl=  +14 bank=  +50/  +50 hdg=  193/  234 trkErr=  +42 ias=312/296 wv=0.0 G=1.42
+  15:44:26.054 cr=   -486 al=  +2217 rng=  2270 cl=  -22 bank=  +50/  +50 hdg=  196/  237 trkErr=  +43 ias=310/296 wv=0.0 G=1.45
+  15:44:27.043 cr=   -649 al=  +2201 rng=  2296 cl=  -63 bank=  +50/  +50 hdg=  199/  240 trkErr=  +44 ias=308/302 wv=0.0 G=1.49
+  15:44:27.148 cr=   -665 al=  +2200 rng=  2299 cl=  -67 bank=  +50/  +50 hdg=  199/  241 trkErr=  +44 ias=308/304 wv=0.0 G=1.49
+  15:44:28.022 cr=   -812 al=  +2195 rng=  2341 cl= -103 bank=  +50/  +50 hdg=  202/  244 trkErr=  +44 ias=306/314 wv=0.0 G=1.51
+  15:44:28.133 cr=   -832 al=  +2195 rng=  2348 cl= -108 bank=  +50/  +50 hdg=  202/  244 trkErr=  +44 ias=306/315 wv=0.0 G=1.51
+  15:44:29.008 cr=   -988 al=  +2196 rng=  2409 cl= -145 bank=  +50/  +50 hdg=  204/  247 trkErr=  +45 ias=304/325 wv=0.0 G=1.52
+  15:44:29.115 cr=  -1007 al=  +2197 rng=  2417 cl= -149 bank=  +50/  +50 hdg=  204/  247 trkErr=  +45 ias=304/326 wv=0.0 G=1.52
+  15:44:30.101 cr=  -1191 al=  +2207 rng=  2508 cl= -190 bank=  +50/  +50 hdg=  208/  251 trkErr=  +46 ias=303/337 wv=0.0 G=1.61
+  15:44:31.084 cr=  -1377 al=  +2229 rng=  2621 cl= -231 bank=  +50/  +50 hdg=  211/  254 trkErr=  +46 ias=303/344 wv=0.0 G=1.66
+  15:44:32.070 cr=  -1570 al=  +2261 rng=  2753 cl= -271 bank=  +50/  +50 hdg=  214/  257 trkErr=  +46 ias=303/349 wv=0.0 G=1.64
+  15:44:33.055 cr=  -1775 al=  +2299 rng=  2905 cl= -309 bank=  +50/  +50 hdg=  216/  261 trkErr=  +47 ias=305/354 wv=0.0 G=1.60
+  15:44:34.040 cr=  -1991 al=  +2347 rng=  3078 cl= -344 bank=  +50/  +50 hdg=  219/  264 trkErr=  +47 ias=308/360 wv=0.0 G=1.57
+  15:44:34.148 cr=  -2011 al=  +2352 rng=  3095 cl= -348 bank=  +50/  +50 hdg=  219/  264 trkErr=  +47 ias=308/360 wv=0.0 G=1.57
+  15:44:35.021 cr=  -2206 al=  +2406 rng=  3265 cl= -378 bank=  +50/  +50 hdg=  222/  267 trkErr=  +48 ias=311/366 wv=0.0 G=1.57
+  15:44:35.133 cr=  -2229 al=  +2413 rng=  3286 cl= -381 bank=  +50/  +50 hdg=  222/  268 trkErr=  +48 ias=312/366 wv=0.0 G=1.57
+  15:44:36.008 cr=  -2427 al=  +2476 rng=  3468 cl= -410 bank=  +50/  +50 hdg=  225/  270 trkErr=  +48 ias=315/371 wv=0.0 G=1.57
+  15:44:36.117 cr=  -2449 al=  +2483 rng=  3489 cl= -413 bank=  +50/  +50 hdg=  225/  271 trkErr=  +48 ias=315/372 wv=0.0 G=1.58
+  15:44:37.099 cr=  -2695 al=  +2564 rng=  3720 cl= -444 bank=  +50/  +50 hdg=  228/  274 trkErr=  +48 ias=319/378 wv=0.0 G=1.57
+  15:44:38.086 cr=  -2942 al=  +2654 rng=  3963 cl= -472 bank=  +50/  +50 hdg=  231/  277 trkErr=  +49 ias=323/384 wv=0.0 G=1.55
+  15:44:39.072 cr=  -3190 al=  +2760 rng=  4219 cl= -499 bank=  +50/  +50 hdg=  233/  280 trkErr=  +49 ias=327/391 wv=0.0 G=1.56
+  15:44:40.059 cr=  -3443 al=  +2877 rng=  4488 cl= -524 bank=  +50/  +50 hdg=  236/  284 trkErr=  +50 ias=331/396 wv=0.0 G=1.56
+  15:44:41.037 cr=  -3701 al=  +2996 rng=  4762 cl= -548 bank=  +57/  +62 hdg=  239/  288 trkErr=  +51 ias=335/402 wv=0.0 G=1.63
+  15:44:41.148 cr=  -3730 al=  +3010 rng=  4794 cl= -550 bank=  +58/  +62 hdg=  240/  288 trkErr=  +52 ias=336/403 wv=0.0 G=1.59
+  15:44:42.023 cr=  -3961 al=  +3129 rng=  5049 cl= -573 bank=  +64/  +66 hdg=  244/  295 trkErr=  +55 ias=339/408 wv=0.0 G=1.92
+  15:44:42.132 cr=  -3990 al=  +3146 rng=  5082 cl= -576 bank=  +65/  +67 hdg=  244/  296 trkErr=  +56 ias=339/409 wv=0.0 G=1.96
+  15:44:43.008 cr=  -4219 al=  +3285 rng=  5348 cl= -601 bank=  +69/  +70 hdg=  249/  302 trkErr=  +58 ias=342/414 wv=0.0 G=2.31
+  15:44:43.117 cr=  -4248 al=  +3305 rng=  5383 cl= -604 bank=  +70/  +70 hdg=  250/  303 trkErr=  +58 ias=342/414 wv=0.0 G=2.36
+  15:44:44.099 cr=  -4506 al=  +3481 rng=  5695 cl= -632 bank=  +71/  +70 hdg=  256/  308 trkErr=  +58 ias=344/419 wv=0.0 G=2.71
+  15:44:45.084 cr=  -4772 al=  +3678 rng=  6025 cl= -657 bank=  +71/  +70 hdg=  263/  313 trkErr=  +58 ias=344/424 wv=0.0 G=2.90
+  15:44:46.070 cr=  -5025 al=  +3898 rng=  6360 cl= -677 bank=  +71/  +70 hdg=  270/  319 trkErr=  +58 ias=342/428 wv=0.0 G=3.04
+  15:44:47.054 cr=  -5268 al=  +4158 rng=  6711 cl= -692 bank=  +70/  +70 hdg=  278/  325 trkErr=  +58 ias=339/430 wv=0.0 G=3.28
+  15:44:48.039 cr=  -5494 al=  +4436 rng=  7062 cl= -702 bank=  +70/  +70 hdg=  282/  332 trkErr=  +58 ias=335/431 wv=0.0 G=2.96
+  15:44:48.147 cr=  -5518 al=  +4467 rng=  7100 cl= -703 bank=  +70/  +70 hdg=  283/  332 trkErr=  +58 ias=335/432 wv=0.0 G=2.92
+  15:44:49.021 cr=  -5712 al=  +4729 rng=  7416 cl= -708 bank=  +70/  +70 hdg=  290/  338 trkErr=  +58 ias=335/436 wv=0.0 G=3.23
+  15:44:49.131 cr=  -5736 al=  +4762 rng=  7455 cl= -709 bank=  +70/  +70 hdg=  290/  338 trkErr=  +58 ias=334/437 wv=0.0 G=3.23
+  15:44:50.008 cr=  -5914 al=  +5050 rng=  7777 cl= -709 bank=  +70/  +70 hdg=  297/  344 trkErr=  +58 ias=332/439 wv=0.0 G=3.32
+  15:44:50.119 cr=  -5934 al=  +5088 rng=  7818 cl= -709 bank=  +70/  +70 hdg=  298/  345 trkErr=  +58 ias=331/439 wv=0.0 G=3.36
+  15:44:51.100 cr=  -6096 al=  +5431 rng=  8165 cl= -704 bank=  +70/  +70 hdg=  304/  352 trkErr=  +58 ias=327/440 wv=0.0 G=3.26
+  15:44:52.086 cr=  -6242 al=  +5799 rng=  8521 cl= -694 bank=  +70/  +70 hdg=  312/  358 trkErr=  +58 ias=325/442 wv=0.0 G=3.44
+  15:44:53.068 cr=  -6369 al=  +6167 rng=  8866 cl= -682 bank=  +70/  +70 hdg=  317/    5 trkErr=  +58 ias=323/446 wv=0.0 G=3.29
+  15:44:54.053 cr=  -6464 al=  +6549 rng=  9202 cl= -664 bank=  +70/  +70 hdg=  324/   12 trkErr=  +58 ias=321/450 wv=0.0 G=3.47
+  15:44:55.039 cr=  -6520 al=  +6952 rng=  9532 cl= -645 bank=  +70/  +70 hdg=  330/   19 trkErr=  +58 ias=320/454 wv=0.0 G=3.20
+  15:44:55.148 cr=  -6524 al=  +7002 rng=  9571 cl= -642 bank=  +70/  +70 hdg=  330/   20 trkErr=  +58 ias=320/455 wv=0.0 G=3.22
+  15:44:56.022 cr=  -6550 al=  +7358 rng=  9852 cl= -620 bank=  +70/  +70 hdg=  340/   26 trkErr=  +58 ias=319/457 wv=0.0 G=3.76
+  15:44:56.131 cr=  -6553 al=  +7404 rng=  9888 cl= -616 bank=  +70/  +69 hdg=  341/   27 trkErr=  +58 ias=318/457 wv=0.0 G=3.81
+  15:44:57.008 cr=  -6560 al=  +7759 rng= 10161 cl= -584 bank=  +70/  +69 hdg=  348/   34 trkErr=  +57 ias=311/453 wv=0.0 G=3.72
+  15:44:57.120 cr=  -6559 al=  +7802 rng= 10193 cl= -580 bank=  +70/  +69 hdg=  348/   35 trkErr=  +57 ias=310/453 wv=0.0 G=3.72
+  15:44:58.100 cr=  -6524 al=  +8195 rng= 10476 cl= -542 bank=  +70/  +69 hdg=  356/   43 trkErr=  +58 ias=307/454 wv=0.0 G=3.66
+  15:44:59.085 cr=  -6442 al=  +8598 rng= 10745 cl= -502 bank=  +69/  +69 hdg=    2/   50 trkErr=  +57 ias=305/457 wv=0.0 G=3.45
+  15:45:00.084 cr=  -6340 al=  +8982 rng= 10996 cl= -467 bank=  +70/  +70 hdg=    7/   58 trkErr=  +58 ias=306/462 wv=0.0 G=2.94
+  15:45:01.068 cr=  -6227 al=  +9337 rng= 11225 cl= -439 bank=  +70/  +70 hdg=   12/   65 trkErr=  +58 ias=308/467 wv=0.0 G=2.53
+  15:45:02.052 cr=  -6088 al=  +9678 rng= 11436 cl= -417 bank=  +70/  +70 hdg=   16/   70 trkErr=  +59 ias=310/471 wv=0.0 G=2.20
+  15:45:03.043 cr=  -5917 al= +10022 rng= 11641 cl= -398 bank=  +70/  +70 hdg=   20/   75 trkErr=  +59 ias=313/473 wv=0.0 G=2.07
+  15:45:03.147 cr=  -5896 al= +10061 rng= 11664 cl= -395 bank=  +70/  +70 hdg=   20/   75 trkErr=  +59 ias=313/473 wv=0.0 G=2.07
+  15:45:04.022 cr=  -5743 al= +10344 rng= 11835 cl= -379 bank=  +70/  +70 hdg=   24/   79 trkErr=  +59 ias=316/475 wv=0.0 G=2.08
+  15:45:04.130 cr=  -5725 al= +10377 rng= 11855 cl= -376 bank=  +70/  +70 hdg=   25/   80 trkErr=  +59 ias=316/475 wv=0.0 G=2.08
+  15:45:05.009 cr=  -5567 al= +10650 rng= 12021 cl= -358 bank=  +70/  +70 hdg=   29/   84 trkErr=  +59 ias=318/477 wv=0.0 G=2.14
+  15:45:05.119 cr=  -5549 al= +10678 rng= 12038 cl= -356 bank=  +70/  +70 hdg=   30/   84 trkErr=  +59 ias=318/477 wv=0.0 G=2.15
+  15:45:06.100 cr=  -5345 al= +10976 rng= 12212 cl= -332 bank=  +70/  +70 hdg=   35/   89 trkErr=  +59 ias=320/479 wv=0.0 G=2.28
+  15:45:07.085 cr=  -5121 al= +11254 rng= 12369 cl= -307 bank=  +70/  +70 hdg=   40/   93 trkErr=  +59 ias=322/480 wv=0.0 G=2.39
+  15:45:08.071 cr=  -4894 al= +11516 rng= 12517 cl= -278 bank=  +70/  +70 hdg=   46/   98 trkErr=  +58 ias=324/482 wv=0.0 G=2.49
+  15:45:09.052 cr=  -4672 al= +11749 rng= 12648 cl= -247 bank=  +70/  +70 hdg=   51/  104 trkErr=  +58 ias=326/483 wv=0.0 G=2.58
+  15:45:10.036 cr=  -4429 al= +11966 rng= 12763 cl= -215 bank=  +70/  +70 hdg=   57/  109 trkErr=  +58 ias=327/484 wv=0.0 G=2.67
+  15:45:10.147 cr=  -4399 al= +11990 rng= 12776 cl= -211 bank=  +70/  +70 hdg=   58/  110 trkErr=  +58 ias=327/484 wv=0.0 G=2.68
+  15:45:11.022 cr=  -4166 al= +12164 rng= 12862 cl= -180 bank=  +70/  +70 hdg=   63/  114 trkErr=  +58 ias=328/484 wv=0.0 G=2.75
+  15:45:11.133 cr=  -4136 al= +12185 rng= 12872 cl= -176 bank=  +70/  +70 hdg=   64/  115 trkErr=  +58 ias=328/484 wv=0.0 G=2.76
+  15:45:12.008 cr=  -3911 al= +12333 rng= 12943 cl= -144 bank=  +70/  +70 hdg=   69/  120 trkErr=  +58 ias=328/485 wv=0.0 G=2.83
+  15:45:12.120 cr=  -3886 al= +12349 rng= 12951 cl= -141 bank=  +70/  +70 hdg=   70/  121 trkErr=  +58 ias=328/485 wv=0.0 G=2.84
+  15:45:13.101 cr=  -3649 al= +12484 rng= 13011 cl= -104 bank=  +70/  +70 hdg=   76/  127 trkErr=  +58 ias=328/485 wv=0.0 G=2.90
+  15:45:14.085 cr=  -3396 al= +12599 rng= 13054 cl=  -68 bank=  +70/  +70 hdg=   82/  133 trkErr=  +58 ias=328/485 wv=0.0 G=2.96
+  15:45:15.070 cr=  -3137 al= +12691 rng= 13078 cl=  -32 bank=  +70/  +70 hdg=   89/  138 trkErr=  +58 ias=328/484 wv=0.0 G=3.00
+  15:45:16.053 cr=  -2903 al= +12752 rng= 13084 cl=   +3 bank=  +67/  +65 hdg=   94/  141 trkErr=  +54 ias=328/483 wv=0.0 G=2.93
+  15:45:17.037 cr=  -2695 al= +12788 rng= 13074 cl=  +33 bank=  +62/  +60 hdg=   98/  142 trkErr=  +50 ias=328/483 wv=0.0 G=2.62
+  15:45:17.147 cr=  -2668 al= +12791 rng= 13072 cl=  +36 bank=  +62/  +60 hdg=   98/  142 trkErr=  +50 ias=328/483 wv=0.0 G=2.59
+  15:45:18.023 cr=  -2478 al= +12807 rng= 13050 cl=  +56 bank=  +58/  +56 hdg=  101/  143 trkErr=  +47 ias=331/485 wv=0.0 G=2.15
+  15:45:18.133 cr=  -2453 al= +12808 rng= 13047 cl=  +59 bank=  +57/  +56 hdg=  101/  143 trkErr=  +46 ias=331/485 wv=0.0 G=2.09
+  15:45:19.008 cr=  -2254 al= +12813 rng= 13016 cl=  +73 bank=  +54/  +53 hdg=  102/  144 trkErr=  +44 ias=335/487 wv=0.0 G=1.58
+  15:45:19.118 cr=  -2230 al= +12813 rng= 13012 cl=  +75 bank=  +54/  +53 hdg=  102/  144 trkErr=  +44 ias=335/487 wv=0.0 G=1.52
+
+=== CYCLE3 closest pass RIGHT->LEFT 15:49:00-15:50:10 (1Hz) ===
+  15:49:00.087 cr=  -2473 al=  +2769 rng=  3712 cl=  -83 bank=  -38/  -38 hdg=  187/  156 trkErr=  -31 ias=357/395 wv=0.0 G=1.30 reg=Transit
+  15:49:00.197 cr=  -2488 al=  +2762 rng=  3717 cl=  -83 bank=  -38/  -38 hdg=  187/  156 trkErr=  -31 ias=358/396 wv=0.0 G=1.30 reg=Transit
+  15:49:01.073 cr=  -2615 al=  +2699 rng=  3758 cl=  -77 bank=  -40/  -39 hdg=  185/  153 trkErr=  -33 ias=363/400 wv=0.0 G=1.33 reg=Transit
+  15:49:01.179 cr=  -2629 al=  +2692 rng=  3763 cl=  -77 bank=  -40/  -39 hdg=  185/  153 trkErr=  -33 ias=364/401 wv=0.0 G=1.34 reg=Transit
+  15:49:02.060 cr=  -2750 al=  +2624 rng=  3801 cl=  -71 bank=  -41/  -41 hdg=  183/  150 trkErr=  -34 ias=370/405 wv=0.0 G=1.38 reg=Transit
+  15:49:02.164 cr=  -2764 al=  +2616 rng=  3806 cl=  -70 bank=  -41/  -41 hdg=  183/  150 trkErr=  -34 ias=370/406 wv=0.0 G=1.37 reg=Transit
+  15:49:03.040 cr=  -2877 al=  +2544 rng=  3841 cl=  -63 bank=  -43/  -42 hdg=  181/  147 trkErr=  -35 ias=376/410 wv=0.0 G=1.39 reg=Transit
+  15:49:03.150 cr=  -2890 al=  +2535 rng=  3845 cl=  -62 bank=  -43/  -42 hdg=  181/  147 trkErr=  -35 ias=377/411 wv=0.0 G=1.39 reg=Transit
+  15:49:04.025 cr=  -2999 al=  +2456 rng=  3876 cl=  -55 bank=  -44/  -43 hdg=  179/  144 trkErr=  -36 ias=383/415 wv=0.0 G=1.41 reg=Transit
+  15:49:04.132 cr=  -3011 al=  +2446 rng=  3879 cl=  -54 bank=  -44/  -43 hdg=  179/  144 trkErr=  -36 ias=383/416 wv=0.0 G=1.40 reg=Transit
+  15:49:04.248 cr=  -3026 al=  +2434 rng=  3884 cl=  -53 bank=  -44/  -43 hdg=  178/  143 trkErr=  -36 ias=384/416 wv=0.0 G=1.42 reg=Transit
+  15:49:05.011 cr=  -3119 al=  +2354 rng=  3908 cl=  -46 bank=  -45/  -44 hdg=  177/  141 trkErr=  -37 ias=389/420 wv=0.0 G=1.44 reg=Transit
+  15:49:05.121 cr=  -3132 al=  +2342 rng=  3911 cl=  -45 bank=  -45/  -44 hdg=  176/  141 trkErr=  -37 ias=390/420 wv=0.0 G=1.44 reg=Transit
+  15:49:05.230 cr=  -3145 al=  +2330 rng=  3914 cl=  -44 bank=  -45/  -44 hdg=  176/  140 trkErr=  -37 ias=390/421 wv=0.0 G=1.44 reg=Transit
+  15:49:06.102 cr=  -3244 al=  +2232 rng=  3938 cl=  -35 bank=  -46/  -45 hdg=  174/  138 trkErr=  -38 ias=396/425 wv=0.0 G=1.47 reg=Transit
+  15:49:06.212 cr=  -3255 al=  +2220 rng=  3940 cl=  -34 bank=  -46/  -45 hdg=  174/  137 trkErr=  -38 ias=397/425 wv=0.0 G=1.48 reg=Transit
+  15:49:07.086 cr=  -3343 al=  +2120 rng=  3959 cl=  -25 bank=  -47/  -46 hdg=  172/  135 trkErr=  -38 ias=403/429 wv=0.0 G=1.49 reg=Transit
+  15:49:07.198 cr=  -3355 al=  +2107 rng=  3961 cl=  -24 bank=  -47/  -46 hdg=  172/  134 trkErr=  -39 ias=403/430 wv=0.0 G=1.49 reg=Transit
+  15:49:08.073 cr=  -3436 al=  +2000 rng=  3976 cl=  -14 bank=  -48/  -47 hdg=  170/  132 trkErr=  -39 ias=409/434 wv=0.0 G=1.52 reg=Transit
+  15:49:08.183 cr=  -3446 al=  +1986 rng=  3977 cl=  -13 bank=  -48/  -47 hdg=  170/  131 trkErr=  -40 ias=410/434 wv=0.0 G=1.53 reg=Transit
+  15:49:09.056 cr=  -3522 al=  +1867 rng=  3987 cl=   -3 bank=  -50/  -52 hdg=  167/  126 trkErr=  -43 ias=415/438 wv=0.0 G=1.60 reg=Transit
+  15:49:09.164 cr=  -3530 al=  +1854 rng=  3987 cl=   -1 bank=  -51/  -52 hdg=  167/  125 trkErr=  -44 ias=416/439 wv=0.0 G=1.61 reg=Transit
+  15:49:10.046 cr=  -3598 al=  +1727 rng=  3991 cl=  +12 bank=  -55/  -57 hdg=  164/  119 trkErr=  -48 ias=421/442 wv=0.0 G=1.73 reg=Transit
+  15:49:10.149 cr=  -3605 al=  +1713 rng=  3991 cl=  +14 bank=  -56/  -58 hdg=  164/  118 trkErr=  -48 ias=422/442 wv=0.0 G=1.74 reg=Transit
+  15:49:11.025 cr=  -3657 al=  +1590 rng=  3988 cl=  +30 bank=  -61/  -62 hdg=  161/  112 trkErr=  -52 ias=427/446 wv=0.0 G=1.91 reg=Transit
+  15:49:11.136 cr=  -3662 al=  +1574 rng=  3987 cl=  +32 bank=  -61/  -62 hdg=  160/  111 trkErr=  -52 ias=428/446 wv=0.0 G=1.93 reg=Transit
+  15:49:11.246 cr=  -3669 al=  +1557 rng=  3985 cl=  +35 bank=  -62/  -63 hdg=  160/  110 trkErr=  -52 ias=428/447 wv=0.0 G=1.96 reg=Transit
+  15:49:12.011 cr=  -3702 al=  +1443 rng=  3973 cl=  +53 bank=  -65/  -66 hdg=  157/  105 trkErr=  -55 ias=432/449 wv=0.0 G=2.17 reg=Transit
+  15:49:12.121 cr=  -3706 al=  +1426 rng=  3971 cl=  +56 bank=  -66/  -66 hdg=  156/  104 trkErr=  -55 ias=433/450 wv=0.0 G=2.20 reg=Transit
+  15:49:12.233 cr=  -3711 al=  +1407 rng=  3968 cl=  +59 bank=  -66/  -67 hdg=  156/  103 trkErr=  -56 ias=434/450 wv=0.0 G=2.24 reg=Transit
+  15:49:13.101 cr=  -3734 al=  +1266 rng=  3943 cl=  +86 bank=  -70/  -70 hdg=  151/   97 trkErr=  -58 ias=438/453 wv=0.0 G=2.56 reg=Transit
+  15:49:13.211 cr=  -3735 al=  +1248 rng=  3939 cl=  +90 bank=  -70/  -70 hdg=  151/   96 trkErr=  -58 ias=438/453 wv=0.0 G=2.59 reg=Transit
+  15:49:14.086 cr=  -3738 al=  +1106 rng=  3898 cl= +122 bank=  -72/  -70 hdg=  146/   92 trkErr=  -58 ias=442/455 wv=0.0 G=2.90 reg=Transit
+  15:49:14.196 cr=  -3736 al=  +1089 rng=  3892 cl= +126 bank=  -72/  -70 hdg=  145/   92 trkErr=  -58 ias=442/456 wv=0.0 G=2.94 reg=Transit
+  15:49:15.103 cr=  -3712 al=   +946 rng=  3830 cl= +165 bank=  -72/  -70 hdg=  140/   87 trkErr=  -58 ias=444/457 wv=0.0 G=3.24 reg=Transit
+  15:49:15.213 cr=  -3707 al=   +929 rng=  3822 cl= +170 bank=  -72/  -70 hdg=  139/   86 trkErr=  -58 ias=445/457 wv=0.0 G=3.27 reg=Transit
+  15:49:16.087 cr=  -3656 al=   +788 rng=  3740 cl= +211 bank=  -71/  -70 hdg=  133/   81 trkErr=  -58 ias=446/458 wv=0.0 G=3.47 reg=Transit
+  15:49:16.198 cr=  -3649 al=   +771 rng=  3730 cl= +216 bank=  -71/  -70 hdg=  132/   80 trkErr=  -58 ias=447/458 wv=0.0 G=3.49 reg=Transit
+  15:49:17.073 cr=  -3573 al=   +633 rng=  3629 cl= +258 bank=  -71/  -70 hdg=  127/   75 trkErr=  -58 ias=448/458 wv=0.0 G=3.61 reg=Transit
+  15:49:17.183 cr=  -3563 al=   +618 rng=  3616 cl= +263 bank=  -71/  -70 hdg=  126/   74 trkErr=  -58 ias=448/458 wv=0.0 G=3.62 reg=Transit
+  15:49:18.060 cr=  -3457 al=   +489 rng=  3492 cl= +305 bank=  -71/  -70 hdg=  120/   69 trkErr=  -58 ias=449/457 wv=0.0 G=3.66 reg=Transit
+  15:49:18.169 cr=  -3442 al=   +474 rng=  3475 cl= +311 bank=  -71/  -70 hdg=  120/   68 trkErr=  -58 ias=449/457 wv=0.0 G=3.67 reg=Transit
+  15:49:19.046 cr=  -3311 al=   +366 rng=  3332 cl= +351 bank=  -71/  -70 hdg=  114/   62 trkErr=  -58 ias=449/455 wv=0.0 G=3.64 reg=Transit
+  15:49:19.149 cr=  -3293 al=   +354 rng=  3312 cl= +355 bank=  -71/  -70 hdg=  114/   62 trkErr=  -58 ias=449/455 wv=0.0 G=3.62 reg=Transit
+  15:49:20.057 cr=  -3131 al=   +255 rng=  3141 cl= +395 bank=  -71/  -70 hdg=  108/   56 trkErr=  -58 ias=450/452 wv=0.0 G=3.55 reg=Transit
+  15:49:20.165 cr=  -3110 al=   +243 rng=  3119 cl= +399 bank=  -71/  -70 hdg=  108/   55 trkErr=  -58 ias=450/452 wv=0.0 G=3.54 reg=Transit
+  15:49:21.046 cr=  -3037 al=   +207 rng=  3044 cl= +414 bank=  -71/  -70 hdg=  105/   53 trkErr=  -58 ias=451/451 wv=0.0 G=3.50 reg=Transit
+  15:49:21.149 cr=  -3037 al=   +207 rng=  3044 cl= +414 bank=  -71/  -70 hdg=  105/   53 trkErr=  -58 ias=451/451 wv=0.0 G=3.50 reg=Transit
+  15:49:22.025 cr=  -2903 al=   +150 rng=  2907 cl= +439 bank=  -71/  -70 hdg=  102/   49 trkErr=  -58 ias=452/449 wv=0.0 G=3.47 reg=Transit
+  15:49:22.136 cr=  -2878 al=   +141 rng=  2881 cl= +443 bank=  -71/  -70 hdg=  101/   48 trkErr=  -58 ias=452/449 wv=0.0 G=3.46 reg=Transit
+  15:49:22.247 cr=  -2856 al=   +133 rng=  2859 cl= +447 bank=  -71/  -70 hdg=  100/   48 trkErr=  -58 ias=452/449 wv=0.0 G=3.45 reg=Transit
+  15:49:23.009 cr=  -2678 al=    +83 rng=  2679 cl= +473 bank=  -71/  -70 hdg=   96/   43 trkErr=  -58 ias=453/446 wv=0.0 G=3.34 reg=Transit
+  15:49:23.117 cr=  -2650 al=    +77 rng=  2651 cl= +476 bank=  -71/  -70 hdg=   96/   43 trkErr=  -58 ias=453/446 wv=0.0 G=3.33 reg=Transit
+  15:49:23.230 cr=  -2623 al=    +72 rng=  2624 cl= +480 bank=  -71/  -70 hdg=   95/   42 trkErr=  -58 ias=453/446 wv=0.0 G=3.31 reg=Transit
+  15:49:24.108 cr=  -2401 al=    +41 rng=  2402 cl= +503 bank=  -71/  -70 hdg=   90/   37 trkErr=  -58 ias=453/443 wv=0.0 G=3.17 reg=Transit
+  15:49:24.211 cr=  -2377 al=    +39 rng=  2377 cl= +506 bank=  -71/  -70 hdg=   90/   36 trkErr=  -58 ias=453/443 wv=0.0 G=3.15 reg=Transit
+  15:49:25.087 cr=  -2145 al=    +27 rng=  2145 cl= +522 bank=  -71/  -70 hdg=   85/   32 trkErr=  -58 ias=452/440 wv=0.0 G=3.02 reg=Transit
+  15:49:25.198 cr=  -2114 al=    +26 rng=  2115 cl= +524 bank=  -71/  -68 hdg=   85/   31 trkErr=  -58 ias=452/439 wv=0.0 G=3.00 reg=Transit
+  15:49:26.073 cr=  -1871 al=    +34 rng=  1872 cl= +531 bank=  -58/  -50 hdg=   81/   28 trkErr=  -58 ias=449/435 wv=0.0 G=2.87 reg=Transit
+  15:49:26.183 cr=  -1844 al=    +36 rng=  1845 cl= +532 bank=  -57/  -50 hdg=   81/   27 trkErr=  -58 ias=449/435 wv=0.0 G=2.85 reg=Transit
+  15:49:27.060 cr=  -1596 al=    +65 rng=  1599 cl= +527 bank=  -51/  -50 hdg=   79/   24 trkErr=  -57 ias=446/431 wv=0.0 G=2.27 reg=Transit
+  15:49:27.164 cr=  -1565 al=    +70 rng=  1568 cl= +525 bank=  -50/  -50 hdg=   78/   24 trkErr=  -57 ias=445/431 wv=0.0 G=2.19 reg=Transit
+  15:49:28.041 cr=  -1315 al=   +115 rng=  1323 cl= +507 bank=  -50/  -50 hdg=   77/   22 trkErr=  -57 ias=442/426 wv=0.0 G=1.54 reg=Transit
+  15:49:28.148 cr=  -1288 al=   +121 rng=  1297 cl= +505 bank=  -50/  -50 hdg=   77/   21 trkErr=  -58 ias=442/426 wv=0.0 G=1.50 reg=Transit
+  15:49:29.024 cr=  -1037 al=   +175 rng=  1057 cl= +468 bank=  -49/  -50 hdg=   76/   19 trkErr=  -58 ias=438/421 wv=0.0 G=1.15 reg=Transit
+  15:49:29.134 cr=  -1004 al=   +182 rng=  1027 cl= +462 bank=  -49/  -50 hdg=   76/   18 trkErr=  -59 ias=438/421 wv=0.0 G=1.12 reg=Transit
+  15:49:29.242 cr=   -977 al=   +189 rng=  1001 cl= +456 bank=  -49/  -50 hdg=   76/   18 trkErr=  -59 ias=437/420 wv=0.0 G=1.10 reg=Transit
+  15:49:30.010 cr=   -756 al=   +242 rng=   804 cl= +391 bank=  -49/  -50 hdg=   75/   16 trkErr=  -60 ias=434/416 wv=0.0 G=1.06 reg=Transit
+  15:49:30.119 cr=   -727 al=   +250 rng=   779 cl= +379 bank=  -49/  -50 hdg=   75/   16 trkErr=  -60 ias=433/416 wv=0.0 G=1.05 reg=Transit
+  15:49:30.229 cr=   -696 al=   +258 rng=   753 cl= +366 bank=  -49/  -50 hdg=   75/   16 trkErr=  -60 ias=433/415 wv=0.0 G=1.05 reg=Transit
+  15:49:31.104 cr=   -444 al=   +328 rng=   570 cl= +216 bank=  -50/  -50 hdg=   73/   14 trkErr=  -60 ias=429/411 wv=0.0 G=1.13 reg=Transit
+  15:49:31.212 cr=   -414 al=   +337 rng=   552 cl= +192 bank=  -50/  -50 hdg=   73/   14 trkErr=  -60 ias=428/410 wv=0.0 G=1.13 reg=Transit
+  15:49:32.088 cr=   -161 al=   +416 rng=   471 cl=  -39 bank=  -50/  -50 hdg=   71/   13 trkErr=  -60 ias=424/407 wv=0.0 G=1.22 reg=Transit
+  15:49:32.198 cr=   -134 al=   +424 rng=   471 cl=  -65 bank=  -50/  -50 hdg=   71/   12 trkErr=  -60 ias=424/407 wv=0.0 G=1.24 reg=Transit
+  15:49:33.073 cr=   +117 al=   +510 rng=   548 cl= -277 bank=  -50/  -50 hdg=   69/   11 trkErr=  -59 ias=420/404 wv=0.0 G=1.33 reg=Transit
+  15:49:33.180 cr=   +145 al=   +520 rng=   564 cl= -296 bank=  -50/  -50 hdg=   69/   11 trkErr=  -59 ias=420/404 wv=0.0 G=1.34 reg=Transit
+  15:49:34.061 cr=   +402 al=   +619 rng=   758 cl= -427 bank=  -50/  -50 hdg=   67/    9 trkErr=  -59 ias=416/402 wv=0.0 G=1.38 reg=Transit
+  15:49:34.165 cr=   +432 al=   +631 rng=   784 cl= -437 bank=  -50/  -50 hdg=   67/    9 trkErr=  -59 ias=415/402 wv=0.0 G=1.39 reg=Transit
+  15:49:35.041 cr=   +677 al=   +734 rng=  1015 cl= -503 bank=  -50/  -50 hdg=   65/    7 trkErr=  -59 ias=412/402 wv=0.0 G=1.44 reg=Transit
+  15:49:35.149 cr=   +706 al=   +747 rng=  1043 cl= -508 bank=  -50/  -50 hdg=   65/    6 trkErr=  -59 ias=411/402 wv=0.0 G=1.44 reg=Transit
+  15:49:36.025 cr=   +952 al=   +858 rng=  1295 cl= -546 bank=  -50/  -50 hdg=   63/    4 trkErr=  -59 ias=408/403 wv=0.0 G=1.48 reg=Transit
+  15:49:36.136 cr=   +982 al=   +873 rng=  1327 cl= -549 bank=  -50/  -50 hdg=   62/    4 trkErr=  -59 ias=408/402 wv=0.0 G=1.49 reg=Transit
+  15:49:37.027 cr=  +1231 al=   +997 rng=  1596 cl= -573 bank=  -50/  -50 hdg=   60/    2 trkErr=  -59 ias=404/402 wv=0.0 G=1.49 reg=Transit
+  15:49:37.136 cr=  +1262 al=  +1014 rng=  1630 cl= -575 bank=  -50/  -50 hdg=   60/    2 trkErr=  -59 ias=404/402 wv=0.0 G=1.49 reg=Transit
+  15:49:37.247 cr=  +1291 al=  +1029 rng=  1663 cl= -577 bank=  -50/  -50 hdg=   60/    2 trkErr=  -59 ias=403/402 wv=0.0 G=1.50 reg=Transit
+  15:49:38.011 cr=  +1497 al=  +1145 rng=  1895 cl= -591 bank=  -50/  -50 hdg=   58/  360 trkErr=  -59 ias=401/403 wv=0.0 G=1.52 reg=Transit
+  15:49:38.120 cr=  +1525 al=  +1161 rng=  1927 cl= -592 bank=  -50/  -50 hdg=   58/  360 trkErr=  -59 ias=400/403 wv=0.0 G=1.52 reg=Transit
+  15:49:38.228 cr=  +1557 al=  +1180 rng=  1964 cl= -594 bank=  -50/  -50 hdg=   57/  359 trkErr=  -59 ias=400/403 wv=0.0 G=1.52 reg=Transit
+  15:49:39.102 cr=  +1793 al=  +1322 rng=  2237 cl= -605 bank=  -50/  -50 hdg=   55/  357 trkErr=  -59 ias=397/405 wv=0.0 G=1.54 reg=Transit
+  15:49:39.212 cr=  +1822 al=  +1339 rng=  2271 cl= -606 bank=  -50/  -50 hdg=   55/  357 trkErr=  -59 ias=397/405 wv=0.0 G=1.54 reg=Transit
+  15:49:40.087 cr=  +2059 al=  +1489 rng=  2550 cl= -616 bank=  -50/  -50 hdg=   53/  355 trkErr=  -59 ias=394/408 wv=0.0 G=1.54 reg=Transit
+  15:49:40.198 cr=  +2087 al=  +1507 rng=  2583 cl= -617 bank=  -50/  -50 hdg=   53/  355 trkErr=  -59 ias=394/408 wv=0.0 G=1.54 reg=Transit
+  15:49:41.075 cr=  +2320 al=  +1668 rng=  2866 cl= -625 bank=  -50/  -50 hdg=   50/  352 trkErr=  -59 ias=391/411 wv=0.0 G=1.53 reg=Transit
+  15:49:41.180 cr=  +2347 al=  +1688 rng=  2900 cl= -626 bank=  -50/  -50 hdg=   50/  352 trkErr=  -59 ias=391/411 wv=0.0 G=1.53 reg=Transit
+  15:49:42.061 cr=  +2574 al=  +1862 rng=  3185 cl= -634 bank=  -50/  -50 hdg=   48/  350 trkErr=  -59 ias=389/414 wv=0.0 G=1.52 reg=Transit
+  15:49:42.165 cr=  +2599 al=  +1882 rng=  3217 cl= -635 bank=  -50/  -50 hdg=   48/  350 trkErr=  -59 ias=389/414 wv=0.0 G=1.52 reg=Transit
+  15:49:43.088 cr=  +2838 al=  +2073 rng=  3522 cl= -645 bank=  -50/  -50 hdg=   46/  348 trkErr=  -59 ias=388/417 wv=0.0 G=1.50 reg=Transit
+  15:49:43.200 cr=  +2867 al=  +2096 rng=  3559 cl= -646 bank=  -50/  -50 hdg=   45/  347 trkErr=  -59 ias=388/417 wv=0.0 G=1.50 reg=Transit
+  15:49:44.073 cr=  +3094 al=  +2281 rng=  3851 cl= -658 bank=  -50/  -50 hdg=   43/  345 trkErr=  -59 ias=390/420 wv=0.0 G=1.48 reg=Transit
+  15:49:44.183 cr=  +3122 al=  +2305 rng=  3888 cl= -659 bank=  -50/  -50 hdg=   43/  345 trkErr=  -59 ias=390/420 wv=0.0 G=1.48 reg=Transit
+  15:49:45.060 cr=  +3346 al=  +2502 rng=  4186 cl= -671 bank=  -50/  -50 hdg=   41/  343 trkErr=  -59 ias=394/424 wv=0.0 G=1.46 reg=Transit
+  15:49:45.165 cr=  +3374 al=  +2528 rng=  4223 cl= -672 bank=  -50/  -50 hdg=   41/  343 trkErr=  -59 ias=394/425 wv=0.0 G=1.46 reg=Transit
+  15:49:46.039 cr=  +3595 al=  +2742 rng=  4528 cl= -684 bank=  -52/  -59 hdg=   39/  341 trkErr=  -59 ias=399/430 wv=0.0 G=1.51 reg=Transit
+  15:49:46.149 cr=  +3622 al=  +2768 rng=  4565 cl= -686 bank=  -54/  -62 hdg=   38/  340 trkErr=  -59 ias=400/431 wv=0.0 G=1.52 reg=Transit
+  15:49:47.024 cr=  +3846 al=  +2991 rng=  4879 cl= -698 bank=  -68/  -71 hdg=   36/  338 trkErr=  -59 ias=404/437 wv=0.0 G=1.59 reg=Transit
+  15:49:47.133 cr=  +3871 al=  +3015 rng=  4913 cl= -699 bank=  -68/  -71 hdg=   35/  338 trkErr=  -59 ias=405/438 wv=0.0 G=1.61 reg=Transit
+  15:49:47.243 cr=  +3899 al=  +3044 rng=  4953 cl= -701 bank=  -69/  -71 hdg=   35/  338 trkErr=  -59 ias=406/439 wv=0.0 G=1.63 reg=Transit
+  15:49:48.039 cr=  +4099 al=  +3248 rng=  5236 cl= -712 bank=  -71/  -71 hdg=   32/  335 trkErr=  -59 ias=410/444 wv=0.0 G=1.90 reg=Transit
+  15:49:48.151 cr=  +4132 al=  +3282 rng=  5283 cl= -714 bank=  -71/  -71 hdg=   31/  335 trkErr=  -59 ias=411/445 wv=0.0 G=2.00 reg=Transit
+  15:49:49.026 cr=  +4347 al=  +3527 rng=  5604 cl= -726 bank=  -72/  -70 hdg=   26/  331 trkErr=  -59 ias=416/452 wv=0.0 G=2.53 reg=Transit
+  15:49:49.137 cr=  +4374 al=  +3561 rng=  5646 cl= -728 bank=  -72/  -70 hdg=   26/  331 trkErr=  -59 ias=416/453 wv=0.0 G=2.58 reg=Transit
+  15:49:49.247 cr=  +4402 al=  +3597 rng=  5690 cl= -729 bank=  -71/  -70 hdg=   25/  330 trkErr=  -59 ias=417/453 wv=0.0 G=2.64 reg=Transit
+  15:49:50.011 cr=  +4577 al=  +3834 rng=  5976 cl= -738 bank=  -71/  -70 hdg=   20/  326 trkErr=  -58 ias=420/459 wv=0.0 G=2.98 reg=Transit
+  15:49:50.122 cr=  +4601 al=  +3869 rng=  6016 cl= -739 bank=  -71/  -70 hdg=   20/  326 trkErr=  -58 ias=420/460 wv=0.0 G=3.02 reg=Transit
+  15:49:50.233 cr=  +4628 al=  +3908 rng=  6062 cl= -740 bank=  -71/  -70 hdg=   19/  325 trkErr=  -58 ias=421/461 wv=0.0 G=3.07 reg=Transit
+  15:49:51.102 cr=  +4814 al=  +4190 rng=  6386 cl= -747 bank=  -71/  -70 hdg=   13/  320 trkErr=  -58 ias=423/466 wv=0.0 G=3.32 reg=Transit
+  15:49:51.213 cr=  +4841 al=  +4233 rng=  6435 cl= -747 bank=  -71/  -70 hdg=   12/  320 trkErr=  -58 ias=424/467 wv=0.0 G=3.32 reg=Transit
+  15:49:52.095 cr=  +5020 al=  +4538 rng=  6771 cl= -750 bank=  -70/  -70 hdg=    6/  314 trkErr=  -58 ias=425/472 wv=0.0 G=3.47 reg=Transit
+  15:49:52.196 cr=  +5039 al=  +4572 rng=  6808 cl= -750 bank=  -70/  -70 hdg=    6/  314 trkErr=  -58 ias=426/473 wv=0.0 G=3.47 reg=Transit
+  15:49:53.071 cr=  +5194 al=  +4901 rng=  7145 cl= -748 bank=  -70/  -70 hdg=  360/  308 trkErr=  -58 ias=427/478 wv=0.0 G=3.55 reg=Transit
+  15:49:53.180 cr=  +5212 al=  +4944 rng=  7187 cl= -747 bank=  -70/  -70 hdg=  359/  307 trkErr=  -58 ias=427/478 wv=0.0 G=3.54 reg=Transit
+  15:49:54.060 cr=  +5335 al=  +5294 rng=  7520 cl= -741 bank=  -70/  -70 hdg=  354/  302 trkErr=  -58 ias=429/483 wv=0.0 G=3.56 reg=Transit
+  15:49:54.164 cr=  +5348 al=  +5334 rng=  7557 cl= -741 bank=  -70/  -70 hdg=  353/  301 trkErr=  -58 ias=429/484 wv=0.0 G=3.53 reg=Transit
+  15:49:55.046 cr=  +5452 al=  +5697 rng=  7888 cl= -731 bank=  -70/  -70 hdg=  347/  295 trkErr=  -58 ias=430/489 wv=0.0 G=3.53 reg=Transit
+  15:49:55.150 cr=  +5464 al=  +5741 rng=  7929 cl= -730 bank=  -70/  -70 hdg=  347/  295 trkErr=  -58 ias=430/489 wv=0.0 G=3.53 reg=Transit
+  15:49:56.025 cr=  +5549 al=  +6101 rng=  8250 cl= -719 bank=  -70/  -70 hdg=  341/  289 trkErr=  -58 ias=432/494 wv=0.0 G=3.45 reg=Transit
+  15:49:56.135 cr=  +5558 al=  +6147 rng=  8291 cl= -717 bank=  -70/  -70 hdg=  341/  288 trkErr=  -58 ias=432/494 wv=0.0 G=3.44 reg=Transit
+  15:49:56.242 cr=  +5566 al=  +6193 rng=  8330 cl= -715 bank=  -70/  -70 hdg=  340/  288 trkErr=  -58 ias=432/495 wv=0.0 G=3.44 reg=Transit
+  15:49:57.072 cr=  +5615 al=  +6547 rng=  8628 cl= -702 bank=  -70/  -70 hdg=  335/  283 trkErr=  -58 ias=434/500 wv=0.0 G=3.38 reg=Transit
+  15:49:57.184 cr=  +5619 al=  +6594 rng=  8667 cl= -700 bank=  -70/  -70 hdg=  334/  282 trkErr=  -58 ias=434/500 wv=0.0 G=3.35 reg=Transit
+  15:49:58.060 cr=  +5635 al=  +7000 rng=  8989 cl= -684 bank=  -70/  -70 hdg=  329/  277 trkErr=  -58 ias=436/505 wv=0.0 G=3.23 reg=Transit
+  15:49:58.164 cr=  +5635 al=  +7048 rng=  9027 cl= -682 bank=  -70/  -70 hdg=  329/  276 trkErr=  -58 ias=436/505 wv=0.0 G=3.24 reg=Transit
+  15:49:59.042 cr=  +5630 al=  +7433 rng=  9328 cl= -666 bank=  -70/  -70 hdg=  324/  271 trkErr=  -58 ias=438/510 wv=0.0 G=3.15 reg=Transit
+  15:49:59.151 cr=  +5629 al=  +7474 rng=  9360 cl= -664 bank=  -70/  -70 hdg=  323/  270 trkErr=  -58 ias=438/510 wv=0.0 G=3.14 reg=Transit
+  15:50:00.024 cr=  +5610 al=  +7851 rng=  9653 cl= -647 bank=  -70/  -70 hdg=  319/  266 trkErr=  -58 ias=440/515 wv=0.0 G=3.03 reg=Transit
+  15:50:00.134 cr=  +5606 al=  +7904 rng=  9693 cl= -645 bank=  -70/  -70 hdg=  318/  265 trkErr=  -58 ias=440/515 wv=0.0 G=3.03 reg=Transit
+  15:50:00.244 cr=  +5602 al=  +7950 rng=  9728 cl= -643 bank=  -70/  -70 hdg=  318/  264 trkErr=  -58 ias=441/516 wv=0.0 G=3.02 reg=Transit
+  15:50:01.011 cr=  +5557 al=  +8279 rng=  9974 cl= -628 bank=  -70/  -70 hdg=  314/  260 trkErr=  -58 ias=443/519 wv=0.0 G=2.95 reg=Transit
+  15:50:01.117 cr=  +5548 al=  +8327 rng= 10009 cl= -625 bank=  -70/  -70 hdg=  313/  260 trkErr=  -58 ias=443/520 wv=0.0 G=2.94 reg=Transit
+  15:50:01.226 cr=  +5538 al=  +8376 rng= 10045 cl= -623 bank=  -70/  -70 hdg=  313/  259 trkErr=  -58 ias=443/521 wv=0.0 G=2.93 reg=Transit
+  15:50:02.105 cr=  +5449 al=  +8761 rng= 10321 cl= -605 bank=  -70/  -70 hdg=  308/  255 trkErr=  -58 ias=446/525 wv=0.0 G=2.87 reg=Transit
+  15:50:02.214 cr=  +5436 al=  +8808 rng= 10355 cl= -603 bank=  -70/  -70 hdg=  308/  254 trkErr=  -58 ias=446/525 wv=0.0 G=2.87 reg=Transit
+  15:50:03.089 cr=  +5334 al=  +9177 rng= 10618 cl= -584 bank=  -70/  -70 hdg=  304/  250 trkErr=  -58 ias=449/529 wv=0.0 G=2.79 reg=Transit
+  15:50:03.199 cr=  +5317 al=  +9236 rng= 10661 cl= -581 bank=  -70/  -70 hdg=  303/  249 trkErr=  -58 ias=449/530 wv=0.0 G=2.79 reg=Transit
+  15:50:04.074 cr=  +5202 al=  +9601 rng= 10923 cl= -561 bank=  -70/  -70 hdg=  299/  245 trkErr=  -58 ias=452/534 wv=0.0 G=2.82 reg=Transit
+  15:50:04.180 cr=  +5184 al=  +9649 rng= 10958 cl= -558 bank=  -70/  -70 hdg=  298/  244 trkErr=  -58 ias=452/534 wv=0.0 G=2.83 reg=Transit
+  15:50:05.055 cr=  +5041 al= +10000 rng= 11203 cl= -538 bank=  -70/  -70 hdg=  294/  240 trkErr=  -59 ias=454/538 wv=0.0 G=2.81 reg=Transit
+  15:50:05.170 cr=  +5020 al= +10045 rng= 11234 cl= -535 bank=  -70/  -70 hdg=  294/  239 trkErr=  -59 ias=455/539 wv=0.0 G=2.83 reg=Transit
+  15:50:06.039 cr=  +4848 al= +10383 rng= 11463 cl= -513 bank=  -70/  -70 hdg=  289/  235 trkErr=  -59 ias=457/543 wv=0.0 G=2.81 reg=Transit
+  15:50:06.149 cr=  +4826 al= +10423 rng= 11490 cl= -511 bank=  -70/  -70 hdg=  289/  234 trkErr=  -59 ias=457/543 wv=0.0 G=2.78 reg=Transit
+  15:50:07.024 cr=  +4639 al= +10756 rng= 11718 cl= -490 bank=  -70/  -70 hdg=  284/  230 trkErr=  -59 ias=460/547 wv=0.0 G=2.59 reg=Transit
+  15:50:07.134 cr=  +4619 al= +10791 rng= 11742 cl= -487 bank=  -70/  -70 hdg=  284/  230 trkErr=  -59 ias=460/547 wv=0.0 G=2.60 reg=Transit
+  15:50:07.242 cr=  +4595 al= +10833 rng= 11771 cl= -484 bank=  -70/  -70 hdg=  284/  229 trkErr=  -59 ias=460/548 wv=0.0 G=2.57 reg=Transit
+  15:50:08.009 cr=  +4435 al= +11097 rng= 11955 cl= -465 bank=  -71/  -70 hdg=  279/  226 trkErr=  -59 ias=468/560 wv=0.0 G=2.73 reg=Transit
+  15:50:08.120 cr=  +4407 al= +11140 rng= 11984 cl= -462 bank=  -71/  -70 hdg=  279/  225 trkErr=  -59 ias=470/562 wv=0.0 G=2.82 reg=Transit
+  15:50:08.229 cr=  +4382 al= +11179 rng= 12011 cl= -458 bank=  -70/  -70 hdg=  278/  225 trkErr=  -59 ias=471/564 wv=0.0 G=2.83 reg=Transit
+  15:50:09.104 cr=  +4170 al= +11469 rng= 12208 cl= -431 bank=  -70/  -70 hdg=  273/  221 trkErr=  -59 ias=474/574 wv=0.0 G=2.97 reg=Transit
+  15:50:09.214 cr=  +4140 al= +11507 rng= 12233 cl= -428 bank=  -70/  -70 hdg=  273/  220 trkErr=  -59 ias=475/575 wv=0.0 G=3.01 reg=Transit
+
+=== ALL cr SIGN FLIPS (any magnitude) ===
+  15:43:35.741->15:43:35.860 cr -10->+2 rng~8518->8501 al~8496 bank=+22/+22 hdg=135 cl=345.0
+  15:44:22.663->15:44:22.771 cr +10->-5 rng~2332->2326 al~2331 bank=+49/+49 hdg=188 cl=88.0
+  15:45:31.258->15:45:31.365 cr -17->+0 rng~12161->12149 al~12154 bank=+37/+37 hdg=122 cl=195.0
+  15:46:35.805->15:46:35.913 cr +3->-13 rng~2667->2663 al~2667 bank=+46/+46 hdg=191 cl=84.0
+  15:47:38.419->15:47:38.523 cr -6->+16 rng~13294->13285 al~13285 bank=+50/+50 hdg=113 cl=170.0
+  15:48:44.448->15:48:44.559 cr +11->-9 rng~3194->3191 al~3194 bank=+12/+11 hdg=200 cl=50.0
+  15:49:32.635->15:49:32.748 cr -10->+23 rng~492->504 al~466 bank=-50/-50 hdg=70 cl=-206.0
+
+=== cr extrema (local max |cr| when |cr|>2000) ===
+  15:41:48.082 cr=-24176 al=+22401 rng=33270 bank=+35/+41 hdg=72
+  15:44:56.786 cr=-6561 al=+7671 rng=10094 bank=+70/+69 hdg=347
+  15:47:08.559 cr=-6296 al=+7796 rng=10022 bank=+70/+70 hdg=338
+  15:47:08.667 cr=-6296 al=+7843 rng=10058 bank=+70/+70 hdg=339
+  15:47:08.773 cr=-6296 al=+7888 rng=10094 bank=+70/+70 hdg=340
+  15:48:07.433 cr=+3391 al=+8345 rng=9010 bank=+40/+39 hdg=153
+  15:48:07.541 cr=+3391 al=+8322 rng=8989 bank=+39/+38 hdg=153
+  15:48:07.649 cr=+3391 al=+8297 rng=8966 bank=+39/+38 hdg=153
+  15:48:07.760 cr=+3391 al=+8275 rng=8945 bank=+39/+38 hdg=153
+  15:48:07.871 cr=+3391 al=+8249 rng=8922 bank=+39/+38 hdg=154
+  15:48:07.979 cr=+3391 al=+8226 rng=8900 bank=+39/+38 hdg=154
+  15:48:08.086 cr=+3391 al=+8204 rng=8880 bank=+38/+38 hdg=154
+  15:48:10.385 cr=+3406 al=+7704 rng=8426 bank=+34/+34 hdg=156
+  15:48:10.497 cr=+3406 al=+7680 rng=8404 bank=+34/+34 hdg=156
+  15:48:10.602 cr=+3406 al=+7658 rng=8383 bank=+34/+34 hdg=156
+  15:48:10.712 cr=+3406 al=+7634 rng=8362 bank=+34/+33 hdg=156
+  15:48:10.820 cr=+3406 al=+7613 rng=8342 bank=+34/+33 hdg=156
+  15:49:13.545 cr=-3739 al=+1195 rng=3925 bank=-71/-70 hdg=149
+  15:49:13.649 cr=-3739 al=+1177 rng=3920 bank=-71/-70 hdg=148
+  15:49:13.760 cr=-3739 al=+1159 rng=3915 bank=-71/-70 hdg=148
+  15:49:13.871 cr=-3739 al=+1141 rng=3909 bank=-71/-70 hdg=147
+  15:49:13.978 cr=-3739 al=+1124 rng=3904 bank=-71/-70 hdg=146
+  15:49:21.149 cr=-3037 al=+207 rng=3044 bank=-71/-70 hdg=105
+  15:49:21.259 cr=-3037 al=+207 rng=3044 bank=-71/-70 hdg=105
+  15:49:21.368 cr=-3037 al=+207 rng=3044 bank=-71/-70 hdg=105
+  15:49:57.949 cr=+5635 al=+6948 rng=8949 bank=-70/-70 hdg=330
+  15:49:58.060 cr=+5635 al=+7000 rng=8989 bank=-70/-70 hdg=329
+  15:49:58.164 cr=+5635 al=+7048 rng=9027 bank=-70/-70 hdg=329
+  15:49:58.274 cr=+5635 al=+7096 rng=9065 bank=-70/-70 hdg=328
+  15:49:58.386 cr=+5635 al=+7145 rng=9103 bank=-70/-70 hdg=327
+  15:49:58.497 cr=+5635 al=+7192 rng=9140 bank=-70/-70 hdg=327
+
+=== Weave (wv) non-zero samples count ===
+  wv!=0 count=0
+
+=== Proteccion frequencies ===
+
+=== Accion containing Station/Formacion ===
+  NEVER reached Station/Formacion in this recording

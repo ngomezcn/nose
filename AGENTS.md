@@ -106,11 +106,60 @@ cualquier símbolo de `third_party/XPSDK`, consulta en este orden:
 No inventes ni copies de memoria la firma o el comportamiento de una
 función del SDK — compruébala en esas fuentes primero.
 
-## 4. Caja negra de vuelo: inspeccionar telemetría
+## 4. Avión en foco, cámara y caja negra por avión
+
+### Foco (quién recibe las órdenes)
+
+En la UI (pestaña **Aviones**) el usuario elige una fila y pulsa
+**Poner en foco**. La franja **EN FOCO** del sidebar muestra siempre a
+quién van despegue / crucero / acciones (o “GLOBAL” si no hay nave):
+
+- Índice **-1** = **Global** (por defecto): opciones de zona (gráficos,
+  reset sim, vista aérea). Sin órdenes de vuelo ni caja negra.
+- Índice XPLM **0** = ownship (F-14 / avión del usuario).
+- Índices **1..19** = IAs (`sim/multiplayer/position/planeN_*`).
+
+`FlightDirector.SetFocus` / `FocusedXplmIndex` / `IsGlobalFocus` viven en
+el core. Al poner foco Global el core pide al connector la **vista aérea**
+(`Op.CameraFollow` con `planeIndex = 255`) y activa rombos + líneas en
+gráficos. Con foco en IA, hoy solo tiene sentido
+**crucero / nivelar** (`AiStraightHold`: cinemático vía Holds +
+`Op.AiControl`). Despegue y el resto de maniobras siguen siendo solo del
+ownship. La interceptación **siempre** pilota el ownship hacia un blanco
+elegido en la pestaña Interceptar (lista aparte).
+
+### Cámara chase / vista aérea
+
+- **Vista aérea (foco Global):** `Op.CameraFollow` payload `255`
+  (`CameraOverviewIndex`). El connector enmarca ownship + IAs activas
+  desde arriba (`CameraFollow.h` → `StartOverview`).
+- **Chase sobre una IA:** botones **Seguir con cámara** / **Soltar
+  cámara**. Solo aplica a IAs (índice ≥ 1). Payload `1..19`.
+- Payload `0` = soltar. Subir `kVersion`/`Version` si se toca el layout.
+- Core: `ConnectorClient.FollowCamera` / `StartOverviewCamera` /
+  `ReleaseCamera`.
+- `ReleaseEverything` del plugin también suelta la cámara.
+
+No es lo mismo que el “foco” de órdenes ni que `FocusOtherPlane`
+(ritmo de telemetría del blanco de intercept).
+
+### Caja negra: una por avión, off por defecto
+
+- **Por defecto nadie graba.** Empezar / Detener / Borrar del panel
+  **CAJA NEGRA** actúan sobre el logger del avión **en foco**.
+- Varias naves pueden grabar a la vez (cambias foco y pulsas Empezar en
+  otra). `Refresh` alimenta todos los `IsRecording`.
+- Ficheros junto al exe desplegado (`…\plugins\AICopilot\win_x64\`):
+  - Ownship: `DataLog.csv` (+ `.previous.csv`)
+  - IA N: `DataLog.plane{N}.csv` (+ `DataLog.plane{N}.previous.csv`)
+- Código: `FlightDataLogs` + `DataLogger` en `src/core/Domain/`. La
+  telemetría de IA es reducida (GS/MSL/hdg/pitch/bank; sin G/mandos/AoA
+  completos del ownship).
 
 Si el usuario pide inspeccionar la caja negra, el DataLog, un temblor,
 overshoot de G, o qué pasó en una maniobra/intercept/despegue, lee y
 sigue la skill
 [`.claude/skills/caja-negra/SKILL.md`](.claude/skills/caja-negra/SKILL.md)
-antes de diagnosticar. El CSV está junto al exe desplegado
-(`…\plugins\AICopilot\win_x64\DataLog.csv`), no en el repo.
+antes de diagnosticar. Los CSV están junto al exe, no en el repo.
+Pregunta o deduce **qué avión** (ownship vs `planeN`) antes de leer el
+fichero equivocado.

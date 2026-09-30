@@ -253,24 +253,6 @@ public sealed class ConnectorClient : IDisposable
         Send(w);
     }
 
-    // Ruta de interceptacion (coords locales OGL absolutas). Vacia/null la
-    // borra en el connector. Maximo 64 puntos (se submuestrea si hay mas).
-    public void SetInterceptPath(IReadOnlyList<(double X, double Y, double Z)>? pts)
-    {
-        int n = pts?.Count ?? 0;
-        if (n > 64) n = 64;
-        var w = new MessageWriter(Op.InterceptPath);
-        w.U8((byte)n);
-        for (int i = 0; i < n; i++)
-        {
-            var p = pts![n == pts.Count ? i : (int)((long)i * (pts.Count - 1) / (n - 1))];
-            w.F64(p.X);
-            w.F64(p.Y);
-            w.F64(p.Z);
-        }
-        Send(w);
-    }
-
     // Teleporta usuario + IA a las coordenadas que decide el dominio
     // (SimScenario). El connector aplica PlaceUserAtLocation y, tras cargar
     // el aeropuerto, coloca la IA sin quedarsela (X-Plane la vuela).
@@ -291,6 +273,54 @@ public sealed class ConnectorClient : IDisposable
         w.F64(aiHdgTrue);
         w.F64(aiSpeedMps);
         w.Str(aiAircraftRelPath ?? string.Empty);
+        Send(w);
+    }
+
+    // Exclusive access a un avion IA (AcquirePlanes + DisableAI). El core
+    // escribe posiciones via Hold; el connector solo otorga/suelta acceso.
+    // xplmIndex es el indice XPLM 1..19 (nunca 0 = usuario).
+    public void TakeAiControl(int xplmIndex)
+    {
+        if (xplmIndex < 1 || xplmIndex > 19) return;
+        var w = new MessageWriter(Op.AiControl);
+        w.U8(1); // Take
+        w.U8((byte)xplmIndex);
+        Send(w);
+    }
+
+    public void ReleaseAiControl()
+    {
+        var w = new MessageWriter(Op.AiControl);
+        w.U8(0); // Release
+        w.U8(0);
+        Send(w);
+    }
+
+    // Sentinel de Op.CameraFollow: vista aerea que enmarca todas las naves.
+    public const byte CameraOverviewIndex = 255;
+
+    // Chase camara sobre un avion IA (XPLMControlCamera). xplmIndex 1..19.
+    public void FollowCamera(int xplmIndex)
+    {
+        if (xplmIndex < 1 || xplmIndex > 19) return;
+        var w = new MessageWriter(Op.CameraFollow);
+        w.U8((byte)xplmIndex);
+        Send(w);
+    }
+
+    // Vista aerea: camara arriba mirando abajo hasta encuadrar ownship + IAs.
+    public void StartOverviewCamera()
+    {
+        var w = new MessageWriter(Op.CameraFollow);
+        w.U8(CameraOverviewIndex);
+        Send(w);
+    }
+
+    // Suelta el control de camara (planeIndex 0).
+    public void ReleaseCamera()
+    {
+        var w = new MessageWriter(Op.CameraFollow);
+        w.U8(0);
         Send(w);
     }
 

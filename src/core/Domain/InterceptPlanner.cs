@@ -10,34 +10,24 @@ namespace AICopilotCore.Domain;
 // Entradas y salidas en el marco local OGL de Intercept.cs (+X este, +Y arriba,
 // +Z SUR, metros, m/s). Por dentro se trabaja en ENU (E = X, N = -Z, U = Y).
 //
-// -- Por que se rehizo (el "efecto latigo") ---------------------------------------
-// La version anterior apuntaba a un punto pegado al blanco (su estacion, a
-// 200 m). Cuando el blanco gira, esa estacion barre un arco enorme respecto a
-// nosotros: para seguirla hace falta una tasa de giro que un caza mas rapido
-// no puede dar, se pierde la solucion de tiro, se pasa de largo y aparecen
-// los bucles de 360 grados. No hay que "seguir el morro" del blanco: hay que
-// CORTAR LA CURVA. Y como somos mas rapidos, tampoco hace falta predecir mucho:
-// el blanco no puede escapar por velocidad, solo hay que llegar rapido a un
-// sitio desde el que ponerse a su cola con calma.
+// -- Por que se rehizo (velocidad + lado) ------------------------------------
+// Side lock / corridor evita cruzar el eje, pero el bug dominante era
+// VELOCIDAD: Transit pedia Vmax (~500 kt) con blanco a ~200 kt y rng<5 km
+// (cierre racionado sobre dRp + FormationCap suelto). El director clasifica
+// situacion (HeadOn / SternFar / SternNear / BeamFar / Overtaking) y CapDesiredGs
+// impone techo = Vtgt + cierre acotado por rango: cerca NUNCA Vmax.
 //
 // -- Dos etapas, con logicas completamente distintas -----------------------------
 //  1. TRANSITO (InterceptRegime.Transit). El objetivo NO es el avion, sino el
 //     PUNTO DE REUNION RP: un punto virtual 3 km directamente detras del blanco,
-//     sobre su vector de cola. Se vuela a la maxima velocidad y se apunta al RP
-//     PREDICHO en el instante de llegada (persecucion con adelanto: punto fijo
-//     t = |RP(t) - propio| / v, con el blanco predicho en arco si gira), lo que
-//     corta la curva en vez de perseguir el RP instantaneo. Si la ruta directa
-//     pasaria a menos de DetourEnterM del blanco (estamos por delante o de
-//     costado), se rodea por un punto de paso lateral y algo atrasado: nunca
-//     se cruza por delante ni por encima. El cierre se raciona con la
-//     deceleracion real para llegar al RP con poca velocidad relativa.
-//  2. FORMACION (Formation / Station). Ya detras y alineados: no se persigue
-//     un punto, se COPIA la velocidad del blanco mas un cierre suave y
-//     limitado hacia la estacion (perfil de frenado, tope FormationCapMps),
-//     con la correccion lateral y vertical proporcional y la tasa de giro del
-//     blanco como feed-forward (termino de blanco maniobrante del paper de
-//     Sheridan et al. 2013, APGL). Si se pierde la formacion (lejos, o por
-//     delante de la estacion) se vuelve a Transito.
+//     sobre su vector de cola. Se apunta al RP PREDICHO (persecucion con
+//     adelanto). Head-on/beam: pasillo lateral. Velocidad por situacion
+//     (HeadOnMatch / SternCapture), no sprint ciego.
+//  2. FORMACION (Formation / Station). Ya detras y alineados: se COPIA la
+//     velocidad del blanco mas un cierre suave y limitado hacia la estacion
+//     (perfil de frenado, tope MaxClosure), con correccion lateral/vertical y
+//     feed-forward del giro del blanco. Si se pierde la formacion se vuelve
+//     a Transito. SternNear en Transit se entrega a esta ley sin esperar al RP.
 public enum InterceptRegime
 {
     // Volando al punto de reunion detras del blanco (o rodeandolo para llegar).
@@ -94,6 +84,10 @@ public sealed record PlannerMemory
     // Rodeo activo (con histeresis) y lado (+1 derecha del blanco).
     public bool Detour { get; init; }
     public int Side { get; init; } = 1;
+    // Lado de engagement comprometido: una vez SideLocked, ApproachSide no
+    // cambia hasta Abort/Lost. Side se mantiene alineado con ApproachSide.
+    public bool SideLocked { get; init; }
+    public int ApproachSide { get; init; } = 1;
     // Ultimo comando EMITIDO (rumbo absoluto en rad, su tasa en rad/s y la
     // velocidad de suelo): el comando de salida se suaviza contra el anterior.
     public bool HasOut { get; init; }
@@ -180,6 +174,14 @@ public sealed record InterceptPlan
     // Distancia al punto de reunion (RP) ahora mismo y etapa activa.
     public double RendezvousRangeM { get; init; }
     public bool Detouring { get; init; }
+    // Pasillo de engagement: +1 derecha del blanco, -1 izquierda. SideLocked
+    // indica que ya no se puede cambiar (ver InterceptEngagement).
+    public int ApproachSide { get; init; } = 1;
+    public bool SideLocked { get; init; }
+    // Corredor lateral activo (Cola alta / estacion en eje).
+    public bool Corridor { get; init; }
+    // Situacion del director (elige modulo de ley).
+    public InterceptSituation Situation { get; init; }
     // El blanco va mas lento que nuestro minimo seguro: no se puede acompanar
     // a su velocidad; el llamante debe serpentear (WeaveDeg = acos(vt/Vmin)).
     public bool TooSlow { get; init; }
@@ -289,9 +291,10 @@ public static class InterceptPlanner
     private const double OutRateFactor = 1.2;            // tasa maxima del comando / tasa de giro posible
     private const double OutLeadMaxRad = 60.0 * Deg;     // cuanto puede adelantarse el comando al rumbo real
     private const double OutSpeedSlewMps2 = 9.0;         // pendiente maxima del comando de velocidad (~17 kt/s)
+    private const double OutSpeedSlewNearMps2 = 22.0;    // bajada rapida cerca (<8 km) para matar Vmax
     private const double TurnGain = 0.7;                 // 1/s: tasa de giro por rad de error
 
-    private const int ModeRp = 0, ModeWaypoint = 1, ModeStation = 2;
+    private const int ModeRp = 0, ModeWaypoint = 1, ModeStation = 2, ModeCorridor = 3;
 
     private struct OwnS { public double E, N, U, Psi, V, Vy; }
     private struct TgtS { public double E, N, U, Track, V, Vy, Omega, HeadOff; }
@@ -300,6 +303,8 @@ public static class InterceptPlanner
     {
         public OwnLimits L;
         public double Aft, Right, Up, Behind, Zone;
+        // Ancho del pasillo lateral (0 = RP en eje). Se reduce al quedar detras.
+        public double CorridorW;
     }
 
     private struct Cmd
@@ -308,6 +313,7 @@ public static class InterceptPlanner
         public double AimE, AimN, AimU;
         public InterceptRegime Regime;
         public bool Detour;
+        public bool Corridor;
         public double TInt, MinSep;
         public (double E, double N, double U)? Waypoint;
     }
@@ -353,10 +359,35 @@ public static class InterceptPlanner
         GetRel(own, tgt, x, out double a, out double c, out double dh, out double dU);
         double h = tgt.Track + tgt.HeadOff;
         double fE = Math.Sin(h), fN = Math.Cos(h);
+        double rE = Math.Cos(h), rN = -Math.Sin(h);
+        // Misma proyeccion pero respecto al AVION blanco (engagement): el lado
+        // se decide aqui, no respecto a la estacion (que en Cola alta esta en
+        // el eje y hace que sign(c) bascule al cruzar).
+        double alongT = (own.E - tgt.E) * fE + (own.N - tgt.N) * fN;
+        double crossT = (own.E - tgt.E) * rE + (own.N - tgt.N) * rN;
+        double rangeT = Math.Sqrt((own.E - tgt.E) * (own.E - tgt.E) + (own.N - tgt.N) * (own.N - tgt.N));
+        bool sideLocked = mem.SideLocked;
+        int approachSide = InterceptEngagement.ChooseApproachSide(
+            crossT, sideLocked, mem.ApproachSide, x.Right);
+        if (!sideLocked && (rangeT <= InterceptEngagement.SideLockRangeM ||
+                            Math.Abs(crossT) >= InterceptEngagement.SidePreferM ||
+                            mem.Detour))
+            sideLocked = true;
+        InterceptSituation sit = InterceptEngagement.ClassifySituation(alongT, crossT, rangeT);
+        bool useCorridor = InterceptEngagement.NeedsCorridor(x.Right, alongT, crossT)
+                           || InterceptEngagement.ForceCorridor(sit, alongT);
+        // Al quedar detras, el pasillo se estrecha hacia el eje para poder
+        // entregar a Formacion sin quedarse orbitando a CorridorSideM.
+        double sternBlend = Math.Clamp((-alongT - 400.0) / 2600.0, 0.0, 1.0);
+        x.CorridorW = useCorridor
+            ? InterceptEngagement.CorridorSideM * (1.0 - sternBlend)
+            : 0.0;
+
         double vtE = tgt.V * Math.Sin(tgt.Track), vtN = tgt.V * Math.Cos(tgt.Track);
         // Cierre a lo largo del eje del blanco (>0: nos acercamos desde atras).
         double vRelAxis = (own.V * Math.Sin(own.Psi) - vtE) * fE + (own.V * Math.Cos(own.Psi) - vtN) * fN;
-        AimPoint(tgt, x, ModeRp, 1, 0.0, 0.0, out double rpE, out double rpN, out _);
+        int rpMode = x.CorridorW > 50.0 ? ModeCorridor : ModeRp;
+        AimPoint(tgt, x, rpMode, approachSide, 0.0, 0.0, out double rpE, out double rpN, out _);
         double rpTrk = tgt.Track - tgt.Omega * x.Behind / Math.Max(tgt.V, 20.0);
         double dRp = Math.Sqrt((own.E - rpE) * (own.E - rpE) + (own.N - rpN) * (own.N - rpN));
 
@@ -383,9 +414,16 @@ public static class InterceptPlanner
             stage = 0;
         }
 
-        Cmd c0 = stage == 0
-            ? Transit(own, tgt, x, mem, c, dRp, vtE, vtN)
-            : Formation(own, tgt, x, a, c, dh, dU, fE, fN, vtE, vtN, vRelAxis, mem);
+        // En Transit, si ya estamos en SternNear con cierre manejable, preferir
+        // la ley de formacion (mata el sprint a Vmax puesto detras a mano).
+        bool sternCapture = stage == 0 && sit == InterceptSituation.SternNear &&
+                            alongT < -400.0 && rangeT < InterceptEngagement.SternNearRangeM;
+        Cmd c0 = (stage == 0 && !sternCapture)
+            ? Transit(own, tgt, x, mem, approachSide, useCorridor, dRp, rangeT, sit)
+            : Formation(own, tgt, x, a, c, dh, dU, fE, fN, vtE, vtN, vRelAxis, mem, rangeT, sit);
+
+        // Tope duro de velocidad: cerca del blanco NUNCA Vmax.
+        c0.VCmd = InterceptEngagement.CapDesiredGs(c0.VCmd, tgt.V, rangeT, L, sit);
 
         double wMax = TurnRateMax(L, own.V);
 
@@ -406,7 +444,12 @@ public static class InterceptPlanner
         double leadNew = Math.Clamp(newLeadAbs - own.Psi, -OutLeadMaxRad, OutLeadMaxRad);
         double outTrack = own.Psi + leadNew;
         double vPrev = mem.HasOut ? mem.OutGsMps : own.V;
-        double vGs = vPrev + Math.Clamp(c0.VCmd - vPrev, -OutSpeedSlewMps2 * dtc, OutSpeedSlewMps2 * dtc);
+        // Cerca: bajar de Vmax a Vtgt+cierre tiene que ser rapido; si no, el
+        // slewing deja DesiredGs alto varios segundos y se pasa igual.
+        double speedSlew = OutSpeedSlewMps2;
+        if (c0.VCmd < vPrev - 1.0 && rangeT < InterceptEngagement.SpeedMatchRangeM)
+            speedSlew = OutSpeedSlewNearMps2;
+        double vGs = vPrev + Math.Clamp(c0.VCmd - vPrev, -speedSlew * dtc, OutSpeedSlewMps2 * dtc);
         double psiDot = Math.Clamp(TurnGain * leadNew + c0.PsiDotFF, -wMax, wMax);
         double bank = Math.Atan(own.V * psiDot / G) * Rad2Deg;
         double peakG = Math.Sqrt(1.0 + Math.Pow(own.V * psiDot / G, 2.0));
@@ -470,13 +513,19 @@ public static class InterceptPlanner
             PredictedPeakG = peakG,
             RendezvousRangeM = dRp,
             Detouring = c0.Detour,
+            ApproachSide = approachSide,
+            SideLocked = sideLocked,
+            Corridor = c0.Corridor,
+            Situation = sit,
             TooSlow = tooSlow,
             WeaveDeg = weave,
             Memory = new PlannerMemory
             {
                 Stage = stage,
                 Detour = c0.Detour,
-                Side = c0.Detour ? mem.Side : (c >= 0.0 ? 1 : -1),
+                Side = approachSide,
+                SideLocked = sideLocked,
+                ApproachSide = approachSide,
                 HasOut = true, OutTrackRad = outTrack, OutRateRadPerS = rate, OutGsMps = vGs,
             },
         };
@@ -533,28 +582,46 @@ public static class InterceptPlanner
     // ==========================================================================
     // Etapa 1: transito al punto de reunion
     // ==========================================================================
-    private static Cmd Transit(OwnS o, TgtS t, Ctx x, PlannerMemory mem, double cNow,
-                               double dRp, double vtE, double vtN)
+    private static Cmd Transit(OwnS o, TgtS t, Ctx x, PlannerMemory mem, int approachSide,
+                               bool useCorridor, double dRp,
+                               double rangeT, InterceptSituation sit)
     {
         OwnLimits L = x.L;
         var cmd = new Cmd { Regime = InterceptRegime.Transit, MinSep = double.NaN };
 
         // Cierre contra el RP REAL, que se mueve (con el blanco girando barre
         // Behind*omega m/s): velocidad del RP por diferencias finitas.
-        AimPoint(t, x, ModeRp, 1, 0.0, 0.0, out double rp0E, out double rp0N, out double rp0U);
-        AimPoint(t, x, ModeRp, 1, 1.0, 0.0, out double rp1E, out double rp1N, out _);
+        AimPoint(t, x, ModeRp, approachSide, 0.0, 0.0, out double rp0E, out double rp0N, out _);
+        AimPoint(t, x, ModeRp, approachSide, 1.0, 0.0, out double rp1E, out double rp1N, out _);
         double vrE = rp1E - rp0E, vrN = rp1N - rp0N;
         double lx = rp0E - o.E, ly = rp0N - o.N;
         double ld = Math.Max(Math.Sqrt(lx * lx + ly * ly), 1.0);
         double w0 = ((o.V * Math.Sin(o.Psi) - vrE) * lx + (o.V * Math.Cos(o.Psi) - vrN) * ly) / ld;
         double vRpMag = Math.Sqrt(vrE * vrE + vrN * vrN);
-        // Velocidad: cierre maximo desde el que aun se puede frenar hasta llegar
-        // al RP con FormationCapMps de cierre (el que admite la etapa 2).
+        // Velocidad por situacion: HeadOn iguala; Stern/Beam = tgt + cierre
+        // racionado. El tope duro CapDesiredGs (sobre rangeT, no dRp) evita
+        // el sprint a Vmax a <5-8 km con blanco lento.
         double dBrake = Math.Max(dRp - TransitDoneM - Math.Max(w0, 0.0) * L.SpeedLagSec, 0.0);
-        double aDec = BrakeF * Decel(L, 0.5 * (o.V + t.V));
         double vTop = TurnFitVmax(L, t);
-        double w = Math.Min(Math.Sqrt(2.0 * aDec * dBrake) + FormationCapMps, vTop - vRpMag);
-        double vCmd = Math.Clamp(vRpMag + Math.Max(w, 0.0), L.VminGsMps, vTop);
+        double vCmd = sit switch
+        {
+            InterceptSituation.HeadOn =>
+                InterceptEngagement.HeadOnMatchGs(t.V, rangeT, L),
+            InterceptSituation.Overtaking =>
+                InterceptEngagement.CapDesiredGs(t.V - 20.0, t.V, rangeT, L, sit),
+            _ => InterceptEngagement.SternCaptureGs(t.V, rangeT, dBrake, o.V, L, sit),
+        };
+        // Lejos y no head-on: se puede usar el margen hasta vTop si el techo
+        // de situacion lo permite (CapDesiredGs ya lo corta cerca).
+        if ((sit is InterceptSituation.SternFar or InterceptSituation.BeamFar) &&
+            rangeT >= InterceptEngagement.SpeedMatchRangeM)
+        {
+            double aDec = BrakeF * Decel(L, 0.5 * (o.V + t.V));
+            double wFar = Math.Min(Math.Sqrt(2.0 * aDec * dBrake),
+                                   InterceptEngagement.MaxClosureMps(rangeT, sit));
+            vCmd = Math.Clamp(vRpMag + Math.Max(wFar, 0.0), L.VminGsMps, vTop);
+            vCmd = InterceptEngagement.CapDesiredGs(vCmd, t.V, rangeT, L, sit);
+        }
         double vSolve = 0.5 * (o.V + vCmd);
 
         // Descentrado respecto al eje de cola del RP: se apunta mas atras.
@@ -566,14 +633,31 @@ public static class InterceptPlanner
         if (aR < -extra) extra *= Math.Clamp(-aR / Math.Max(extra, 1.0) - 1.0, 0.0, 1.0);   // ya detras del punto: sin retraso
 
         // Ruta directa al RP predicho; si pasa cerca del blanco, se rodea.
-        double tInt = SolveT(o, t, x, ModeRp, 1, extra, vSolve, out double aE, out double aN, out double aU);
+        // Cola alta / estacion en eje: se fuerza el pasillo lateral (ModeCorridor)
+        // con el lado bloqueado para no cruzar el eje del blanco.
+        double tInt = SolveT(o, t, x, ModeRp, approachSide, extra, vSolve, out double aE, out double aN, out double aU);
         double minSep = MinSepStraight(o, t, aE, aN, aU, vSolve, tInt);
         bool detour = mem.Detour ? minSep < DetourExitM : minSep < DetourEnterM;
         cmd.MinSep = minSep;
-        if (detour)
+        if (useCorridor)
         {
-            int side = mem.Detour ? mem.Side : (cNow >= 0.0 ? 1 : -1);
-            tInt = SolveT(o, t, x, ModeWaypoint, side, 0.0, vSolve, out aE, out aN, out aU);
+            tInt = SolveT(o, t, x, ModeCorridor, approachSide, extra, vSolve, out aE, out aN, out aU);
+            cmd.Waypoint = (aE, aN, aU);
+            cmd.Corridor = true;
+            // El corredor ya es un rodeo suave: no hace falta el waypoint de
+            // emergencia salvo que la recta al corredor tambien roce al blanco.
+            double corridorSep = MinSepStraight(o, t, aE, aN, aU, vSolve, tInt);
+            cmd.MinSep = corridorSep;
+            if (corridorSep < DetourEnterM)
+            {
+                tInt = SolveT(o, t, x, ModeWaypoint, approachSide, 0.0, vSolve, out aE, out aN, out aU);
+                cmd.Waypoint = (aE, aN, aU);
+                detour = true;
+            }
+        }
+        else if (detour)
+        {
+            tInt = SolveT(o, t, x, ModeWaypoint, approachSide, 0.0, vSolve, out aE, out aN, out aU);
             cmd.Waypoint = (aE, aN, aU);
         }
         cmd.Detour = detour;
@@ -591,7 +675,8 @@ public static class InterceptPlanner
     }
 
     // Punto al que se apunta en el instante tau: el RP (3 km detras sobre la
-    // cola del blanco predicho) o, en rodeo, un punto de paso lateral y atrasado.
+    // cola del blanco predicho), el RP con offset de corredor, o, en rodeo,
+    // un punto de paso lateral y atrasado.
     private static void AimPoint(TgtS t, Ctx x, int mode, int side, double tau, double extra,
                                  out double e, out double n, out double u)
     {
@@ -601,17 +686,24 @@ public static class InterceptPlanner
             StationAt(t, x, tau, out e, out n, out u);
             return;
         }
-        if (mode == ModeRp)
+        if (mode == ModeRp || mode == ModeCorridor)
         {
             // RP: punto de la TRAYECTORIA del blanco (Behind + extra) metros por
             // detras. Con el blanco recto es su vector de cola; girando, es el
             // punto que el blanco ya recorrio, que se mueve a SU velocidad (la
             // tangente a 3 km barreria hacia fuera a Behind*omega m/s mas).
-            Predict(t, tau - (x.Behind + extra) / Math.Max(t.V, 20.0), out e, out n, out _);
+            Predict(t, tau - (x.Behind + extra) / Math.Max(t.V, 20.0), out e, out n, out double trk);
+            if (mode == ModeCorridor)
+            {
+                double hh = trk + t.HeadOff;
+                double rrE = Math.Cos(hh), rrN = -Math.Sin(hh);
+                e += side * x.CorridorW * rrE;
+                n += side * x.CorridorW * rrN;
+            }
             return;
         }
-        Predict(t, tau, out double te, out double tn, out double trk);
-        double h = trk + t.HeadOff;
+        Predict(t, tau, out double te, out double tn, out double trkWp);
+        double h = trkWp + t.HeadOff;
         e = te - DetourBackM * Math.Sin(h) + side * DetourSideM * Math.Cos(h);
         n = tn - DetourBackM * Math.Cos(h) - side * DetourSideM * Math.Sin(h);
     }
@@ -665,7 +757,7 @@ public static class InterceptPlanner
     // ==========================================================================
     private static Cmd Formation(OwnS o, TgtS t, Ctx x, double a, double c, double dh, double dU,
                                  double fE, double fN, double vtE, double vtN, double vRel,
-                                 PlannerMemory mem)
+                                 PlannerMemory mem, double rangeT, InterceptSituation sit)
     {
         OwnLimits L = x.L;
         double rE = fN, rN = -fE;
@@ -691,7 +783,8 @@ public static class InterceptPlanner
             double wBack = Math.Min(DropBackBaseMps + DropBackGain * a, DropBackCapMps);
             cmd.HeadingCmd = t.Track + off;
             cmd.TurnErr = WrapPi(cmd.HeadingCmd - o.Psi);
-            cmd.VCmd = Math.Clamp(t.V - wBack, L.VminGsMps, TurnFitVmax(L, t));
+            cmd.VCmd = InterceptEngagement.CapDesiredGs(
+                t.V - wBack, t.V, rangeT, L, InterceptSituation.Overtaking);
             cmd.TInt = 0.0;
             cmd.AimE = sE; cmd.AimN = sN; cmd.AimU = sU;
             cmd.PsiDotFF = 0.0;
@@ -710,9 +803,17 @@ public static class InterceptPlanner
             double ld = Math.Max(Math.Sqrt(lx * lx + ly * ly), 1.0);
             double w0 = ((o.V * Math.Sin(o.Psi) - vtE) * lx + (o.V * Math.Cos(o.Psi) - vtN) * ly) / ld;
             double dBrk = Math.Max(ld - Math.Max(w0, 0.0) * L.SpeedLagSec, 0.0);
+            // CaptureLaw: cierre = min(freno, cap por rango). NUNCA FormationCap
+            // suelto + Vmax: el techo es Vtgt + MaxClosure(range).
+            InterceptSituation formSit = sit == InterceptSituation.SternFar
+                ? InterceptSituation.SternNear : sit;
+            if (formSit is not (InterceptSituation.SternNear or InterceptSituation.SternFar))
+                formSit = InterceptSituation.SternNear;
             double wF = Math.Min(Math.Sqrt(2.0 * BrakeF * Decel(L, 0.5 * (o.V + t.V)) * dBrk),
-                                 Math.Min(ld * FormationCloseGain, FormationCapMps));
-            double vCmdF = Math.Clamp(t.V + wF, L.VminGsMps, TurnFitVmax(L, t));
+                                 Math.Min(ld * FormationCloseGain,
+                                          InterceptEngagement.MaxClosureMps(rangeT, formSit)));
+            double vCmdF = InterceptEngagement.CapDesiredGs(
+                t.V + wF, t.V, rangeT, L, formSit);
             double tI = SolveT(o, t, x, ModeStation, 1, 0.0, 0.5 * (o.V + vCmdF),
                                out double aE, out double aN, out double aU);
             cmd.HeadingCmd = Math.Atan2(aE - o.E, aN - o.N);
@@ -726,18 +827,24 @@ public static class InterceptPlanner
 
         // Cierre a lo largo del eje: proporcional a la distancia, sin pedir mas
         // de lo que la deceleracion real (y el retardo) permiten frenar en lo que
-        // queda, y con tope (FormationCapMps lejos, StationTrimMps encima).
+        // queda, y con tope bajo (StationTrim / MaxClosure).
         double dA = -a;
         double moving = dA >= 0.0 ? Math.Max(vRel, 0.0) : Math.Max(-vRel, 0.0);
         double dEff = Math.Max(Math.Abs(dA) - moving * L.SpeedLagSec, 0.0);
         double wBrake = Math.Sqrt(2.0 * BrakeF * Decel(L, 0.5 * (o.V + t.V)) * dEff);
-        double cap = cmd.Regime == InterceptRegime.Station ? StationTrimMps : FormationCapMps;
+        double cap = cmd.Regime == InterceptRegime.Station
+            ? StationTrimMps
+            : Math.Min(FormationCapMps, InterceptEngagement.MaxClosureMps(rangeT, InterceptSituation.SternNear));
         double wa = Math.Clamp(Math.Sign(dA) * Math.Min(Math.Abs(dA) * AlongGain, wBrake), -cap, cap);
         double wc = Math.Clamp(-c * CrossGain, -cap * 0.7, cap * 0.7);
 
         double wE = wa * fE + wc * rE, wN = wa * fN + wc * rN;
-        RelToOwn(vtE, vtN, wE, wN, L.VminGsMps, L.VmaxGsMps, fE, fN, out double ownE, out double ownN);
-        cmd.VCmd = Math.Sqrt(ownE * ownE + ownN * ownN);
+        // Techo de |v| = Vtgt + cierre de situacion (no Vmax del avion).
+        double vCeil = Math.Min(L.VmaxGsMps,
+            t.V + InterceptEngagement.MaxClosureMps(rangeT, InterceptSituation.SternNear));
+        RelToOwn(vtE, vtN, wE, wN, L.VminGsMps, vCeil, fE, fN, out double ownE, out double ownN);
+        cmd.VCmd = InterceptEngagement.CapDesiredGs(
+            Math.Sqrt(ownE * ownE + ownN * ownN), t.V, rangeT, L, InterceptSituation.SternNear);
         cmd.HeadingCmd = cmd.VCmd < 1e-3 ? o.Psi : Math.Atan2(ownE, ownN);
         cmd.TurnErr = ForcedSideErr(WrapPi(cmd.HeadingCmd - o.Psi), mem);
         cmd.AimE = sE; cmd.AimN = sN; cmd.AimU = sU;

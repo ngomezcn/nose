@@ -98,22 +98,22 @@
             <Border Grid.Column="0" Background="{StaticResource ActivityBarBg}"
                     BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,0,1,0">
                 <StackPanel>
+                    <ToggleButton x:Name="AircraftTab" Style="{StaticResource ActivityToggle}"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE8F1;" IsChecked="True"
+                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
+                                  ToolTip="Aviones: elegir foco y camara"/>
                     <ToggleButton x:Name="TakeoffTab" Style="{StaticResource ActivityToggle}"
-                                  FontFamily="Segoe MDL2 Assets" Content="&#xE709;" IsChecked="True"
+                                  FontFamily="Segoe MDL2 Assets" Content="&#xE709;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
                                   ToolTip="Despegue"/>
                     <ToggleButton x:Name="ActionsTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE8FD;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
                                   ToolTip="Acciones"/>
-                    <ToggleButton x:Name="AircraftTab" Style="{StaticResource ActivityToggle}"
-                                  FontFamily="Segoe MDL2 Assets" Content="&#xE8F1;"
-                                  Checked="OnLeftViewChanged" Click="OnLeftViewClick"
-                                  ToolTip="Aviones de la partida"/>
                     <ToggleButton x:Name="InterceptTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE945;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
-                                  ToolTip="Interceptar: ir a por otro avion y mantenerse en formacion con el"/>
+                                  ToolTip="Interceptar: ir a por otro avion (blanco) y mantenerse en formacion con el. El foco de control se elige en Aviones."/>
                     <ToggleButton x:Name="GraphicsTab" Style="{StaticResource ActivityToggle}"
                                   FontFamily="Segoe MDL2 Assets" Content="&#xE891;"
                                   Checked="OnLeftViewChanged" Click="OnLeftViewClick"
@@ -133,7 +133,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- === Panel izquierdo: una vista a la vez (despegue / acciones / aviones) === -->
+            <!-- === Panel izquierdo: una vista a la vez (despegue / acciones / ...) === -->
             <Border Grid.Column="1" Background="{StaticResource SideBarBg}"
                     BorderBrush="{StaticResource ShellBorder}" BorderThickness="0,0,1,0">
                 <DockPanel>
@@ -152,16 +152,152 @@
                         </StackPanel>
                     </Border>
 
-                    <TextBlock x:Name="LeftPanelTitle" DockPanel.Dock="Top" Text="DESPEGUE"
-                               Margin="14,10,14,4"
+                    <TextBlock x:Name="LeftPanelTitle" DockPanel.Dock="Top" Text="AVIONES"
+                               Margin="14,10,14,2"
                                FontFamily="{StaticResource AICopilotFont}" FontSize="11"
                                Foreground="{StaticResource TextFaint}"/>
 
-                    <!-- Las tres vistas ocupan el mismo hueco; solo una Visible a la vez. -->
+                    <!-- Franja siempre visible: nave a la que van despegue / crucero / acciones. -->
+                    <Border DockPanel.Dock="Top" Margin="14,0,14,6" Padding="8,5"
+                            Background="{StaticResource InputBg}"
+                            BorderBrush="{StaticResource CyanText}" BorderThickness="1"
+                            ToolTip="GLOBAL = vista aerea y opciones de zona; un avion = despegue, crucero y acciones.">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="EN FOCO" Margin="0,0,10,0"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="10"
+                                       Foreground="{StaticResource CyanText}"
+                                       VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding FocusText}"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12.5"
+                                       Foreground="{StaticResource CyanText}"
+                                       VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Las vistas ocupan el mismo hueco; solo una Visible a la vez. -->
                     <Grid>
+                    <!-- Vista: roster global de aviones / foco / camara. -->
+                    <ScrollViewer x:Name="AircraftView" VerticalScrollBarVisibility="Auto"
+                                  Padding="14,4,14,14">
+                        <StackPanel>
+                            <TextBlock Text="AVIONES / FOCO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
+                            <TextBlock Text="GLOBAL = opciones de zona (graficos, reset, vista aerea). Un avion = ordenes de vuelo y caja negra."
+                                       TextWrapping="Wrap" Margin="0,0,0,6"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="11"
+                                       Foreground="{StaticResource TextFaint}"/>
+                            <TextBlock Text="{Binding AircraftEmptyHint}" TextWrapping="Wrap"
+                                       Margin="0,0,0,6"
+                                       FontFamily="{StaticResource AICopilotFont}" FontSize="12"
+                                       Foreground="{StaticResource TextFaint}"
+                                       Visibility="{Binding AircraftEmptyVisibility}"/>
+
+                            <ListBox x:Name="AircraftList" MaxHeight="420"
+                                     ItemsSource="{Binding AircraftEntries}"
+                                     SelectedItem="{Binding SelectedAircraft, Mode=TwoWay}"
+                                     Background="Transparent" BorderThickness="0" Padding="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     MouseDoubleClick="OnFocusAircraftClick"
+                                     ToolTip="Selecciona GLOBAL o un avion. Doble clic = poner en foco. 'Seguir con camara' solo en IA.">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <Ellipse Width="8" Height="8" Margin="0,0,8,0"
+                                                         VerticalAlignment="Center"
+                                                         Fill="{Binding StatusBrush}"/>
+                                                <TextBlock Text="FOCO"
+                                                           FontFamily="{StaticResource AICopilotFont}"
+                                                           FontSize="10" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource CyanText}"
+                                                           VerticalAlignment="Center"
+                                                           DockPanel.Dock="Right" Margin="8,0,0,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsFocused}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding RoleLabel}"
+                                                           FontFamily="{StaticResource AICopilotFont}"
+                                                           FontSize="10"
+                                                           Foreground="{StaticResource TextFaint}"
+                                                           VerticalAlignment="Center"
+                                                           DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontFamily="{StaticResource AICopilotFont}"
+                                                           FontSize="13"
+                                                           Foreground="{StaticResource TextPrimary}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Detail}" Margin="16,3,0,0"
+                                                       FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                                       Foreground="{StaticResource TextDim}"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                                <ListBox.ItemContainerStyle>
+                                    <Style TargetType="ListBoxItem">
+                                        <Setter Property="Margin" Value="0,1"/>
+                                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="ListBoxItem">
+                                                    <Border x:Name="Chrome"
+                                                            Background="{StaticResource InputBg}"
+                                                            BorderBrush="{StaticResource ShellBorder}"
+                                                            BorderThickness="1" Padding="8,6">
+                                                        <ContentPresenter/>
+                                                    </Border>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="Chrome" Property="Background"
+                                                                    Value="{StaticResource HoverBg}"/>
+                                                        </Trigger>
+                                                        <Trigger Property="IsSelected" Value="True">
+                                                            <Setter TargetName="Chrome" Property="Background"
+                                                                    Value="{StaticResource HoverBg}"/>
+                                                            <Setter TargetName="Chrome" Property="BorderBrush"
+                                                                    Value="{StaticResource CyanText}"/>
+                                                        </Trigger>
+                                                        <DataTrigger Binding="{Binding IsFocused}" Value="True">
+                                                            <Setter TargetName="Chrome" Property="BorderBrush"
+                                                                    Value="{StaticResource CyanText}"/>
+                                                        </DataTrigger>
+                                                    </ControlTemplate.Triggers>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </ListBox.ItemContainerStyle>
+                            </ListBox>
+
+                            <Button Style="{StaticResource AccentButton}" Content="Poner en foco"
+                                    Click="OnFocusAircraftClick" HorizontalAlignment="Stretch"
+                                    Margin="0,6,0,2"
+                                    ToolTip="GLOBAL: vista aerea + opciones de zona. Un avion: ordenes de despegue/crucero/acciones."/>
+                            <Button Style="{StaticResource AccentButton}" Content="Seguir con camara"
+                                    Click="OnFollowCameraClick" HorizontalAlignment="Stretch"
+                                    Margin="0,2"
+                                    ToolTip="Chase camara de X-Plane detras del avion IA seleccionado (no el local ni GLOBAL)."/>
+                            <Button Style="{StaticResource ToolButton}" Content="Soltar camara"
+                                    Click="OnReleaseCameraClick" HorizontalAlignment="Stretch"
+                                    Margin="0,2,0,2"
+                                    ToolTip="Devuelve el control de camara a X-Plane (tambien sale de la vista aerea)."/>
+                            <Button Style="{StaticResource AccentButton}" Content="Reset simulacion (LEBL)"
+                                    Click="OnResetSimClick" HorizontalAlignment="Stretch" Margin="0,10,0,2"
+                                    ToolTip="Accion global: F-14 en umbral LEBL 24L; A330 a FL210 en vuelo recto y nivelado."/>
+                        </StackPanel>
+                    </ScrollViewer>
+
                     <!-- Vista: estilo de despegue, secuencia y botones. -->
                     <ScrollViewer x:Name="TakeoffView" VerticalScrollBarVisibility="Auto"
-                                  Padding="14,4,14,14">
+                                  Padding="14,4,14,14" Visibility="Collapsed">
                         <StackPanel>
                             <TextBlock Text="ESTILO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>
 
@@ -203,7 +339,7 @@
                                     ToolTip="Corta lo que este en marcha y deja el avion recto y nivelado persiguiendo 300 kt. El motor sigue esa velocidad."/>
                             <Button Style="{StaticResource AccentButton}" Content="Reset simulacion (LEBL)"
                                     Click="OnResetSimClick" HorizontalAlignment="Stretch" Margin="0,10,0,2"
-                                    ToolTip="Te pone en umbral LEBL 24L mirando 246° y una Citation X a ~15 km en el aire, alejandose por el rumbo de pista. La IA la vuela X-Plane."/>
+                                    ToolTip="Accion global (no depende del avion en foco): F-14 en umbral LEBL 24L; A330 a FL210."/>
                         </StackPanel>
                     </ScrollViewer>
 
@@ -307,60 +443,7 @@
                         </StackPanel>
                     </ScrollViewer>
 
-                    <!-- Vista: aviones de la partida (este + otras IAs). -->
-                    <DockPanel x:Name="AircraftView" Visibility="Collapsed" Margin="0,0,0,0">
-                        <TextBlock DockPanel.Dock="Bottom" Text="{Binding AircraftEmptyHint}"
-                                   Margin="14,0,14,14" TextWrapping="Wrap"
-                                   FontFamily="{StaticResource AICopilotFont}" FontSize="12"
-                                   Foreground="{StaticResource TextFaint}"
-                                   Visibility="{Binding AircraftEmptyVisibility}"/>
-                        <ListBox ItemsSource="{Binding AircraftEntries}"
-                                 Background="Transparent" BorderThickness="0" Padding="8,4"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Padding="8,8" Margin="2,2"
-                                            Background="{StaticResource InputBg}"
-                                            BorderBrush="{StaticResource ShellBorder}" BorderThickness="1">
-                                        <StackPanel>
-                                            <DockPanel>
-                                                <Ellipse Width="8" Height="8" Margin="0,0,8,0"
-                                                         VerticalAlignment="Center"
-                                                         Fill="{Binding StatusBrush}"/>
-                                                <TextBlock Text="{Binding RoleLabel}"
-                                                           FontFamily="{StaticResource AICopilotFont}"
-                                                           FontSize="10"
-                                                           Foreground="{StaticResource TextFaint}"
-                                                           VerticalAlignment="Center"
-                                                           DockPanel.Dock="Right" Margin="8,0,0,0"/>
-                                                <TextBlock Text="{Binding Name}"
-                                                           FontFamily="{StaticResource AICopilotFont}"
-                                                           FontSize="13"
-                                                           Foreground="{StaticResource TextPrimary}"
-                                                           TextTrimming="CharacterEllipsis"/>
-                                            </DockPanel>
-                                            <TextBlock Text="{Binding Detail}" Margin="16,4,0,0"
-                                                       FontFamily="{StaticResource MonoFont}" FontSize="11"
-                                                       Foreground="{StaticResource TextDim}"
-                                                       TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </Border>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                            <ListBox.ItemContainerStyle>
-                                <Style TargetType="ListBoxItem">
-                                    <Setter Property="Padding" Value="0"/>
-                                    <Setter Property="Margin" Value="0"/>
-                                    <Setter Property="Background" Value="Transparent"/>
-                                    <Setter Property="BorderThickness" Value="0"/>
-                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                                    <Setter Property="Focusable" Value="False"/>
-                                </Style>
-                            </ListBox.ItemContainerStyle>
-                        </ListBox>
-                    </DockPanel>
-
-                    <!-- Vista: interceptar a otro avion de la partida.
+                    <!-- Vista: catalogo de maniobras.
                          El orden de arriba abajo es el de la decision: a quien,
                          donde me pongo, a que distancia, y solo entonces el
                          boton. El estado va el ultimo porque es lo que se mira
@@ -527,10 +610,10 @@
                     </ScrollViewer>
 
                     <!-- Vista: caja negra / log de datos crudo. Empezar/Detener
-                         controlan DataLogger.IsRecording; con grabacion activa
-                         se alimenta a ~10Hz desde ShellWindow.Refresh.
+                         controlan el DataLogger del avion EN FOCO; con grabacion
+                         activa Refresh alimenta a ~10Hz todos los que graben.
                          "Ver graficos" abre la pestana del viewport; "Borrar
-                         todo" vacia buffer UI + fichero en disco. -->
+                         todo" vacia buffer UI + fichero del avion en foco. -->
                     <DockPanel x:Name="DataLogView" Visibility="Collapsed">
                         <StackPanel DockPanel.Dock="Top" Margin="14,0,14,6">
                             <TextBlock Text="{Binding DataLogStatusText}"
@@ -541,23 +624,24 @@
                                 <Button x:Name="DataLogStartBtn" Style="{StaticResource AccentButton}"
                                         Content="Empezar a grabar" FontSize="12" Padding="10,4"
                                         Margin="0,0,6,0" Click="OnStartDataLogClick"
-                                        ToolTip="Empieza a registrar telemetria en CSV y graficos (~10 Hz)"/>
+                                        ToolTip="Empieza a registrar telemetria del avion EN FOCO (~10 Hz). Puedes cambiar de foco y grabar otra nave a la vez."/>
                                 <Button x:Name="DataLogStopBtn" Style="{StaticResource DangerButton}"
                                         Content="Detener" FontSize="12" Padding="10,4"
                                         Margin="0,0,6,0" IsEnabled="False"
                                         Click="OnStopDataLogClick"
-                                        ToolTip="Deja de grabar; conserva lo ya registrado"/>
+                                        ToolTip="Deja de grabar el avion EN FOCO; conserva lo ya registrado. Otras naves que graben siguen."/>
                                 <Button Style="{StaticResource ToolButton}" Content="Ver graficos"
                                         FontSize="12" Padding="8,2" Margin="0,0,6,0"
                                         Click="OnShowBlackBoxChartsClick"
-                                        ToolTip="Abre la pestana Caja negra en el viewport central"/>
+                                        ToolTip="Abre la pestana Caja negra en el viewport (graficos del avion EN FOCO)"/>
                                 <Button Style="{StaticResource ToolButton}" Content="Borrar todo"
-                                        FontSize="12" Padding="8,2" Click="OnClearDataLogClick"/>
+                                        FontSize="12" Padding="8,2" Click="OnClearDataLogClick"
+                                        ToolTip="Borra muestras y CSV del avion EN FOCO (no toca las demas naves)"/>
                             </StackPanel>
                             <TextBlock Text="{Binding DataLogFilePathText}" Margin="0,4,0,0"
                                        FontFamily="{StaticResource MonoFont}" FontSize="10"
                                        Foreground="{StaticResource TextFaint}" TextWrapping="Wrap"
-                                       ToolTip="Fichero en disco con el log completo (se recrea al pulsar Borrar todo)"/>
+                                       ToolTip="CSV del avion EN FOCO (se recrea al pulsar Borrar todo)"/>
                         </StackPanel>
                         <ListBox x:Name="DataLogList" ItemsSource="{Binding DataLogSamples}"
                                  Background="Transparent" BorderThickness="0" Padding="10,0,10,10"
@@ -874,12 +958,6 @@
                                           Margin="0,2"
                                           Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
                                           ToolTip="Predice donde estara el avion en ~1.5 s (integra velocidad+aceleracion). Sale 2.5 m por delante del CG; el horizonte se alarga/acorta con la acel. longitudinal"/>
-                            <ToggleButton x:Name="GfxInterceptPathToggle" Style="{StaticResource ToolToggle}"
-                                          Content="Ruta de interceptacion" IsChecked="False"
-                                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                          Margin="0,2"
-                                          Checked="OnGraphicsChanged" Unchecked="OnGraphicsChanged"
-                                          ToolTip="Linea cian en el mundo 3D desde tu avion hasta el punto de estacion siguiendo el camino que el piloto automatico planea para interceptar; se actualiza mientras el blanco se mueve. Solo con interceptacion activa"/>
 
                             <Button Style="{StaticResource ToolButton}" Content="Restablecer graficos"
                                     Click="OnResetGraphicsClick" HorizontalAlignment="Stretch" Margin="0,14,0,2"
@@ -1097,9 +1175,16 @@
             <Border Grid.Column="5" Background="{StaticResource SideBarBg}"
                     BorderBrush="{StaticResource ShellBorder}" BorderThickness="1,0,0,0">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="TELEMETRIA" Margin="14,10,14,4"
-                               FontFamily="{StaticResource AICopilotFont}" FontSize="11"
-                               Foreground="{StaticResource TextFaint}"/>
+                    <StackPanel DockPanel.Dock="Top" Margin="14,10,14,4">
+                        <TextBlock Text="TELEMETRIA"
+                                   FontFamily="{StaticResource AICopilotFont}" FontSize="11"
+                                   Foreground="{StaticResource TextFaint}"/>
+                        <TextBlock Text="{Binding FocusText}" Margin="0,2,0,0"
+                                   FontFamily="{StaticResource AICopilotFont}" FontSize="11"
+                                   Foreground="{StaticResource CyanText}"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="Telemetria del avion EN FOCO (se elige en Aviones)."/>
+                    </StackPanel>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="14,4,14,14">
                         <StackPanel>
                             <TextBlock Text="MODO" Style="{StaticResource SectionHeader}" Margin="0,4,0,6"/>

@@ -35,6 +35,7 @@ public partial class App : Application
     private TakeoffSequence? _sequence;
     private ManeuverSequence? _maneuvers;
     private InterceptSequence? _intercept;
+    private AiStraightHold? _aiHold;
     private FlightDirector? _director;
 
     private ShellWindow? _shell;
@@ -67,7 +68,10 @@ public partial class App : Application
         // en formacion con el. Comparte overrides con las otras dos, asi que
         // el director corta la que este en marcha antes de arrancar cualquiera.
         _intercept = new InterceptSequence(_controls, _datarefs, _tuning);
-        _director = new FlightDirector(_sequence, _maneuvers, _intercept, _client);
+        // Hold cinematico de una IA (recto y nivelado). Corre en paralelo
+        // con las secuencias del ownship: no usa AircraftControls.
+        _aiHold = new AiStraightHold(_client, _datarefs);
+        _director = new FlightDirector(_sequence, _maneuvers, _intercept, _aiHold, _client);
 
         // Una sola ventana: el shell lleva dentro los paneles que antes eran
         // dos overlays flotantes (telemetria y log) y, en el hueco central,
@@ -78,6 +82,11 @@ public partial class App : Application
         _sequence.ActionLogged += line => _shell.Append(line, markBlackBox: true);
         _maneuvers.ActionLogged += line => _shell.Append(line, markBlackBox: true);
         _intercept.ActionLogged += line => _shell.Append(line, markBlackBox: true);
+        // Marcas del hold van a la caja negra de esa IA (no al ownship).
+        _aiHold.ActionLogged += line => {
+            int idx = _aiHold.XplmIndex;
+            _shell.Append(line, markBlackBox: true, blackBoxIndex: idx >= 1 ? idx : 0);
+        };
         _client.ConnectorEvent += (kind, text) => {
             _shell.Append(kind == EventKind.Info ? text : $"[{kind}] {text}");
             // X-Plane resetea sim/joystick/eq_pfc_yoke a 0 al recargar el
@@ -87,7 +96,8 @@ public partial class App : Application
 
             // Tras PlaceScenario el aeropuerto/avion se recargan y pisan
             // mandos: reaplicamos idle en cada AircraftReloaded pendiente y
-            // cerramos el pendiente al llegar ScenarioReady.
+            // cerramos el pendiente al llegar ScenarioReady. Luego, si el
+            // reset pidio crucero de IA, arrancamos el A330 en recto/nivelado.
             if (_director.PendingGroundIdle &&
                 (kind == EventKind.AircraftReloaded || kind == EventKind.ScenarioReady))
             {
@@ -96,7 +106,14 @@ public partial class App : Application
                 {
                     _director.ClearPendingGroundIdle();
                     _shell.Append("Idle de suelo: gases abajo, flaps abajo, freno puesto, tren abajo.");
+                    if (_director.PendingAiCruise && _director.TryStartPendingAiCruise())
+                        _shell.Append("Airbus: vuelo recto y nivelado");
+                    _shell.ResumeGlobalCameraIfFocused();
                 }
+            }
+            else if (kind == EventKind.ScenarioReady)
+            {
+                _shell.ResumeGlobalCameraIfFocused();
             }
         };
 
@@ -118,17 +135,20 @@ public partial class App : Application
             _sequence.OnConnectionLost();
             _maneuvers.OnConnectionLost();
             _intercept.OnConnectionLost();
+            _aiHold.OnConnectionLost();
         };
 
         // El lazo de control: un tick por frame de simulador, con el dt que
         // reporta el propio X-Plane. TakeoffSequence y ManeuverSequence son
         // mutuamente excluyentes -- el director aborta la otra antes de
         // arrancar cualquiera de las dos -- asi que llamarlas siempre a
-        // ambas es seguro: la que esta en Idle no hace nada.
+        // ambas es seguro: la que esta en Idle no hace nada. AiStraightHold
+        // puede correr a la vez (IA distinta, Holds cinematicos).
         _client.TelemetryReceived += frame => {
             _sequence.Update(frame.Dt);
             _maneuvers.Update(frame.Dt);
             _intercept.Update(frame.Dt);
+            _aiHold.Update(frame.Dt);
             _director.Tick();
         };
 
@@ -148,6 +168,7 @@ public partial class App : Application
         // es instantaneo y no depende de que el otro lado reaccione.
         if (_sequence?.IsRunning == true || _maneuvers?.IsRunning == true ||
             _intercept?.IsRunning == true) _controls?.ReleaseAllOverrides();
+        if (_aiHold?.IsRunning == true) _aiHold.Abort();
         _client?.Dispose();
         base.OnExit(e);
     }
