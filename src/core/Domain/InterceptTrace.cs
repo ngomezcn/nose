@@ -31,7 +31,7 @@ public sealed class InterceptTrace : IDisposable
             _w = new StreamWriter(Path, false, new UTF8Encoding(false)) { AutoFlush = true };
             _w.WriteLine("t;stage;regime;phase;detour;side;sideLocked;corridor;ox;oy;oz;ovx;ovy;ovz;tx;ty;tz;tvx;tvy;tvz;" +
                          "thdg;tturn;range;rpRange;along;cross;up;ownIas;ownBank;ownG;" +
-                         "desTrk;filtTrk;desGs;desIas;iasCmd;vsCmd;bankCmd;minSep;eta");
+                         "desTrk;filtTrk;desGs;desIas;iasCmd;vsCmd;bankCmd;minSep;eta;agit;tacc");
         }
         catch { _w = null; }
         _t = 0;

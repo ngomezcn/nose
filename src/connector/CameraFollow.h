@@ -3,7 +3,9 @@
 // Aplica Op.CameraFollow via XPLMControlCamera:
 //   0     = soltar
 //   1..19 = chase orbitable sobre una IA (lee planeN_x/y/z/psi)
-//   255   = vista aerea que enmarca ownship + IAs activas
+//   255   = vista aerea adaptativa:
+//           1 nave estable → la sigue; 2+ → centroide
+//           ignora naves que teletransportan entre frames
 //
 // Controles chase (mismo gesto que la camara libre de X-Plane):
 //   clic derecho + arrastre = orbitar alrededor del avion
@@ -122,6 +124,12 @@ constexpr float kOverviewMaxElevDeg = 89.0f;
 constexpr float kOverviewSoloRadiusM = 350.0f;
 constexpr ULONGLONG kOverviewReframeMs = 350;
 constexpr float kOverviewPickRadiusPx = 40.0f;
+// Salto maximo entre frames para aceptar una nave en el encuadre (~Mach 7
+// a 60 Hz cabria; por encima es teletransporte / dataref corrupto).
+constexpr double kOverviewMaxJumpM = 500.0;
+// Suavizado del look-at / altura en modo auto (evita latigazos).
+constexpr float kOverviewLookSmoothPerSec = 6.0f;
+constexpr float kOverviewDistSmoothPerSec = 4.0f;
 
 inline bool g_ovManual = false;
 inline bool g_ovHasFrame = false;
@@ -140,6 +148,12 @@ inline int g_ovPressX = 0;
 inline int g_ovPressY = 0;
 inline bool g_ovPressMoved = false;
 inline ULONGLONG g_ovLastLeftClickMs = 0;
+// Ultima pose aceptada por indice XPLM (filtro de teletransporte).
+inline double g_ovPrevX[1 + kMaxAi] = {};
+inline double g_ovPrevY[1 + kMaxAi] = {};
+inline double g_ovPrevZ[1 + kMaxAi] = {};
+inline bool g_ovPrevValid[1 + kMaxAi] = {};
+inline int g_ovLastFramedCount = -1;
 
 // plugin.cpp registra SendEvent(OverviewFocus, idx).
 using OverviewFocusNotifyFn = void (*)(int xplmIndex);
@@ -183,6 +197,8 @@ inline void ClearState() {
     g_ovAzimDeg = 0.0f;
     g_ovPressMoved = false;
     g_ovLastLeftClickMs = 0;
+    g_ovLastFramedCount = -1;
+    for (int i = 0; i < 1 + kMaxAi; ++i) g_ovPrevValid[i] = false;
 }
 
 inline float Wrap360(float deg) {
@@ -376,17 +392,19 @@ inline bool ReadPlaneLocal(int xplmIndex, double& x, double& y, double& z) {
     return true;
 }
 
-// Centroide horizontal (y maxY) de ownship + IAs activas.
+// Centroide horizontal (y altura de mira) de ownship + IAs activas.
+// 1 nave → su CG; 2+ → centro de caja y maxY.
 inline bool ComputeActiveBounds(double& cx, double& cy, double& cz,
-                                double& maxY) {
+                                double& lookY) {
     if (!g_userX || !g_userY || !g_userZ) return false;
 
     double minX = XPLMGetDatad(g_userX);
     double maxX = minX;
     double minY = XPLMGetDatad(g_userY);
-    maxY = minY;
+    double maxY = minY;
     double minZ = XPLMGetDatad(g_userZ);
     double maxZ = minZ;
+    int n = 1;
 
     int total = 0, active = 0;
     XPLMCountAircraft(&total, &active, nullptr);
@@ -405,18 +423,27 @@ inline bool ComputeActiveBounds(double& cx, double& cy, double& cz,
         maxY = std::max(maxY, y);
         minZ = std::min(minZ, z);
         maxZ = std::max(maxZ, z);
+        ++n;
     }
 
-    cx = 0.5 * (minX + maxX);
-    cy = 0.5 * (minY + maxY);
-    cz = 0.5 * (minZ + maxZ);
+    if (n <= 1) {
+        cx = minX;
+        cy = minY;
+        cz = minZ;
+        lookY = minY;
+    } else {
+        cx = 0.5 * (minX + maxX);
+        cy = 0.5 * (minY + maxY);
+        cz = 0.5 * (minZ + maxZ);
+        lookY = maxY;
+    }
     return true;
 }
 
 // Fija el offset de paneo para que el look-at actual no salte al soltar track.
 inline void SyncPanFromLook() {
-    double cx = 0, cy = 0, cz = 0, maxY = 0;
-    if (!ComputeActiveBounds(cx, cy, cz, maxY)) {
+    double cx = 0, cy = 0, cz = 0, lookY = 0;
+    if (!ComputeActiveBounds(cx, cy, cz, lookY)) {
         g_ovPanX = 0.0;
         g_ovPanZ = 0.0;
         return;
@@ -424,7 +451,7 @@ inline void SyncPanFromLook() {
     g_ovPanX = g_ovLookX - cx;
     g_ovPanZ = g_ovLookZ - cz;
     (void)cy;
-    (void)maxY;
+    (void)lookY;
 }
 
 inline void MulMatVec(const float* m, float x, float y, float z, float w,
@@ -840,10 +867,34 @@ inline int OverviewCameraCallback(XPLMCameraPosition_t* outCameraPosition,
     double zs[1 + kMaxAi];
     int n = 0;
 
-    xs[n] = XPLMGetDatad(g_userX);
-    ys[n] = XPLMGetDatad(g_userY);
-    zs[n] = XPLMGetDatad(g_userZ);
-    ++n;
+    auto tryAdd = [&](int idx, double x, double y, double z) {
+        if (idx < 0 || idx > kMaxAi) return;
+        if (g_ovPrevValid[idx]) {
+            const double dx = x - g_ovPrevX[idx];
+            const double dy = y - g_ovPrevY[idx];
+            const double dz = z - g_ovPrevZ[idx];
+            const double jump = std::sqrt(dx * dx + dy * dy + dz * dz);
+            // Teletransporte: actualiza baseline pero no enmarca este frame
+            // (si se estabiliza alli, el siguiente frame ya entra).
+            if (jump > kOverviewMaxJumpM) {
+                g_ovPrevX[idx] = x;
+                g_ovPrevY[idx] = y;
+                g_ovPrevZ[idx] = z;
+                return;
+            }
+        }
+        g_ovPrevX[idx] = x;
+        g_ovPrevY[idx] = y;
+        g_ovPrevZ[idx] = z;
+        g_ovPrevValid[idx] = true;
+        xs[n] = x;
+        ys[n] = y;
+        zs[n] = z;
+        ++n;
+    };
+
+    tryAdd(0, XPLMGetDatad(g_userX), XPLMGetDatad(g_userY),
+           XPLMGetDatad(g_userZ));
 
     int total = 0, active = 0;
     XPLMCountAircraft(&total, &active, nullptr);
@@ -853,10 +904,30 @@ inline int OverviewCameraCallback(XPLMCameraPosition_t* outCameraPosition,
     for (int i = 1; i < active; ++i) {
         const int slot = i - 1;
         if (!g_aiX[slot] || !g_aiY[slot] || !g_aiZ[slot]) continue;
-        xs[n] = XPLMGetDatad(g_aiX[slot]);
-        ys[n] = XPLMGetDatad(g_aiY[slot]);
-        zs[n] = XPLMGetDatad(g_aiZ[slot]);
-        ++n;
+        tryAdd(i, XPLMGetDatad(g_aiX[slot]), XPLMGetDatad(g_aiY[slot]),
+               XPLMGetDatad(g_aiZ[slot]));
+    }
+
+    // Sin ninguna nave estable: mantiene el look-at actual.
+    if (n <= 0) {
+        g_ovHasFrame = true;
+        SyncInputWindowBounds();
+        PollDistanceKeys(FrameDt());
+        ApplyPendingZoom();
+        const float az = g_ovAzimDeg * kDeg2Rad;
+        const float el = g_ovElevDeg * kDeg2Rad;
+        const float cosEl = std::cos(el);
+        outCameraPosition->x = static_cast<float>(
+            g_ovLookX - g_ovDist * cosEl * std::sin(az));
+        outCameraPosition->y = static_cast<float>(
+            g_ovLookY + g_ovDist * std::sin(el));
+        outCameraPosition->z = static_cast<float>(
+            g_ovLookZ + g_ovDist * cosEl * std::cos(az));
+        outCameraPosition->pitch = -g_ovElevDeg;
+        outCameraPosition->heading = g_ovAzimDeg;
+        outCameraPosition->roll = 0.0f;
+        outCameraPosition->zoom = 1.0f;
+        return 1;
     }
 
     double minX = xs[0], maxX = xs[0];
@@ -871,12 +942,11 @@ inline int OverviewCameraCallback(XPLMCameraPosition_t* outCameraPosition,
         maxZ = std::max(maxZ, zs[i]);
     }
 
-    const double cx = 0.5 * (minX + maxX);
-    const double cy = 0.5 * (minY + maxY);
-    const double cz = 0.5 * (minZ + maxZ);
+    // Adaptativo: 1 nave estable → la sigue; 2+ → centroide de la caja.
+    const double cx = (n <= 1) ? xs[0] : 0.5 * (minX + maxX);
+    const double cz = (n <= 1) ? zs[0] : 0.5 * (minZ + maxZ);
+    const double lookY = (n <= 1) ? ys[0] : maxY;
 
-    // Radio horizontal desde el centroide de la caja (XZ); un solo avion
-    // usa un radio por defecto para no pegar la camara al CG.
     double radius = 0.0;
     for (int i = 0; i < n; ++i) {
         const double dx = xs[i] - cx;
@@ -886,12 +956,24 @@ inline int OverviewCameraCallback(XPLMCameraPosition_t* outCameraPosition,
     if (n <= 1 || radius < 1.0)
         radius = kOverviewSoloRadiusM;
 
-    // Altura para que el diametro quepa en FOV ~60°, mas margen y mitad
-    // del span vertical (aviones a cotas muy distintas).
-    const double spanY = maxY - minY;
+    const double spanY = (n <= 1) ? 0.0 : (maxY - minY);
     float height = static_cast<float>(
         kOverviewMargin * (radius / kOverviewFovHalfTan) + 0.5 * spanY);
     height = std::clamp(height, kOverviewMinHeightM, kOverviewMaxHeightM);
+
+    // Al pasar de 1↔varios solo resetea el paneo (no la orbita manual).
+    if (g_ovLastFramedCount >= 0 && g_ovLastFramedCount != n &&
+        !g_orbitDragging && g_ovTrackIndex < 0) {
+        g_ovPanX = 0.0;
+        g_ovPanZ = 0.0;
+        if (!g_ovManual) {
+            g_ovElevDeg = kOverviewElevDeg;
+            g_ovAzimDeg = 0.0f;
+        }
+    }
+    g_ovLastFramedCount = n;
+
+    const float dt = FrameDt();
 
     if (g_ovTrackIndex >= 0) {
         double tx = 0, ty = 0, tz = 0;
@@ -901,29 +983,41 @@ inline int OverviewCameraCallback(XPLMCameraPosition_t* outCameraPosition,
             g_ovLookZ = tz;
             g_ovManual = true;
         } else {
-            // El avion desaparecio: vuelve a libre sin mover el look-at.
             ClearOverviewTrack(true);
             SyncPanFromLook();
         }
     } else if (!g_ovManual) {
         g_ovPanX = 0.0;
         g_ovPanZ = 0.0;
-        g_ovLookX = cx;
-        g_ovLookZ = cz;
-        g_ovLookY = maxY;
-        g_ovDist = height;
+        const double targetX = cx;
+        const double targetZ = cz;
+        const double targetY = lookY;
+        if (!g_ovHasFrame) {
+            g_ovLookX = targetX;
+            g_ovLookZ = targetZ;
+            g_ovLookY = targetY;
+            g_ovDist = height;
+        } else {
+            const float aLook =
+                1.0f - std::exp(-kOverviewLookSmoothPerSec * dt);
+            const float aDist =
+                1.0f - std::exp(-kOverviewDistSmoothPerSec * dt);
+            g_ovLookX += (targetX - g_ovLookX) * aLook;
+            g_ovLookZ += (targetZ - g_ovLookZ) * aLook;
+            g_ovLookY += (targetY - g_ovLookY) * aLook;
+            g_ovDist += (height - g_ovDist) * aDist;
+        }
         g_ovElevDeg = kOverviewElevDeg;
         g_ovAzimDeg = 0.0f;
     } else {
-        // Libre manual: sigue el centroide + paneo relativo del usuario.
         g_ovLookX = cx + g_ovPanX;
         g_ovLookZ = cz + g_ovPanZ;
-        g_ovLookY = maxY;
+        g_ovLookY = lookY;
     }
     g_ovHasFrame = true;
 
     SyncInputWindowBounds();
-    PollDistanceKeys(FrameDt());
+    PollDistanceKeys(dt);
     ApplyPendingZoom();
 
     const float az = g_ovAzimDeg * kDeg2Rad;
@@ -940,7 +1034,6 @@ inline int OverviewCameraCallback(XPLMCameraPosition_t* outCameraPosition,
     outCameraPosition->heading = g_ovAzimDeg;
     outCameraPosition->roll = 0.0f;
     outCameraPosition->zoom = 1.0f;
-    (void)cy;
     return 1;
 }
 
@@ -1076,6 +1169,8 @@ inline bool StartOverview() {
     g_ovAzimDeg = 0.0f;
     g_ovPressMoved = false;
     g_ovLastLeftClickMs = 0;
+    g_ovLastFramedCount = -1;
+    for (int i = 0; i < 1 + kMaxAi; ++i) g_ovPrevValid[i] = false;
     SetInputWindowVisible(true);
 
     XPLMControlCamera(xplm_ControlCameraUntilViewChanges, OverviewCameraCallback,

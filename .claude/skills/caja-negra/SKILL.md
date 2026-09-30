@@ -95,6 +95,8 @@ Detalle de columnas y patrones → [reference.md](reference.md).
 | `Fase: … → …` | Cambio de fase (intercept / despegue) |
 | `Fin: …` | Completada, abortada, fin de grabación |
 | `AVISO: …` | Alivio de G, suelo AGL, etc. |
+| `Formacion agresiva: ACTIVADA/desactivada` | El detector `FormationAgility` (src/core/Domain) vio al blanco maniobrar (acelera, vira, sube/baja) y subio/bajo las ganancias de la formacion. Lleva `nivel`, aceleracion del blanco, giro y dVy. En `InterceptTrace.csv` las columnas `agit` (0..1) y `tacc` (m/s2) dan el nivel frame a frame. |
+| `Formacion: serpenteo de energia ACTIVADO/desactivado` | Adelantado al puesto, sin poder frenar mas (aerofrenos al tope) y lejos del blanco (>300 m): alarga el camino zigzagueando en vez de solo reducir velocidad. |
 | `Pausa: simulador` / `Reanudacion: simulador` | El simulador se congeló (pausa o `sim_speed` 0). Entre medias no hay muestras. `Hora` sigue en reloj de pared; el eje de los gráficos no cuenta ese tramo. |
 
 Ownship: marcas de takeoff/maneuver/intercept. IA: marcas de

@@ -100,7 +100,7 @@ public static class InterceptEngagement
         // caza iba a +30 kt y tardaba minutos en recorrer 5 km.
         double baseCap;
         if (r >= SpeedMatchRangeM)
-            baseCap = 140.0;                         // lejos: ~270 kt de cierre
+            baseCap = 160.0;                         // lejos: ~310 kt de cierre
         else if (r >= SpeedHardRangeM)
         {
             // 8 km → 115, 5 km → 80

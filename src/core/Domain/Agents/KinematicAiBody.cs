@@ -25,9 +25,8 @@ namespace AICopilotCore.Domain.Agents;
 // el valor actual NO lo evita (un Hold sobre un id ya activo no recaptura
 // `previous`). Por eso se suelta cada Hold y, DESPUES, se escribe la pose
 // actual con SetMany (pisa el valor restaurado en el mismo tick) y por ultimo
-// ReleaseAiControl(idx). Ojo: X-Plane no reactiva la IA nativa de un solo
-// avion; solo lo hace cuando se vacia el conjunto de aviones tomados, asi que
-// el avion suelto sigue su ultimo vector de velocidad hasta entonces.
+// ReleaseAiControl(idx). El connector reactiva la IA nativa de ese avion
+// (ReleasePlanes + re-Acquire de los que sigan tomados).
 //
 // Tren: se escribe planeN_gear_deploy (existe en Datarefs.OtherGearRatio).
 // Flaps y aerofrenos son solo estado interno (afectan a sustentacion/
@@ -274,8 +273,25 @@ public sealed class KinematicAiBody : IAircraftBody
         _holding = false;
         _mode = BodyMode.Observing;
         _wantSim = false;
-        ActionLogged?.Invoke($"IA {XplmIndex}: control cinematico soltado en la pose actual " +
-                             "(X-Plane no reactiva la IA nativa hasta vaciarse el conjunto de tomadas)");
+        ActionLogged?.Invoke($"IA {XplmIndex}: control cinematico soltado; " +
+                             "IA nativa de X-Plane reactivada");
+    }
+
+    // Aborta el modo cinematico (si estaba) y pide ReleaseAiControl aunque solo
+    // estuviera Observing/Adoptado: X-Plane recupera la IA nativa de este avion.
+    public void ReturnToXPlaneAi()
+    {
+        lock (_gate)
+        {
+            if (_mode == BodyMode.Simulating)
+            {
+                Release();
+                return;
+            }
+            _wantSim = false;
+            _c.ReleaseAiControl(XplmIndex);
+            ActionLogged?.Invoke($"IA {XplmIndex}: control devuelto a la IA nativa de X-Plane");
+        }
     }
 
     // --- IFlightActuators ---------------------------------------------------

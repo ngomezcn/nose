@@ -111,6 +111,9 @@ public sealed class InterceptSequence
     // PlanPeriodSec (cada llamada simula decenas de candidatos por delante) y
     // entre llamadas se reutiliza el ultimo plan.
     private readonly TurnRateEstimator _turnEst = new();
+    // Mide cuanto se mueve el blanco: de ello depende lo viva que es la formacion.
+    private readonly FormationAgility _agility = new();
+    private double _agilEff;
     private bool _insideSafety;
     private readonly SlewLimiter _iasCmdRamp = new(IasCmdRateKtPerSec);
     private PlannerMemory? _plannerMem;
@@ -144,6 +147,9 @@ public sealed class InterceptSequence
 
     // Serpenteo: +1 = desviado a la derecha de la linea del blanco.
     private int _weaveSign = 1;
+    private bool _energyWeave;
+    // Puesto resuelto del frame (atras, derecha): para pasar de ejes del puesto a ejes del blanco.
+    private float _stationAft, _stationRight;
     private float _weaveDeg;
     // Velocidad de avance pedida sobre la linea del blanco (kt de suelo). La
     // calcula la ley de velocidad y la consume el serpenteo.
@@ -294,8 +300,11 @@ public sealed class InterceptSequence
             _flapSent = _speedbrakeSent = float.NaN;
             _flapsAreOurs = false;
             _weaveSign = 1;
+            _energyWeave = false;
             _weaveDeg = 0f;
             _turnEst.Reset();
+            _agility.Reset();
+            _agilEff = 0.0;
             _plannerMem = null;
             _trace.Begin();
             _plan = null;
@@ -473,6 +482,8 @@ public sealed class InterceptSequence
         _plan = null;
         TargetState = TargetAirState.Unknown;
         _weaveDeg = 0f;
+        _energyWeave = false;
+        _agilEff = 0.0;
         _flapCmd = _speedbrakeCmd = 0f;
         _flapsAreOurs = false;
     }
@@ -582,6 +593,7 @@ public sealed class InterceptSequence
 
         // --- Geometria ------------------------------------------------------
         (float aft, float right, float up) = _tuning.ResolveStation();
+        _stationAft = aft; _stationRight = right;
         TrackStationChange((aft, right, up), dt);
         // Blanco parado: el puesto de formacion se eleva a ~2 km para que el
         // interceptor no intente "formar" a ras de pista. El offset del
@@ -612,10 +624,15 @@ public sealed class InterceptSequence
 
         // --- Plan de aproximacion -----------------------------------------
         double tgtTurnDegS = _turnEst.Update(t.TrackDeg, dt, t.GroundSpeedMps);
+        UpdateAgility(dt, t, tgtTurnDegS, now);
+        // Solo cuenta cerca del blanco: en persecucion a km, acelerar la rampa de
+        // alabeo solo meteria G (ver InterceptBankRampDegPerSec).
+        double agil = _agility.Level * Math.Clamp((AgilityFullRangeM - now.RangeM) / AgilityFadeM, 0.0, 1.0);
+        _agilEff = agil;
         float minSafeClean0 = F14Aero.StallIasKt(st.WeightLb) * F14Aero.StallMarginFactor;
         float maxIas0 = MathF.Min(_tuning.MaxTargetIasKt, st.VneKt * VneMarginFactor);
         double iasPerGs0 = Math.Clamp(ownGsKt > 30.0 ? st.IasKt / ownGsKt : 1.0, 0.3, 1.6);
-        (float maxBank, float maxVsFpm, _) = PhaseLimits(_phase);
+        (float maxBank, float maxVsFpm, _) = PhaseLimits(_phase, agil);
         float gBudget = MathF.Min(st.UsableG, _tuning.GSoftHigh * GBudgetFraction);
         maxBank = MathF.Min(maxBank, F14Aero.BankForLoadFactorDeg(gBudget));
 
@@ -643,6 +660,8 @@ public sealed class InterceptSequence
                 SafeHorizM = _tuning.SafeHorizontalM, SafeVertM = _tuning.SafeVerticalM,
                 Limits = limits,
                 IasPerGs = iasPerGs0,
+                Agility = agil,
+                TgtAccelMps2 = _agility.TgtAccelMps2,
                 DtSec = _planTimer,
                 Memory = _plannerMem,
             });
@@ -658,7 +677,7 @@ public sealed class InterceptSequence
             SetPhase(plan.SuggestedPhase,
                 $"planner: {plan.Regime}, a {BlackBoxSnap.F(now.RangeM, "0")} m, " +
                 $"ETA {(plan.Reaches ? BlackBoxSnap.F(plan.EtaSec, "0") + " s" : "?")}");
-        (maxBank, maxVsFpm, _) = PhaseLimits(_phase);
+        (maxBank, maxVsFpm, _) = PhaseLimits(_phase, agil);
         maxBank = MathF.Min(maxBank, F14Aero.BankForLoadFactorDeg(gBudget));
 
         // --- 1. Velocidad: es la que decide si hacen falta flaps y serpenteo -
@@ -672,7 +691,7 @@ public sealed class InterceptSequence
         if (float.IsNaN(_trackFiltDeg)) _trackFiltDeg = ownTrack;
         float filtStep = Pid.NormalizeAngleDeg180(desiredRaw - _trackFiltDeg);
         _trackFiltDeg = Pid.NormalizeAngleDeg360(
-            _trackFiltDeg + filtStep * (1f - MathF.Exp(-dt / TrackFilterTauSec)));
+            _trackFiltDeg + filtStep * (1f - MathF.Exp(-dt / (TrackFilterTauSec * (float)FormationAgility.Lerp(1.0, 0.5, agil)))));
         float desiredTrack = _trackFiltDeg;
         float trackErr = Pid.NormalizeAngleDeg180(desiredTrack - ownTrack);
         LastDesiredTrack = desiredTrack;
@@ -690,8 +709,10 @@ public sealed class InterceptSequence
         // escala con la velocidad para una constante de tiempo fija.
         float trackGain = TrackToBankGain;
         if (plan.Regime is InterceptRegime.Station or InterceptRegime.Formation)
-            trackGain = Math.Clamp((float)ownGsMps / (9.81f * FormationTrackTauSec),
-                                   TrackToBankGain, FormationTrackGainMax);
+            trackGain = Math.Clamp((float)ownGsMps /
+                                   (9.81f * (float)FormationAgility.Lerp(FormationTrackTauSec, FormationTrackTauAgileSec, agil)),
+                                   TrackToBankGain,
+                                   (float)FormationAgility.Lerp(FormationTrackGainMax, FormationTrackGainAgileMax, agil));
         float bankRaw = Math.Clamp(trackGain * trackErr + bankFf, -maxBank, maxBank);
         // Alivio de G: el backstop de las maniobras ABORTA, pero aqui abortar
         // seria soltar el avion en mitad de una persecucion. Se afloja el
@@ -707,7 +728,8 @@ public sealed class InterceptSequence
         }
         // Rampa propia y mas suave que la de las maniobras: 45 deg/s metia
         // 67 deg de alabeo en 1.5 s y con ellos las G raras del log.
-        _bankTargetRamp.MaxRate = MathF.Min(_tuning.ManeuverBankRampDegPerSec, InterceptBankRampDegPerSec);
+        _bankTargetRamp.MaxRate = MathF.Min(_tuning.ManeuverBankRampDegPerSec,
+            (float)FormationAgility.Lerp(InterceptBankRampDegPerSec, InterceptBankRampAgileDegPerSec, agil));
         float bankTarget = _bankTargetRamp.Update(bankRaw, dt);
         LastBankTarget = bankTarget;
         _bankPid.GainScale = AttitudeGainScale(st);
@@ -776,7 +798,8 @@ public sealed class InterceptSequence
             now.RangeM, plan.RendezvousRangeM, now.AlongM, now.CrossM, now.UpM,
             st.IasKt, st.BankDeg, st.GNormal,
             plan.DesiredTrackDeg, desiredTrack, plan.DesiredGsMps, plan.DesiredIasMps,
-            iasCmd, vsCmd, bankTarget, plan.PredictedMinSepM, plan.EtaSec);
+            iasCmd, vsCmd, bankTarget, plan.PredictedMinSepM, plan.EtaSec,
+            agil, _agility.TgtAccelMps2);
 
         // --- 5. Llegada --------------------------------------------------------
         if (_repositioning && now.RangeM < RepositionDoneM &&
@@ -808,6 +831,26 @@ public sealed class InterceptSequence
         {
             _settledElapsed = 0f;
         }
+    }
+
+    // --- Formacion agresiva -------------------------------------------------------
+
+    // Alimenta el detector con lo que hace el blanco (y lo que nos cuesta
+    // seguirlo) y deja constancia en la caja negra al entrar/salir del modo.
+    // En persecucion lejana no cuenta: el rumbo del blanco da igual a 10 km.
+    private void UpdateAgility(float dt, in TargetSnapshot t, double tgtTurnDegS, in InterceptGeometry now)
+    {
+        int change = _agility.Update(dt, t.GroundSpeedMps, t.Vy, tgtTurnDegS,
+                                     now.AlongM, now.CrossM, now.RangeM);
+        if (change == 0) return;
+        LogAction(BlackBoxSnap.Join(
+            change > 0
+                ? "Formacion agresiva: ACTIVADA — el blanco maniobra, ganancias y rampas mas vivas"
+                : "Formacion agresiva: desactivada — el blanco se ha calmado",
+            string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                $"nivel={_agility.Level:0.00} acel blanco={_agility.TgtAccelMps2:+0.00;-0.00} m/s2 " +
+                $"giro={tgtTurnDegS:+0.0;-0.0} deg/s dVy={_agility.TgtVertAccelMps2:+0.0;-0.0} m/s2"),
+            InterceptLiveExtras()));
     }
 
     // --- Piezas del lazo ------------------------------------------------------
@@ -846,7 +889,10 @@ public sealed class InterceptSequence
         float planIasKt = (float)(plan.DesiredIasMps * TargetSnapshot.MpsToKnots);
         // Transicion de puesto: rampa algo mas viva para no eternizar el
         // frenado / la recuperacion, pero sin golpe de gas.
-        _iasCmdRamp.MaxRate = _repositioning ? RepositionIasRateKtPerSec : IasCmdRateKtPerSec;
+        double agil = _agilEff;
+        _iasCmdRamp.MaxRate = _repositioning
+            ? (float)FormationAgility.Lerp(RepositionIasRateKtPerSec, RepositionIasRateAgileKtPerSec, agil)
+            : (float)FormationAgility.Lerp(IasCmdRateKtPerSec, IasCmdRateAgileKtPerSec, agil);
         float iasCmd = MathF.Min(maxIas, _iasCmdRamp.Update(planIasKt, dt));
 
         // Cambio de estacion en formacion: se pierde un poco de velocidad
@@ -894,8 +940,13 @@ public sealed class InterceptSequence
             // En formacion la banda muerta de 12 kt dejaba que el avion pasara
             // 30 kt del blanco antes de frenar (oscilacion larga): se estrecha.
             bool tight = _phase == InterceptPhase.Station;
-            float sbDead = tight ? SpeedbrakeDeadbandStationKt : SpeedbrakeDeadbandKt;
-            float sbSpan = tight ? SpeedbrakeSpanStationKt : SpeedbrakeSpanKt;
+            // Formacion agresiva: aerofrenos mas decididos. Con la ley
+            // proporcional de 20 kt de recorrido, 12 kt de exceso sostenido
+            // solo abrian ~40 % (caja negra: 4 min adelantado al puesto).
+            float sbDead = tight ? (float)FormationAgility.Lerp(SpeedbrakeDeadbandStationKt, 2f, agil)
+                                 : SpeedbrakeDeadbandKt;
+            float sbSpan = tight ? (float)FormationAgility.Lerp(SpeedbrakeSpanStationKt, 9f, agil)
+                                 : SpeedbrakeSpanKt;
             float sbWant = Math.Clamp((st.IasKt - iasCmd - sbDead) / sbSpan,
                                       0f, 1f);
             _speedbrakeRamp.MaxRate = SpeedbrakeRatePerSec;
@@ -911,6 +962,15 @@ public sealed class InterceptSequence
     private float SolveTrack(in TargetSnapshot t, in InterceptGeometry now,
                              in InterceptPlan plan, bool tooSlowForUs, double ownGsKt)
     {
+        // Serpenteo de ENERGIA: adelantados al puesto y sin poder frenar mas
+        // (ralenti + aerofrenos al tope, o el blanco va mas lento que nuestro
+        // minimo). Solo reducir velocidad no basta -- el Airbus que tambien
+        // frena nunca nos deja ponernos detras --, asi que se alarga el camino:
+        // volando a un angulo psi del rumbo del blanco el avance neto es
+        // V*cos(psi), que iguala al suyo aunque el avion siga volando mas
+        // rapido. Es el viraje en S de un caza que se ha pasado de largo.
+        if (UpdateEnergyWeave(t, now, plan, tooSlowForUs, ownGsKt))
+            return Pid.NormalizeAngleDeg360(t.TrackDeg + _weaveSign * _weaveDeg);
         if (_phase == InterceptPhase.Station && tooSlowForUs && ownGsKt > 1.0)
         {
             // El avance neto por la linea del blanco es V*cos(angulo), asi que
@@ -924,6 +984,64 @@ public sealed class InterceptSequence
         }
         _weaveDeg = 0f;
         return (float)plan.DesiredTrackDeg;
+    }
+
+    // Decide si hay que serpentear para soltar energia y fija _weaveDeg/_weaveSign.
+    // Histeresis: entra bien adelantado y con los frenos al tope, sale al volver
+    // cerca del puesto o al dejar de sobrar velocidad.
+    private bool UpdateEnergyWeave(in TargetSnapshot t, in InterceptGeometry now,
+                                   in InterceptPlan plan, bool tooSlowForUs, double ownGsKt)
+    {
+        // Distancia horizontal al AVION (no al puesto): serpentear a 100-200 m de
+        // otro caza, con el puesto detras de nosotros, cruza el eje del blanco
+        // justo por su posicion (arnes: paso a 4-15 m). Solo lejos.
+        double ownAlongT = -_stationAft - now.AlongM;
+        double ownLatT = _stationRight - now.CrossM;
+        bool farFromTarget = Math.Sqrt(ownAlongT * ownAlongT + ownLatT * ownLatT) > EnergyWeaveMinTargetDistM;
+        bool inFormation = farFromTarget && _phase is InterceptPhase.Station or InterceptPhase.Closing &&
+                           plan.Regime != InterceptRegime.Transit &&
+                           now.RangeM < (tooSlowForUs ? EnergyWeaveMaxRangeSlowM : EnergyWeaveMaxRangeM);
+        double vWantKt = plan.DesiredGsMps * TargetSnapshot.MpsToKnots;
+        double excessKt = ownGsKt - Math.Max(vWantKt, t.GroundSpeedKt);
+        if (tooSlowForUs) excessKt = Math.Max(excessKt, ownGsKt - t.GroundSpeedKt);
+        bool saturated = tooSlowForUs || (_speedbrakeCmd > EnergyWeaveSpeedbrake && LastThrottleCmd < 0.05f);
+        bool ahead = _energyWeave ? now.AlongM < -EnergyWeaveExitAheadM : now.AlongM < -EnergyWeaveEnterAheadM;
+        // Solo con el blanco agitado (o que no se puede igualar): en una formacion
+        // tranquila el pequeno adelantamiento de la llegada se absorbe frenando
+        // y el zigzag costaria mas error lateral del que ahorra.
+        bool allowed = tooSlowForUs || _agilEff > EnergyWeaveMinAgility;
+        bool on = inFormation && allowed && ahead && saturated &&
+                  excessKt > (_energyWeave ? 1.0 : EnergyWeaveExcessKt);
+        if (on != _energyWeave)
+        {
+            _energyWeave = on;
+            if (on) _weaveSign = Math.Sign(now.CrossM) == 0 ? _weaveSign : Math.Sign(now.CrossM);
+            LogAction(BlackBoxSnap.Join(
+                on ? "Formacion: serpenteo de energia ACTIVADO — adelantado al puesto y sin poder frenar mas, alargo el camino"
+                   : "Formacion: serpenteo de energia desactivado — de vuelta al puesto",
+                string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                    $"exceso={excessKt:0} kt SB={_speedbrakeCmd * 100f:0}% gas={LastThrottleCmd * 100f:0}%"),
+                InterceptLiveExtras()));
+        }
+        if (!_energyWeave) return false;
+        // Angulo que iguala el avance neto con el que se quiere (nunca menos de
+        // 0.55 del propio: 57 deg ya es un zigzag inutil), y mas suave cerca del
+        // puesto para no entrar de lado.
+        double ratio = Math.Clamp(Math.Max(vWantKt, t.GroundSpeedKt * 0.5) / Math.Max(ownGsKt, 1.0), 0.45, 1.0);
+        double deg = Math.Acos(ratio) * F14Aero.Rad2Deg;
+        deg *= Math.Clamp((-now.AlongM - 10.0) / 60.0, 0.25, 1.0);
+        // Blanco mas lento que nuestro minimo: no hay otra forma de igualarlo, asi
+        // que el zigzag puede ser tan ancho y abierto como el de la formacion
+        // lenta (MaxWeaveDeg / WeaveHalfWidthM). Con el blanco solo agitado, corto.
+        float maxDeg = tooSlowForUs ? MaxWeaveDeg : EnergyWeaveMaxDeg;
+        double halfWidth = tooSlowForUs ? WeaveHalfWidthM : EnergyWeaveHalfWidthM;
+        _weaveDeg = MathF.Min((float)deg, maxDeg);
+        // El zigzag se da la vuelta ANTES de llegar al ancho maximo: con el
+        // retardo del alabeo (~1.5 s) el avion aun se desplaza V*sen(psi)*1.5 m.
+        double lag = ownGsKt / TargetSnapshot.MpsToKnots * Math.Sin(_weaveDeg * F14Aero.Deg2Rad) * 1.5;
+        double flipAt = Math.Max(halfWidth - lag, 25.0);
+        if (Math.Abs(now.CrossM) > flipAt) _weaveSign = Math.Sign(now.CrossM);
+        return true;
     }
 
     // V/S pedida -> morro. El grueso lo pone un feedforward de trayectoria
@@ -1084,6 +1202,10 @@ public sealed class InterceptSequence
         if (_phase == phase) return;
         InterceptPhase from = _phase;
         _phase = phase;
+        // Sin esto el minimo de permanencia solo valia los primeros 1.5 s de la
+        // mision: despues cada tick podia cambiar de fase (la caja negra mostro
+        // Station <-> Closing a cada frame al mover el puesto).
+        _phaseDwell = 0f;
         _settledElapsed = 0f;
         if (phase != InterceptPhase.Station) _announced = false;
         // El autothrottle cambia de regimen con la fase (de "todo a fondo" a
@@ -1239,13 +1361,17 @@ public sealed class InterceptSequence
 
     // Limites por fase: alabeo (deg), V/S (fpm) y cuanto se adelanta el punto
     // de mira (s).
-    private static (float MaxBank, float MaxVsFpm, double MaxLead) PhaseLimits(InterceptPhase p) =>
+    // agility (0..1, FormationAgility): con el blanco agitado la formacion abre
+    // su envolvente (mas alabeo y V/S), siempre bajo el techo de G de la llamada.
+    private static (float MaxBank, float MaxVsFpm, double MaxLead) PhaseLimits(InterceptPhase p,
+                                                                                double agility = 0.0) =>
         p switch
         {
             InterceptPhase.Pursuit => (72f, 9000f, 120.0),
             InterceptPhase.Closing => (50f, 9000f, 15.0),
             // 45 deg: seguir a un blanco que vira a 3 deg/s y 150 m/s exige ~39 deg.
-            InterceptPhase.Station => (45f, 6000f, 0.0),
+            InterceptPhase.Station => ((float)FormationAgility.Lerp(45.0, 58.0, agility),
+                                       (float)FormationAgility.Lerp(6000.0, 9000.0, agility), 0.0),
             _ => (25f, LoiterMaxVsFpm, 0.0),
         };
 
@@ -1257,6 +1383,9 @@ public sealed class InterceptSequence
 
     private const float FormationTrackTauSec = 4.5f;
     private const float FormationTrackGainMax = 6f;
+    // Formacion agresiva (FormationAgility.Level = 1): lazo rumbo->alabeo mas corto.
+    private const float FormationTrackTauAgileSec = 2.8f;
+    private const float FormationTrackGainAgileMax = 9f;
     private const float TrackToBankGain = 1.2f;   // deg de alabeo por deg de error de rumbo
     private const float MaxPitchDeg = 45f;
     private const float VerticalTauSec = 6f;      // en cuantos segundos se quiere borrar el error vertical
@@ -1278,6 +1407,19 @@ public sealed class InterceptSequence
     // Banda de velocidad sobre el minimo seguro en la que el ascenso pedido se
     // va desvaneciendo.
     private const float StallGuardBandKt = 30f;
+
+    // Serpenteo de energia (ver UpdateEnergyWeave): adelantado >50 m al puesto, con
+    // >5 kt de exceso y aerofrenos >85 % a ralenti; sale a <15 m de adelanto.
+    private const double EnergyWeaveEnterAheadM = 80.0;
+    private const double EnergyWeaveExitAheadM = 15.0;
+    private const double EnergyWeaveExcessKt = 5.0;
+    private const float EnergyWeaveSpeedbrake = 0.85f;
+    private const double EnergyWeaveMaxRangeM = 2500.0;
+    private const double EnergyWeaveMinTargetDistM = 300.0;
+    private const double EnergyWeaveMaxRangeSlowM = 4000.0;
+    private const float EnergyWeaveMaxDeg = 15f;
+    private const double EnergyWeaveHalfWidthM = 80.0;
+    private const double EnergyWeaveMinAgility = 0.35;
 
     // Serpenteo para blancos lentos.
     private const float MaxWeaveDeg = 50f;
@@ -1313,6 +1455,7 @@ public sealed class InterceptSequence
     // (~20 kt) y rampa de IAS mas viva para que el desliz no se eternice
     // (~8-20 s tipicos entre puestos a 200-400 m).
     private const float RepositionIasRateKtPerSec = 40f;
+    private const float RepositionIasRateAgileKtPerSec = 60f;
     private const double RepositionDoneM = 80.0;
     private const double RepositionArmRangeM = 2500.0;
 
@@ -1322,11 +1465,16 @@ public sealed class InterceptSequence
     private const float PhaseMinDwellSec = 1.5f;
     private const float TrackFilterTauSec = 0.25f;
     private const float InterceptBankRampDegPerSec = 25f;
+    private const float InterceptBankRampAgileDegPerSec = 45f;
+    // La agilidad se aplica a pleno por debajo de AgilityFullRangeM y se desvanece en AgilityFadeM.
+    private const double AgilityFullRangeM = 1500.0;
+    private const double AgilityFadeM = 1000.0;
     private const float IasCmdRateKtPerSec = 25f;
+    private const float IasCmdRateAgileKtPerSec = 45f;
     private const float PitchFallRateDegPerSec = 6f;
     private const float LowGGuard = 0.5f;
 
-    private const float VneMarginFactor = 0.92f;
+    private const float VneMarginFactor = 0.95f;
     private const float MinOwnIasKt = 120f;
     private const double TerrainReferenceRangeM = 40000.0;
     private const float StatusLogSeconds = 10f;

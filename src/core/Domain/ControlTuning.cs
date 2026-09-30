@@ -329,7 +329,7 @@ public sealed class ControlTuning
         set => _minTargetIasKt = Math.Clamp(value, 50f, 300f);
     }
 
-    private float _maxTargetIasKt = 650f;
+    private float _maxTargetIasKt = 700f;
     public float MaxTargetIasKt
     {
         get => _maxTargetIasKt;
@@ -431,7 +431,7 @@ public sealed class ControlTuning
 
         SpeedStepKt = 15f;
         MinTargetIasKt = 130f;
-        MaxTargetIasKt = 650f;
+        MaxTargetIasKt = 700f;
 
         Station = StationSpec.Default;
         SafeHorizontalM = 25f;

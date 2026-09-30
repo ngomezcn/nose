@@ -134,6 +134,13 @@ public sealed record InterceptPlanInput
     public double IasPerGs { get; init; } = 1.0;
     // Tiempo desde la llamada anterior (para el suavizado de la salida).
     public double DtSec { get; init; } = 0.1;
+    // Formacion agresiva (FormationAgility): 0 = blanco tranquilo, 1 = muy
+    // agitado. Sube las ganancias de la ley de estacion y la viveza del
+    // comando de salida; ver Formation y el suavizado de Plan.
+    public double Agility { get; init; }
+    // Aceleracion del blanco a lo largo de su ruta (m/s2, + = acelera): el
+    // feed-forward de velocidad de la ley de estacion.
+    public double TgtAccelMps2 { get; init; }
     public PlannerMemory? Memory { get; init; }
 }
 
@@ -289,6 +296,17 @@ public static class InterceptPlanner
     // la caja negra con 0.30/0.25 daba ciclos de ~18 s de +-70 m y +-20 deg de
     // alabeo, y cruzaba 33 m del blanco.
     private const double AlongGain = 0.11;
+    // Con el blanco agitado se sube un poco (el resto lo pone el feed-forward de
+    // su aceleracion, que no quita margen de estabilidad): K*T sigue < 0.5.
+    private const double AlongGainAgile = 0.15;
+    private const double CrossGainAgile = 0.15;
+    private const double StationTrimAgileMps = 30.0;
+    private const double CrossAccelAgileMps2 = 3.5;
+    private const double VerticalTauAgileSec = 3.5;
+    // Adelanto del feed-forward de aceleracion del blanco (s): ~ el retardo del
+    // lazo de velocidad (OwnLimits.SpeedLagSec).
+    private const double AccelFfLeadSec = 1.6;
+    private const double AccelFfMaxMps = 3.0;
     // Ganancia del cierre sobre la distancia total en la guia inercial: a la
     // entrada de la zona de estacion (~160 m) deja ~24 m/s de cierre.
     private const double FormationCloseGain = 0.15;
@@ -301,6 +319,17 @@ public static class InterceptPlanner
     private const double CrossAccelMps2 = 2.0;
     private const double SafePushScaleMps = 40.0;
     private const double SafePushCapMps = 30.0;
+    // Crecimiento de la zona segura con el cierre sobre el blanco (s) y su tope (m).
+    private const double SafeLeadSec = 2.5;
+    private const double SafeLeadMaxM = 120.0;
+    // Pasillo minimo (m) del rodeo al blanco: pasar a <55 m de otro avion a
+    // velocidad de caza no es una formacion.
+    private const double ClearMinM = 55.0;
+    // Carril de paso (ver Formation): activo desde PassLaneBehindM detras del
+    // blanco hasta plena fuerza a PassLaneBehindM - PassLaneRampM.
+    private const double PassLaneBehindM = 150.0;
+    private const double PassLaneRampM = 90.0;
+    private const double PassLaneSafeFactor = 1.6;
     // Se pierde la formacion si se queda por delante de la estacion mas de esto.
     private const double FormationAheadM = 2000.0;
     // ... pero solo si ademas queda casi alineado con el blanco (riesgo de pasar
@@ -320,6 +349,11 @@ public static class InterceptPlanner
     private const double OutSpeedSlewMps2 = 9.0;         // pendiente maxima del comando de velocidad (~17 kt/s)
     private const double OutSpeedSlewNearMps2 = 22.0;    // bajada rapida cerca (<8 km) para matar Vmax
     private const double TurnGain = 0.7;                 // 1/s: tasa de giro por rad de error
+    // Formacion agresiva (Agility = 1): comando de salida mas vivo.
+    private const double OutAccelAgileRadPerS2 = 14.0 * Deg;
+    private const double OutSpeedSlewAgileMps2 = 15.0;
+    private const double OutSpeedSlewNearAgileMps2 = 30.0;
+    private const double TurnGainAgile = 1.0;
 
     private const int ModeRp = 0, ModeWaypoint = 1, ModeStation = 2, ModeCorridor = 3;
 
@@ -332,6 +366,8 @@ public static class InterceptPlanner
         public double Aft, Right, Up, Behind, Zone, SafeH, SafeV;
         // Ancho del pasillo lateral (0 = RP en eje). Se reduce al quedar detras.
         public double CorridorW;
+        // Formacion agresiva (0..1) y aceleracion del blanco (m/s2).
+        public double Agility, TgtAccel;
     }
 
     private struct Cmd
@@ -379,6 +415,8 @@ public static class InterceptPlanner
             SafeH = Math.Max(inp.SafeHorizM, 1.0), SafeV = Math.Max(inp.SafeVertM, 1.0),
             Behind = Math.Max(inp.RendezvousBehindM, Math.Abs(inp.AftM) + 600.0),
             Zone = Math.Clamp(0.6 * Math.Abs(inp.AftM) + 40.0, 160.0, 250.0),
+            Agility = Math.Clamp(inp.Agility, 0.0, 1.0),
+            TgtAccel = Math.Clamp(inp.TgtAccelMps2, -2.0, 2.0),
         };
 
         PlannerMemory mem = inp.Memory ?? new PlannerMemory();
@@ -470,19 +508,21 @@ public static class InterceptPlanner
         double rate = mem.HasOut ? mem.OutRateRadPerS : 0.0;
         double e = c0.TurnErr - lead;   // sin envolver: conserva el lado forzado
         double rMax = Math.Max(OutRateFactor * wMax, 3.0 * Deg);
-        double rWant = Math.Sign(e) * Math.Min(rMax, Math.Sqrt(2.0 * OutAccelRadPerS2 * Math.Abs(e)));
-        rate += Math.Clamp(rWant - rate, -OutAccelRadPerS2 * dtc, OutAccelRadPerS2 * dtc);
+        double outAccel = Lerp(OutAccelRadPerS2, OutAccelAgileRadPerS2, x.Agility);
+        double rWant = Math.Sign(e) * Math.Min(rMax, Math.Sqrt(2.0 * outAccel * Math.Abs(e)));
+        rate += Math.Clamp(rWant - rate, -outAccel * dtc, outAccel * dtc);
         double newLeadAbs = own.Psi + lead + rate * dtc;
         double leadNew = Math.Clamp(newLeadAbs - own.Psi, -OutLeadMaxRad, OutLeadMaxRad);
         double outTrack = own.Psi + leadNew;
         double vPrev = mem.HasOut ? mem.OutGsMps : own.V;
         // Cerca: bajar de Vmax a Vtgt+cierre tiene que ser rapido; si no, el
         // slewing deja DesiredGs alto varios segundos y se pasa igual.
-        double speedSlew = OutSpeedSlewMps2;
+        double slewUp = Lerp(OutSpeedSlewMps2, OutSpeedSlewAgileMps2, x.Agility);
+        double speedSlew = slewUp;
         if (c0.VCmd < vPrev - 1.0 && rangeT < InterceptEngagement.SpeedMatchRangeM)
-            speedSlew = OutSpeedSlewNearMps2;
-        double vGs = vPrev + Math.Clamp(c0.VCmd - vPrev, -speedSlew * dtc, OutSpeedSlewMps2 * dtc);
-        double psiDot = Math.Clamp(TurnGain * leadNew + c0.PsiDotFF, -wMax, wMax);
+            speedSlew = Lerp(OutSpeedSlewNearMps2, OutSpeedSlewNearAgileMps2, x.Agility);
+        double vGs = vPrev + Math.Clamp(c0.VCmd - vPrev, -speedSlew * dtc, slewUp * dtc);
+        double psiDot = Math.Clamp(Lerp(TurnGain, TurnGainAgile, x.Agility) * leadNew + c0.PsiDotFF, -wMax, wMax);
         double bank = Math.Atan(own.V * psiDot / G) * Rad2Deg;
         double peakG = Math.Sqrt(1.0 + Math.Pow(own.V * psiDot / G, 2.0));
 
@@ -800,8 +840,22 @@ public static class InterceptPlanner
         // del blanco (perpendicular a la recta en su punto mas cercano, a 1.5
         // radios seguros), y luego al puesto. Vale para cualquier azimut: pasar
         // por detras, rodear por el costado o ir a un puesto delante de el.
-        double clear = 1.5 * x.SafeH;
         double pAlong = a - x.Aft, pCross = c + x.Right;
+        // Zona segura PREDICTIVA: el cilindro crece con el cierre sobre el
+        // blanco (cierre * SafeLeadSec). Con el blanco frenando de golpe, el
+        // interceptor llegaba a 5-30 m de el a +30..75 kt (arnes sin
+        // simulador): la guardia fija solo actuaba cuando ya estaba dentro, y el
+        // pasillo de 1.5 radios (37 m) era un roce. El mismo radio ampliado
+        // manda el punto de paso del rodeo.
+        double tUp0 = x.Up - dU;
+        double rx = -pAlong * fE - pCross * rE, ry = -pAlong * fN - pCross * rN;   // vector al blanco (ENU)
+        double rd = Math.Max(Math.Sqrt(rx * rx + ry * ry + tUp0 * tUp0), 1.0);
+        double vcx = o.V * Math.Sin(o.Psi) - vtE, vcy = o.V * Math.Cos(o.Psi) - vtN;
+        double vClose = Math.Max((vcx * rx + vcy * ry) / rd, 0.0);
+        double safeLead = SafeLeadSec * Lerp(0.6, 1.0, x.Agility);
+        double safeH = x.SafeH + Math.Min(vClose * safeLead, SafeLeadMaxM);
+        double safeV = x.SafeV + Math.Min(vClose * safeLead * 0.4, 0.5 * SafeLeadMaxM);
+        double clear = Math.Max(1.5 * safeH, ClearMinM);
         double sAlong = -x.Aft, sCross = x.Right;
         bool routed = false;
         if (dh < RouteMaxM &&
@@ -812,6 +866,23 @@ public static class InterceptPlanner
             dh = Math.Sqrt(a * a + c * c);
             routed = true;
         }
+        // Carril de paso: pasados del puesto y aun junto al blanco (entre el puesto y
+        // su posicion), la ley lateral NO debe llevar al eje del puesto, que pasa
+        // por el blanco: el arnes mostro pasos a 4-15 m cuando el blanco frenaba de
+        // golpe y el interceptor cruzaba su eje a +30..75 kt. Se mantiene un
+        // carril a >= 1.6 radios seguros por el lado en que ya se esta hasta
+        // quedar de nuevo detras del blanco; ahi se vuelve al eje (rampa).
+        double cLat = c;
+        if (!routed)
+        {
+            double laneW = Math.Clamp((pAlong + PassLaneBehindM) / PassLaneRampM, 0.0, 1.0);
+            if (laneW > 0.0)
+            {
+                int laneSide = Math.Abs(pCross) >= 8.0 ? Math.Sign(pCross) : (mem.ApproachSide == 0 ? 1 : mem.ApproachSide);
+                double laneLat = laneSide * Math.Max(PassLaneSafeFactor * safeH, ClearMinM);
+                cLat = pCross - (laneW * laneLat + (1.0 - laneW) * x.Right);
+            }
+        }
         var cmd = new Cmd
         {
             // Puesto = cerca en horizontal Y en vertical: con el blanco km por
@@ -821,7 +892,8 @@ public static class InterceptPlanner
         };
 
         // Vertical: V/S del blanco + error de altura.
-        double vyRel = Math.Clamp(dU / VerticalTauSec, -L.MaxDescentMps, L.MaxClimbMps);
+        double vyRel = Math.Clamp(dU / Lerp(VerticalTauSec, VerticalTauAgileSec, x.Agility),
+                                  -L.MaxDescentMps, L.MaxClimbMps);
         cmd.VyCmd = Math.Clamp(t.Vy + vyRel, -L.MaxDescentMps, L.MaxClimbMps);
 
         // Nos hemos pasado (la estacion queda ATRAS): no se da la vuelta hacia
@@ -831,7 +903,7 @@ public static class InterceptPlanner
         // resuelve la ley de marco de abajo.
         if (!routed && dh >= x.Zone && a > 0.0 && dh < DropBackMaxM)
         {
-            double off = Math.Clamp(-c * DropBackLatDegPerM * Deg, -DropBackMaxOffRad, DropBackMaxOffRad);
+            double off = Math.Clamp(-cLat * DropBackLatDegPerM * Deg, -DropBackMaxOffRad, DropBackMaxOffRad);
             double wBack = Math.Min(DropBackBaseMps + DropBackGain * a, DropBackCapMps);
             cmd.HeadingCmd = t.Track + off;
             cmd.TurnErr = WrapPi(cmd.HeadingCmd - o.Psi);
@@ -885,17 +957,20 @@ public static class InterceptPlanner
         double dEff = Math.Max(Math.Abs(dA) - moving * L.SpeedLagSec, 0.0);
         double wBrake = Math.Sqrt(2.0 * BrakeF * Decel(L, 0.5 * (o.V + t.V)) * dEff);
         double cap = cmd.Regime == InterceptRegime.Station
-            ? StationTrimMps
+            ? Lerp(StationTrimMps, StationTrimAgileMps, x.Agility)
             : Math.Min(FormationCapMps, InterceptEngagement.MaxClosureMps(rangeT, InterceptSituation.SternNear));
-        double wa = Math.Clamp(Math.Sign(dA) * Math.Min(Math.Abs(dA) * AlongGain, wBrake), -cap, cap);
+        double alongGain = Lerp(AlongGain, AlongGainAgile, x.Agility);
+        double wa = Math.Clamp(Math.Sign(dA) * Math.Min(Math.Abs(dA) * alongGain, wBrake), -cap, cap);
         // Lateral: lineal cerca del puesto (estable), y fuera de CrossLinearM
         // un perfil de aceleracion constante (v = sqrt(v0^2 + 2*A*d)) para
         // que un cambio de puesto de cientos de metros sea rapido.
-        double cl = Math.Abs(c);
+        double cl = Math.Abs(cLat);
+        double crossGain = Lerp(CrossGain, CrossGainAgile, x.Agility);
         double wcMag = cl <= CrossLinearM
-            ? cl * CrossGain
-            : Math.Sqrt(Math.Pow(CrossLinearM * CrossGain, 2.0) + 2.0 * CrossAccelMps2 * (cl - CrossLinearM));
-        double wc = Math.Clamp(-Math.Sign(c) * wcMag, -Math.Max(cap * 0.7, 25.0), Math.Max(cap * 0.7, 25.0));
+            ? cl * crossGain
+            : Math.Sqrt(Math.Pow(CrossLinearM * crossGain, 2.0) +
+                        2.0 * Lerp(CrossAccelMps2, CrossAccelAgileMps2, x.Agility) * (cl - CrossLinearM));
+        double wc = Math.Clamp(-Math.Sign(cLat) * wcMag, -Math.Max(cap * 0.7, 25.0), Math.Max(cap * 0.7, 25.0));
 
         double wE = wa * fE + wc * rE, wN = wa * fN + wc * rN;
 
@@ -905,7 +980,7 @@ public static class InterceptPlanner
         // puesto, repartido entre horizontal y vertical segun por donde se entre.
         double tUp = x.Up - dU;
         double tHor = Math.Sqrt(pAlong * pAlong + pCross * pCross);
-        double hN = tHor / x.SafeH, vN = Math.Abs(tUp) / x.SafeV;
+        double hN = tHor / safeH, vN = Math.Abs(tUp) / safeV;
         double dN = Math.Sqrt(hN * hN + vN * vN);
         if (dN < 1.0)
         {
@@ -922,6 +997,17 @@ public static class InterceptPlanner
         // Techo de |v| = Vtgt + cierre de situacion (no Vmax del avion).
         double vCeil = Math.Min(L.VmaxGsMps,
             t.V + InterceptEngagement.MaxClosureMps(rangeT, InterceptSituation.SternNear));
+        // Feed-forward: si el blanco acelera/frena, la velocidad que hay que
+        // pedir es la que tendra dentro del retardo del lazo de velocidad, no la
+        // de ahora. Sin ello el avion sigue siempre un retardo por detras de su
+        // velocidad (a*retardo) y acumula ese error en posicion.
+        double ff = Math.Clamp(x.TgtAccel * AccelFfLeadSec * Lerp(0.6, 1.0, x.Agility),
+                               -AccelFfMaxMps, AccelFfMaxMps);
+        if (t.V > 20.0 && Math.Abs(ff) > 1e-3)
+        {
+            double ts = Math.Sin(t.Track), tc = Math.Cos(t.Track);
+            vtE += ff * ts; vtN += ff * tc;
+        }
         RelToOwn(vtE, vtN, wE, wN, L.VminGsMps, vCeil, fE, fN, out double ownE, out double ownN);
         cmd.VCmd = InterceptEngagement.CapDesiredGs(
             Math.Sqrt(ownE * ownE + ownN * ownN), t.V, rangeT, L, InterceptSituation.SternNear);
@@ -1064,6 +1150,9 @@ public static class InterceptPlanner
         }
         oE = vtE + lam * ux; oN = vtN + lam * uy;
     }
+
+    private static double Lerp(double calm, double agile, double level) =>
+        calm + (agile - calm) * Math.Clamp(level, 0.0, 1.0);
 
     private static double WrapPi(double r)
     {

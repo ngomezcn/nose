@@ -151,7 +151,12 @@ public sealed class KinematicFlightModel
 
         _pDegPerSec = 0; _qDegPerSec = 0;
         PitchStick = RollStick = YawStick = 0f;
-        Gear = GearTarget = float.IsNaN((float)gearRatio) ? 1f : (float)Math.Clamp(gearRatio, 0, 1);
+        // En el aire el tren va recogido (A330 / IAs cinematicas). En tierra
+        // se respeta lo leido (por defecto abajo).
+        if (ground)
+            Gear = GearTarget = float.IsNaN((float)gearRatio) ? 1f : (float)Math.Clamp(gearRatio, 0, 1);
+        else
+            Gear = GearTarget = 0f;
         Flap = FlapTarget = 0f;
         Speedbrake = SpeedbrakeTarget = 0f;
         AdaptationText = "";
@@ -200,6 +205,7 @@ public sealed class KinematicFlightModel
     private void StepSystems(double h)
     {
         Throttle += (float)((Math.Clamp(ThrottleCmd, 0f, 1f) - Throttle) * (1.0 - Math.Exp(-h / EngineSpoolSec)));
+        if (!OnGround) GearTarget = 0f; // en vuelo: tren arriba
         Gear = Approach(Gear, Math.Clamp(GearTarget, 0f, 1f), (float)(GearRatePerSec * h));
         Flap = Approach(Flap, Math.Clamp(FlapTarget, 0f, 1f), (float)(FlapRatePerSec * h));
         Speedbrake = Approach(Speedbrake, Math.Clamp(SpeedbrakeTarget, 0f, 1f), (float)(SpeedbrakeRatePerSec * h));
