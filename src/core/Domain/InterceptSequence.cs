@@ -1243,9 +1243,9 @@ public sealed class InterceptSequence
         p switch
         {
             InterceptPhase.Pursuit => (72f, 9000f, 120.0),
-            InterceptPhase.Closing => (50f, 4000f, 15.0),
+            InterceptPhase.Closing => (50f, 9000f, 15.0),
             // 45 deg: seguir a un blanco que vira a 3 deg/s y 150 m/s exige ~39 deg.
-            InterceptPhase.Station => (45f, 2000f, 0.0),
+            InterceptPhase.Station => (45f, 6000f, 0.0),
             _ => (25f, LoiterMaxVsFpm, 0.0),
         };
 

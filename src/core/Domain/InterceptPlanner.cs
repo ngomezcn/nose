@@ -65,8 +65,8 @@ public sealed record OwnLimits
     // el frenado del tramo final y se llegaba a la estacion con 50 m/s de cierre.
     public double DecelLowMps2 { get; init; } = 0.6;
     public double DecelHighMps2 { get; init; } = 4.6;
-    public double MaxClimbMps { get; init; } = 30.0;
-    public double MaxDescentMps { get; init; } = 30.0;
+    public double MaxClimbMps { get; init; } = 45.0;
+    public double MaxDescentMps { get; init; } = 40.0;
     // Retardo motor/aerofrenos: cuanto tarda la orden de velocidad en
     // notarse. Se descuenta del recorrido de frenado.
     public double SpeedLagSec { get; init; } = 2.0;
@@ -309,6 +309,8 @@ public static class InterceptPlanner
     private const double FormationAheadLatM = 1200.0;
     private const double FormationFarAheadM = 3000.0;
     private const double VerticalTauSec = 6.0;
+    // Desnivel maximo para declarar la zona de estacion.
+    private const double StationVertM = 300.0;
 
     // --- Suavizado de la salida ---------------------------------------------
     private const double ForceSideRad = 100.0 * Deg;
@@ -812,7 +814,9 @@ public static class InterceptPlanner
         }
         var cmd = new Cmd
         {
-            Regime = dh < x.Zone ? InterceptRegime.Station : InterceptRegime.Formation,
+            // Puesto = cerca en horizontal Y en vertical: con el blanco km por
+            // encima no se esta "en el puesto" aunque dh sea pequeno.
+            Regime = dh < x.Zone && Math.Abs(dU) < StationVertM ? InterceptRegime.Station : InterceptRegime.Formation,
             MinSep = double.NaN,
         };
 
