@@ -326,8 +326,7 @@ public sealed class InterceptSequence
             _station = station;
             InterceptStationDef def = InterceptCatalog.Get(station);
             bool near =
-                _phase is InterceptPhase.Station or InterceptPhase.Closing or
-                          InterceptPhase.WaitingTakeoff ||
+                _phase is InterceptPhase.Station or InterceptPhase.Closing ||
                 (!double.IsNaN(RangeM) && RangeM < RepositionArmRangeM);
 
             if (near)
@@ -530,9 +529,14 @@ public sealed class InterceptSequence
         (float aft, float right, float up) = def.Resolve(
             _tuning.InterceptDistanceM, _tuning.InterceptLateralM, _tuning.InterceptVerticalM);
         // Blanco parado: el puesto de formacion se eleva a ~2 km para que el
-        // interceptor no intente "formar" a ras de pista.
+        // interceptor no intente "formar" a ras de pista. El offset del
+        // catalogo (p. ej. Abajo, UpFactor negativo) no puede dejar el puesto
+        // por debajo de ese minimo.
         if (targetOnGround)
+        {
             up += GroundFormationAltM;
+            up = Math.Max(up, GroundFormationAltM);
+        }
 
         // Dos geometrias: la de AHORA, que es la que mide y decide de fase, y
         // la adelantada, que es la que se vuela. Mezclarlas haria que en plena
@@ -756,7 +760,13 @@ public sealed class InterceptSequence
         // su velocidad de suelo, nosotros mandamos IAS.
         double iasPerGs = ownGsKt > 30.0 ? st.IasKt / ownGsKt : 1.0;
         iasPerGs = Math.Clamp(iasPerGs, 0.3, 1.6);
-        float targetIasEquivalent = (float)(t.GroundSpeedKt * iasPerGs);
+        // Con blanco parado en tierra, GS≈0 no debe convertirse en "iguala 0 kt"
+        // ni en un cap de reposicion negativo; el suelo seguro manda mas abajo.
+        bool slowGroundTarget = TargetState == TargetAirState.OnGround &&
+                                t.GroundSpeedKt < SlowGroundTargetGsKt;
+        float targetIasEquivalent = slowGroundTarget
+            ? float.NaN
+            : (float)(t.GroundSpeedKt * iasPerGs);
 
         // La velocidad la pide el planner: perfil de frenado con la
         // deceleracion real del avion medida sobre el CAMINO de aproximacion
@@ -773,7 +783,7 @@ public sealed class InterceptSequence
 
         // Cambio de estacion en formacion: se pierde un poco de velocidad
         // respecto al blanco, se desliza al puesto nuevo y luego se iguala.
-        if (_repositioning)
+        if (_repositioning && !float.IsNaN(targetIasEquivalent))
             iasCmd = MathF.Min(iasCmd, targetIasEquivalent - RepositionSlowKt);
 
         // Guardia de proximidad: por debajo de esto ya no es una formacion,
@@ -781,7 +791,8 @@ public sealed class InterceptSequence
         // pase lo que pase con la geometria, para abrirse por detras.
         if (now.SeparationM < MinSeparationM)
         {
-            iasCmd = MathF.Min(iasCmd, targetIasEquivalent - BackOffKt);
+            if (!float.IsNaN(targetIasEquivalent))
+                iasCmd = MathF.Min(iasCmd, targetIasEquivalent - BackOffKt);
             _speedbrakeRamp.MaxRate = SpeedbrakeRatePerSec;
             _speedbrakeCmd = _speedbrakeRamp.Update(1f, dt);
         }
@@ -1220,6 +1231,8 @@ public sealed class InterceptSequence
     private const float LoiterMaxVsFpm = 1500f;
     // Altura del puesto sobre un blanco parado (metros sobre su elevacion).
     private const float GroundFormationAltM = 2000f;
+    // Por debajo de esto el blanco cuenta como parado para caps de IAS relativos.
+    private const float SlowGroundTargetGsKt = 40f;
 
     // Transicion entre puestos de formacion: un poco mas lento que el blanco
     // (~20 kt) y rampa de IAS mas viva para que el desliz no se eternice

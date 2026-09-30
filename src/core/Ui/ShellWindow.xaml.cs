@@ -303,9 +303,9 @@ public partial class ShellWindow : Window, INotifyPropertyChanged {
         set => Set(ref _interceptEmptyVisibility, value);
     }
 
-    // Posicion que usara la PROXIMA interceptacion. Cambiarla con una en
-    // marcha no la mueve: hay que volver a pulsar Interceptar, igual que el
-    // estilo de despegue no se aplica a un despegue ya empezado.
+    // Posicion de la proxima interceptacion y, si ya hay mision en marcha
+    // (o pendiente de despegue combate), la que vuela ahora: OnInterceptStationChanged
+    // la propaga al director sin abortar.
     private InterceptStation _stationId = InterceptStation.TailHigh;
     private bool _switchingStation;
     public string InterceptStationSummary => InterceptCatalog.Get(_stationId).Description;
